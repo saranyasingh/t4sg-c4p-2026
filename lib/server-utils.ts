@@ -34,6 +34,7 @@ export const createServerSupabaseClient = () => {
   const cookieStore = cookies();
 
   // Injects type dependencies from database schema (<Database>)
+  /*
   const supabase = createServerClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
     cookies: {
       get(name: string) {
@@ -60,6 +61,7 @@ export const createServerSupabaseClient = () => {
     },
   });
   return supabase;
+  */
 
   /*
     The cookies object lets the Supabase client know how to access the cookies,
@@ -87,12 +89,12 @@ export const createServerSupabaseClient = () => {
     3. Passing the refreshed Auth token to the browser, so it replaces the old token. This is accomplished with response.cookies.set.
 */
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({
+  const response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
-
+/*
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -136,10 +138,11 @@ export async function updateSession(request: NextRequest) {
           });
         },
       },
+
     },
   );
-
-  await supabase.auth.getUser();
+ */
+  //await supabase.auth.getUser();
 
   return response;
 }
