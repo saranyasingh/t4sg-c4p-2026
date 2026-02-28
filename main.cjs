@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, desktopCapturer, dialog, ipcMain } = require("electron");
 const path = require("path");
 
 function createWindow() {
@@ -14,6 +14,23 @@ function createWindow() {
 
   win.loadURL("http://localhost:3000");
 }
+
+ipcMain.handle("request-screenshot-permission", async () => {
+  const { response } = await dialog.showMessageBox({
+    type: "question",
+    buttons: ["Allow", "Deny"],
+    defaultId: 0,
+    cancelId: 1,
+    title: "Screen Capture Permission",
+    message: "Allow this app to take a screenshot of your screen?",
+  });
+  return response === 0;
+});
+
+ipcMain.handle("get-screen-sources", async () => {
+  const sources = await desktopCapturer.getSources({ types: ["screen"] });
+  return sources.map((source) => ({ id: source.id, name: source.name }));
+});
 
 app.whenReady().then(() => {
   createWindow();
