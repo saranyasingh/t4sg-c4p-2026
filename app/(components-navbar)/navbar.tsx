@@ -11,6 +11,12 @@ export default async function Navbar({ className, ...props }: React.HTMLAttribut
       <Link href="/" className="text-sm font-medium transition-colors hover:text-primary">
         Home
       </Link>
+      <Link href="/chat" className="text-sm font-medium transition-colors hover:text-primary">
+        Chat
+      </Link>
+      <Link href="/tutorials" className="text-sm font-medium transition-colors hover:text-primary">
+        Tutorials
+      </Link>
       {(
         <Link href="/dashboard" className="text-sm font-medium transition-colors hover:text-primary">
           Dashboard
