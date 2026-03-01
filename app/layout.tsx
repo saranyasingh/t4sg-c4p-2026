@@ -17,10 +17,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Providers>
           <div className="flex-col md:flex">
+            {/* Header strip: draggable so the frameless window can be moved by dragging it */}
             <div className="border-b">
-              <div className="flex h-16 items-center px-4">
-                <Navbar className="mx-6" />
-                <div className="ml-auto flex items-center space-x-4">
+              <div className="flex h-16 items-center px-4 [-webkit-app-region:drag]">
+                {/* Mark interactive children as no-drag so clicks still register */}
+                <Navbar className="mx-6 [-webkit-app-region:no-drag]" />
+                <div className="ml-auto flex items-center space-x-4 [-webkit-app-region:no-drag]">
                   <ModeToggle />
                   <AuthStatus />
                 </div>
