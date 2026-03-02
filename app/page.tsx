@@ -1,4 +1,5 @@
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
+import ScreenshotButton from "./screenshot-button";
 
 export default function Home() {
   return (
@@ -12,6 +13,7 @@ export default function Home() {
         This page is an unprotected route accessible to anyone who visits the website. Log in to view authenticated
         routes!
       </TypographyP>
+      <ScreenshotButton />
     </>
   );
 }
