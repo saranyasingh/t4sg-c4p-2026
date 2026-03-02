@@ -16,6 +16,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       {/* Hydration warning suppressed because of next-themes https://github.com/pacocoursey/next-themes */}
       <body>
         <Providers>
+          <div
+            style={{ backgroundColor: "#00205B", WebkitAppRegion: "drag" } as React.CSSProperties}
+            className="h-6 w-full cursor-grab active:cursor-grabbing"
+          />
           <div className="flex-col md:flex">
             <div className="border-b">
               <div className="flex h-16 items-center px-4">
