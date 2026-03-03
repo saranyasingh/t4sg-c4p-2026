@@ -1,4 +1,5 @@
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
+import ScreenshotButton from "./screenshot-button";
 
 export default function Home() {
   return (

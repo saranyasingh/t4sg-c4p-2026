@@ -75,5 +75,6 @@
   }
   body {
     @apply bg-background text-foreground;
+    background: rgba(15, 15, 15, 0.3) !important;
   }
 }

@@ -22,6 +22,9 @@ export default async function Navbar({ className, ...props }: React.HTMLAttribut
           Dashboard
         </Link>
       )}
+      <Link href="/chat" className="text-sm font-medium transition-colors hover:text-primary">
+        Chat
+      </Link>
     </nav>
   );
 }
