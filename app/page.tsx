@@ -3,17 +3,11 @@ import ScreenshotButton from "./screenshot-button";
 
 export default function Home() {
   return (
-    <>
-      <TypographyH2>Welcome to the T4SG starter project!</TypographyH2>
+    <div className="space-y-4">
+      <TypographyH2>Welcome</TypographyH2>
       <TypographyP>
-        This starter project is styled with Tailwind CSS and uses shadcn/ui as a component library. Feel free to add
-        your own components!
+        Get started with Chat or explore Tutorials to learn more.
       </TypographyP>
-      <TypographyP>
-        This page is an unprotected route accessible to anyone who visits the website. Log in to view authenticated
-        routes!
-      </TypographyP>
-      <ScreenshotButton />
-    </>
+    </div>
   );
 }
