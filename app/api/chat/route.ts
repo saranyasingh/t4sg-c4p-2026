@@ -7,6 +7,7 @@ export async function POST(req: Request) {
 
   const result = await client.chat.completions.create({
     model: "gpt-4-turbo",
+    stream: true,
     messages: [
       {
         role: "system",
@@ -20,6 +21,27 @@ export async function POST(req: Request) {
     ],
   });
 
-  const content = result.choices[0]?.message?.content ?? "";
-  return Response.json({ content });
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+
+      for await (const chunk of result) {
+        const delta = chunk.choices[0]?.delta?.content;
+
+        if (delta) {
+          controller.enqueue(encoder.encode(delta));
+        }
+      }
+
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    },
+  });
 }

@@ -14,20 +14,24 @@ export default function Chat() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<MessageWithId[]>([]);
+  const [incomingMessage, setIncomingMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!message.trim() || isLoading) return;
 
+    const prompt = message.trim();
+
     const userMessage: MessageWithId = {
       id: Date.now().toString(),
-      text: message,
+      text: prompt,
       variant: "user",
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setMessage("");
     setIsLoading(true);
+    setIncomingMessage("");
 
     try {
       const response = await fetch("/api/chat", {
@@ -35,25 +39,48 @@ export default function Chat() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ prompt: message }),
+        body: JSON.stringify({ prompt }),
       });
 
-      const result = (await response.json()) as { content: string };
+      if (!response.ok || !response.body) {
+        throw new Error("Failed to stream response");
+      }
+
+      const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+      let fullResponse = "";
+
+      let done = false;
+
+      while (!done) {
+        const { done: isDone, value } = await reader.read();
+        done = isDone;
+
+        if (done) {
+          break;
+        }
+
+        if (value) {
+          fullResponse += value;
+          setIncomingMessage(fullResponse);
+        }
+      }
 
       const assistantMessage: MessageWithId = {
         id: (Date.now() + 1).toString(),
-        text: result.content,
+        text: fullResponse,
         variant: "assistant",
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
+      setIncomingMessage("");
+    } catch {
       // Error occurred while fetching response
       const errorMessage: MessageWithId = {
         id: (Date.now() + 1).toString(),
         text: "Sorry, there was an error processing your request.",
         variant: "assistant",
       };
+      setIncomingMessage("");
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
@@ -72,7 +99,8 @@ export default function Chat() {
           {messages.map((msg) => (
             <Message key={msg.id} text={msg.text} variant={msg.variant} />
           ))}
-          {isLoading && <Message text="Thinking..." variant="assistant" />}
+          {incomingMessage && <Message text={incomingMessage} variant="assistant" />}
+          {isLoading && !incomingMessage && <Message text="Thinking..." variant="assistant" />}
         </ScrollContainer>
       </section>
 
