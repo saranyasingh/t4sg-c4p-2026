@@ -1,9 +1,12 @@
 "use client";
+
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { createBrowserSupabaseClient } from "@/lib/client-utils";
+import { useTranslation } from "react-i18next";
 
 export default function LoginButton() {
+  const { t } = useTranslation();
   const supabase = createBrowserSupabaseClient();
 
   const handleSignIn = async () => {
@@ -20,7 +23,7 @@ export default function LoginButton() {
 
     if (error) {
       return toast({
-        title: "Something went wrong.",
+        title: t("auth.somethingWentWrong"),
         description: error.message,
         variant: "destructive",
       });
@@ -28,5 +31,5 @@ export default function LoginButton() {
 
     return;
   };
-  return <Button onClick={handleSignIn}>Log in with Google</Button>;
+  return <Button onClick={handleSignIn}>{t("auth.loginWithGoogle")}</Button>;
 }

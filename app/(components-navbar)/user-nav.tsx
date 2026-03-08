@@ -16,13 +16,13 @@ import { type Database } from "@/lib/schema";
 import { LogOut, Settings, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 export default function UserNav({ profile }: { profile: Profile }) {
-  // Create Supabase client (for client components)
+  const { t } = useTranslation();
   const supabaseClient = createBrowserSupabaseClient();
-
   const router = useRouter();
 
   const handleSignOut = async () => {
@@ -53,13 +53,13 @@ export default function UserNav({ profile }: { profile: Profile }) {
           <DropdownMenuItem asChild>
             <Link href="/settings/profile">
               <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
+              <span>{t("userNav.profile")}</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/settings/general">
               <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
+              <span>{t("userNav.settings")}</span>
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
@@ -71,7 +71,7 @@ export default function UserNav({ profile }: { profile: Profile }) {
           }}
         >
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
+          <span>{t("userNav.logOut")}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

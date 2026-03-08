@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
@@ -11,6 +12,7 @@ import { Message, type MessageProps } from "./message";
 type MessageWithId = MessageProps & { id: string; variant: "user" | "assistant" };
 
 export default function Chat() {
+	const { t } = useTranslation();
 	const [message, setMessage] = useState("");
 	const [messages, setMessages] = useState<MessageWithId[]>([
 		{
@@ -57,9 +59,9 @@ export default function Chat() {
 	return (
 		<div className="flex h-full flex-col gap-6 p-6">
 			<header className="space-y-1">
-				<TypographyH2>Chat</TypographyH2>
+				<TypographyH2>{t("chat.heading")}</TypographyH2>
 				<TypographyP className="text-sm text-muted-foreground">
-					Ask any question about your computer here.
+					{t("chat.description")}
 				</TypographyP>
 			</header>
 
@@ -77,7 +79,7 @@ export default function Chat() {
 
 			<form className="flex items-center gap-3" onSubmit={handleSubmit}>
 				<Input
-					placeholder="Type your message..."
+					placeholder={t("chat.inputPlaceholder")}
 					className="flex-1"
 					value={message}
 					onChange={(e) => setMessage(e.target.value)}

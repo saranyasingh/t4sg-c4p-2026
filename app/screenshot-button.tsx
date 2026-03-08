@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
 
 declare global {
   interface Window {
@@ -12,6 +13,8 @@ declare global {
 }
 
 export default function ScreenshotButton() {
+  const { t } = useTranslation();
+
   async function takeScreenshot() {
     if (!window.electronAPI) {
       console.error("electronAPI not available — is the app running in Electron?");
@@ -57,7 +60,7 @@ export default function ScreenshotButton() {
 
   return (
     <Button id="picButton" onClick={takeScreenshot}>
-      Take Picture
+      {t("misc.takePicture")}
     </Button>
   );
 }

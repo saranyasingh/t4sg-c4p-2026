@@ -1,22 +1,32 @@
 import i18n from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
-import Backend from "i18next-http-backend";
 import { initReactI18next } from "react-i18next";
 
-const fallbackLng = ["en"];
+import en from "@/lib/translations/en.json";
+import es from "@/lib/translations/es.json";
+
+const resources = {
+  en: { translation: en },
+  es: { translation: es },
+};
 
 i18n
-  .use(Backend) // used to load data from othe directory
-  .use(LanguageDetector) // detects the current language
-  .use(initReactI18next) // passes i18n down to react-i18next
+  .use(LanguageDetector)
+  .use(initReactI18next)
   .init({
-    fallbackLng, // default language
-    backend: {
-      loadPath: "/{{lng}}.json",
-    },
-    debug: false,
+    resources,
+    fallbackLng: "en",
+    supportedLngs: ["en", "es"],
     interpolation: {
-      escapeValue: false, // no need for react. it escapes by default
+      escapeValue: false,
+    },
+    react: {
+      useSuspense: false,
+    },
+    detection: {
+      order: ["localStorage", "navigator"],
+      caches: ["localStorage"],
+      lookupLocalStorage: "i18nextLng",
     },
   });
 

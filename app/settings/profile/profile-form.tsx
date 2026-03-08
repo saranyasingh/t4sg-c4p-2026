@@ -2,6 +2,8 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+import { useMemo, useState, type BaseSyntheticEvent, type MouseEvent } from "react";
 import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -12,40 +14,32 @@ import { toast } from "@/components/ui/use-toast";
 import { createBrowserSupabaseClient } from "@/lib/client-utils";
 import { type Database } from "@/lib/schema";
 import { useRouter } from "next/navigation";
-import { useState, type BaseSyntheticEvent, type MouseEvent } from "react";
-
-const profileFormSchema = z.object({
-  username: z
-    .string()
-    .min(2, {
-      message: "Username must be at least 2 characters.",
-    })
-    .max(30, {
-      message: "Username must not be longer than 30 characters.",
-    })
-    .transform((val) => val.trim()),
-  bio: z
-    .string()
-    .max(160, {
-      message: "Biography cannot be longer than 160 characters.",
-    })
-    .nullable()
-    // Transform empty string or only whitespace input to null before form submission, and trim whitespace otherwise
-    .transform((val) => (!val || val.trim() === "" ? null : val.trim())),
-});
-
-type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
+function getProfileFormSchema(t: (key: string) => string) {
+  return z.object({
+    username: z
+      .string()
+      .min(2, { message: t("profileForm.validationUsernameMin") })
+      .max(30, { message: t("profileForm.validationUsernameMax") })
+      .transform((val) => val.trim()),
+    bio: z
+      .string()
+      .max(160, { message: t("profileForm.validationBioMax") })
+      .nullable()
+      .transform((val) => (!val || val.trim() === "" ? null : val.trim())),
+  });
+}
+
+type ProfileFormValues = z.infer<ReturnType<typeof getProfileFormSchema>>;
+
 export default function ProfileForm({ profile }: { profile: Profile }) {
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
 
-  // Default values for the form fields.
-  /* Because the react-hook-form (RHF) used here is a controlled form (not an uncontrolled form),
-  all form fields should be set to non-undefined default values since `undefined` conflicts with controlled components.
-  Read more here: https://legacy.react-hook-form.com/api/useform/
-  */
+  const profileFormSchema = useMemo(() => getProfileFormSchema(t), [t]);
+
   const defaultValues = {
     username: profile.display_name,
     bio: profile.biography,
@@ -68,7 +62,7 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
 
     if (error) {
       return toast({
-        title: "Something went wrong.",
+        title: t("profileForm.toastError"),
         description: error.message,
         variant: "destructive",
       });
@@ -84,7 +78,7 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
     router.refresh();
 
     return toast({
-      title: "Profile updated successfully!",
+      title: t("profileForm.toastSuccess"),
     });
   };
 
@@ -107,23 +101,23 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
           name="username"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Username</FormLabel>
+              <FormLabel>{t("profileForm.usernameLabel")}</FormLabel>
               <FormControl>
-                <Input readOnly={!isEditing} placeholder="Username" {...field} />
+                <Input readOnly={!isEditing} placeholder={t("profileForm.usernameLabel")} {...field} />
               </FormControl>
               <FormDescription>
-                This is your public display name. It can be your real name or a pseudonym.
+                {t("profileForm.usernameDescription")}
               </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
         <FormItem>
-          <FormLabel>Email</FormLabel>
+          <FormLabel>{t("profileForm.emailLabel")}</FormLabel>
           <FormControl>
             <Input readOnly placeholder={profile.email} />
           </FormControl>
-          <FormDescription>This is your verified email address.</FormDescription>
+          <FormDescription>{t("profileForm.emailDescription")}</FormDescription>
           <FormMessage />
         </FormItem>
         <FormField
@@ -134,17 +128,17 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
             const { value, ...rest } = field;
             return (
               <FormItem>
-                <FormLabel>Bio</FormLabel>
+                <FormLabel>{t("profileForm.bioLabel")}</FormLabel>
                 <FormControl>
                   <Textarea
                     readOnly={!isEditing}
                     value={value ?? ""}
-                    placeholder="Tell us a little bit about yourself"
+                    placeholder={t("profileForm.bioPlaceholder")}
                     className="resize-none"
                     {...rest}
                   />
                 </FormControl>
-                <FormDescription>A short description of yourself!</FormDescription>
+                <FormDescription>{t("profileForm.bioDescription")}</FormDescription>
                 <FormMessage />
               </FormItem>
             );
@@ -153,14 +147,14 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
         {isEditing ? (
           <>
             <Button type="submit" className="mr-2">
-              Update profile
+              {t("profileForm.updateButton")}
             </Button>
             <Button variant="secondary" onClick={handleCancel}>
-              Cancel
+              {t("profileForm.cancelButton")}
             </Button>
           </>
         ) : (
-          <Button onClick={startEditing}>Edit Profile</Button>
+          <Button onClick={startEditing}>{t("profileForm.editButton")}</Button>
         )}
       </form>
     </Form>
