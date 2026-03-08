@@ -1,91 +1,98 @@
-'use client';
+"use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
 import { Send } from "lucide-react";
-import { ScrollContainer } from "./scroll-container";
+import { useState } from "react";
 import { Message, type MessageProps } from "./message";
+import { ScrollContainer } from "./scroll-container";
 
 type MessageWithId = MessageProps & { id: string; variant: "user" | "assistant" };
 
 export default function Chat() {
-	const [message, setMessage] = useState("");
-	const [messages, setMessages] = useState<MessageWithId[]>([
-		{
-			id: "1",
-			text: "This is a test message.",
-			variant: "user",
-		},
-		{
-			id: "2",
-			text: "I'm an Assistant for Granson AI!",
-			variant: "assistant",
-		},
-		{
-			id: "3",
-			text: "This is a scroll container.",
-			variant: "user",
-		},
-		{
-			id: "4",
-			text: "It sure is.",
-			variant: "assistant",
-		},
-		{
-			id: "5",
-			text: "Make sure to replace these hardcoded messages with actual messaging functionality.",
-			variant: "user",
-		},
-	]);
+  const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [messages, setMessages] = useState<MessageWithId[]>([]);
 
-	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-		e.preventDefault();
-		if (!message.trim()) return;
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!message.trim() || isLoading) return;
 
-		const newMessage: MessageWithId = {
-			id: Date.now().toString(),
-			text: message,
-			variant: "user",
-		};
+    const userMessage: MessageWithId = {
+      id: Date.now().toString(),
+      text: message,
+      variant: "user",
+    };
 
-		setMessages((prev) => [...prev, newMessage]);
-		setMessage("");
-	};
+    setMessages((prev) => [...prev, userMessage]);
+    setMessage("");
+    setIsLoading(true);
 
-	return (
-		<div className="flex h-full flex-col gap-6 p-6">
-			<header className="space-y-1">
-				<TypographyH2>Chat</TypographyH2>
-				<TypographyP className="text-sm text-muted-foreground">
-					Ask any question about your computer here.
-				</TypographyP>
-			</header>
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prompt: message }),
+      });
 
-			<section className="h-96 overflow-hidden">
-				<ScrollContainer>
-					{messages.map((msg) => (
-						<Message
-							key={msg.id}
-							text={msg.text}
-							variant={msg.variant}
-						/>
-					))}
+      const result = (await response.json()) as { content: string };
+
+      const assistantMessage: MessageWithId = {
+        id: (Date.now() + 1).toString(),
+        text: result.content,
+        variant: "assistant",
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error) {
+      // Error occurred while fetching response
+      const errorMessage: MessageWithId = {
+        id: (Date.now() + 1).toString(),
+        text: "Sorry, there was an error processing your request.",
+        variant: "assistant",
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex h-full flex-col gap-6 p-6">
+      <header className="space-y-1">
+        <TypographyH2>Chat</TypographyH2>
+        <TypographyP className="text-sm text-muted-foreground">Ask any question about your computer here.</TypographyP>
+      </header>
+
+      <section className="h-96 overflow-hidden">
+        <ScrollContainer>
+          {messages.map((msg) => (
+            <Message key={msg.id} text={msg.text} variant={msg.variant} />
+          ))}
+          {isLoading && <Message text="Thinking..." variant="assistant" />}
         </ScrollContainer>
-			</section>
+      </section>
 
-			<form className="flex items-center gap-3" onSubmit={handleSubmit}>
-				<Input
-					placeholder="Type your message..."
-					className="flex-1"
-					value={message}
-					onChange={(e) => setMessage(e.target.value)}
-				/>
-				<Button type="submit">
-					<Send className="h-4 w-4" />
-				</Button>
-			</form>
-		</div>
-	);
+      <form
+        className="flex items-center gap-3"
+        onSubmit={(e) => {
+          void handleSubmit(e);
+        }}
+      >
+        <Input
+          placeholder="Type your message..."
+          className="flex-1"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          disabled={isLoading}
+        />
+        <Button type="submit" disabled={isLoading}>
+          <Send className="h-4 w-4" />
+        </Button>
+      </form>
+    </div>
+  );
 }
