@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut } = require("electron");
+const { app, BrowserWindow, desktopCapturer, dialog, ipcMain, globalShortcut } = require("electron");
 const path = require("path");
 
 let win = null;
@@ -26,7 +26,24 @@ function createWindow() {
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 }
 
-void app.whenReady().then(() => {
+ipcMain.handle("request-screenshot-permission", async () => {
+  const { response } = await dialog.showMessageBox({
+    type: "question",
+    buttons: ["Allow", "Deny"],
+    defaultId: 0,
+    cancelId: 1,
+    title: "Screen Capture Permission",
+    message: "Allow this app to take a screenshot of your screen?",
+  });
+  return response === 0;
+});
+
+ipcMain.handle("get-screen-sources", async () => {
+  const sources = await desktopCapturer.getSources({ types: ["screen"] });
+  return sources.map((source) => ({ id: source.id, name: source.name }));
+});
+
+app.whenReady().then(() => {
   createWindow();
 
   // hotkey
