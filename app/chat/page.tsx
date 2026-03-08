@@ -9,6 +9,10 @@ import { Message, type MessageProps } from "./message";
 import { ScrollContainer } from "./scroll-container";
 
 type MessageWithId = MessageProps & { id: string; variant: "user" | "assistant" };
+interface ChatHistoryItem {
+  role: "user" | "assistant";
+  content: string;
+}
 
 export default function Chat() {
   const [message, setMessage] = useState("");
@@ -21,6 +25,12 @@ export default function Chat() {
     if (!message.trim() || isLoading) return;
 
     const prompt = message.trim();
+    const history: ChatHistoryItem[] = messages
+      .map((m) => ({
+        role: m.variant,
+        content: m.text,
+      }))
+      .slice(-10);
 
     const userMessage: MessageWithId = {
       id: Date.now().toString(),
@@ -39,7 +49,7 @@ export default function Chat() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, history }),
       });
 
       if (!response.ok || !response.body) {
