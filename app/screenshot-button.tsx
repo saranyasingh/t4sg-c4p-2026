@@ -1,63 +1,99 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 declare global {
   interface Window {
     electronAPI: {
       requestScreenshotPermission: () => Promise<boolean>;
-      getScreenSources: () => Promise<Array<{ id: string; name: string }>>;
+      getScreenSources: () => Promise<{ id: string; name: string }[]>;
+      analyzeScreenshot: (base64: string) => Promise<{
+        success: boolean;
+        data?: { x: number; y: number; width: number; height: number; confidence: number };
+        error?: string;
+      }>;
     };
   }
 }
 
-export default function ScreenshotButton() {
+export interface Coordinates {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  confidence: number;
+}
+
+interface ScreenshotButtonProps {
+  onCoordinates: (coords: Coordinates) => void;
+}
+
+export default function ScreenshotButton({ onCoordinates }: ScreenshotButtonProps) {
+  const [status, setStatus] = useState<"idle" | "capturing" | "analyzing">("idle");
+
   async function takeScreenshot() {
     if (!window.electronAPI) {
       console.error("electronAPI not available — is the app running in Electron?");
       return;
     }
 
-    const allowed = await window.electronAPI.requestScreenshotPermission();
-    if (!allowed) return;
+    try {
+      const allowed = await window.electronAPI.requestScreenshotPermission();
+      if (!allowed) return;
 
-    const sources = await window.electronAPI.getScreenSources();
-    const screen = sources[0];
-    if (!screen) return;
+      setStatus("capturing");
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: {
-        mandatory: {
-          chromeMediaSource: "desktop",
-          chromeMediaSourceId: screen.id,
-        },
-      } as unknown as MediaTrackConstraints,
-    });
+      const sources = await window.electronAPI.getScreenSources();
+      const screen = sources[0];
+      if (!screen) throw new Error("No screen source found");
 
-    const video = document.createElement("video");
-    video.srcObject = stream;
-    await new Promise<void>((resolve) => {
-      video.addEventListener("loadedmetadata", () => resolve());
-    });
-    await video.play();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          mandatory: {
+            chromeMediaSource: "desktop",
+            chromeMediaSourceId: screen.id,
+          },
+        } as unknown as MediaTrackConstraints,
+      });
 
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d")?.drawImage(video, 0, 0);
+      const video = document.createElement("video");
+      video.srcObject = stream;
+      await new Promise<void>((resolve) => {
+        video.addEventListener("loadedmetadata", () => resolve());
+      });
+      await video.play();
 
-    stream.getTracks().forEach((track) => track.stop());
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d")?.drawImage(video, 0, 0);
+      stream.getTracks().forEach((track) => track.stop());
 
-    const link = document.createElement("a");
-    link.download = "screenshot.png";
-    link.href = canvas.toDataURL();
-    link.click();
+      const base64 = canvas.toDataURL("image/png").split(",")[1]!;
+
+      setStatus("analyzing");
+
+      const result = await window.electronAPI.analyzeScreenshot(base64);
+      if (result.success && result.data) {
+        onCoordinates(result.data);
+      } else {
+        throw new Error(result.error ?? "Unknown analysis error");
+
+      }
+    } catch (err) {
+      console.error("Screenshot failed:", err);
+    } finally {
+      setStatus("idle");
+    }
   }
 
+  const label = status === "capturing" ? "Capturing..." : status === "analyzing" ? "Analyzing..." : "Take Picture";
+
   return (
-    <Button id="picButton" onClick={takeScreenshot}>
-      Take Picture
+    <Button id="picButton" onClick={takeScreenshot} disabled={status !== "idle"}>
+      {label}
     </Button>
   );
 }

@@ -1,15 +1,19 @@
-import { TypographyH2, TypographyP } from "@/components/ui/typography";
-import ScreenshotButton from "./screenshot-button";
+"use client";
+
+import { useState } from "react";
+import BoundingBoxOverlay from "./bounding-box-overlay";
+import ScreenshotButton, { type Coordinates } from "./screenshot-button";
 
 export default function Home() {
+  const [coords, setCoords] = useState<Coordinates | null>(null);
+
   return (
     <div className="space-y-4">
-      <TypographyH2>Welcome</TypographyH2>
-      <TypographyP>
-        Get started with Chat or explore Tutorials to learn more.
-      </TypographyP>
-      <ScreenshotButton />
+      <ScreenshotButton onCoordinates={setCoords} />
+      {coords && (
+        <pre className="text-xs text-white">{JSON.stringify(coords, null, 2)}</pre>
+      )}
+      <BoundingBoxOverlay coords={coords} />
     </div>
-
   );
 }
