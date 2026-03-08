@@ -8,6 +8,8 @@ export default function Home() {
       <TypographyP>
         Get started with Chat or explore Tutorials to learn more.
       </TypographyP>
+      <ScreenshotButton />
     </div>
+
   );
 }
