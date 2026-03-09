@@ -14,13 +14,17 @@ export function LanguageSelector() {
   const { t, i18n } = useTranslation();
   const currentLng = i18n.language?.split("-")[0] ?? "en";
 
+  const label = currentLng === "es" ? t("languageSelector.es") : t("languageSelector.en");
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Languages className="h-4 w-4" />
+        <Button variant="outline" size="sm" className="gap-2 overflow-hidden">
+          <Languages className="h-4 w-4 shrink-0" />
           <span className="sr-only">{t("languageSelector.label")}</span>
-          <span aria-hidden>{currentLng === "es" ? t("languageSelector.es") : t("languageSelector.en")}</span>
+          <span key={currentLng} className="min-w-[4.5rem] truncate text-left" aria-hidden>
+            {label}
+          </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">

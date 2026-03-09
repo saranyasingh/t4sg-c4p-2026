@@ -2,7 +2,6 @@
 
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
 import { useTranslation } from "react-i18next";
-import { LanguageSelector } from "./language-selector";
 import ScreenshotButton from "./screenshot-button";
 
 export default function Home() {
@@ -10,9 +9,6 @@ export default function Home() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <LanguageSelector />
-      </div>
       <TypographyH2>{t("home.welcome")}</TypographyH2>
       <TypographyP>{t("home.getStarted")}</TypographyP>
       <ScreenshotButton />
