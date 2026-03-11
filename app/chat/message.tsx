@@ -1,5 +1,8 @@
+"use client";
+
 import { TypographyP } from "@/components/ui/typography";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 export interface MessageProps {
 	text: string;
@@ -7,7 +10,8 @@ export interface MessageProps {
 }
 
 export const Message = ({ text, variant = "user" }: MessageProps) => {
-	const sender = variant === "user" ? "You" : "Assistant";
+	const { t } = useTranslation();
+	const sender = variant === "user" ? t("chat.senderUser") : t("chat.senderAssistant");
 
 	return (
 		<div
