@@ -13,48 +13,6 @@ async function getOpenAI() {
   return openaiClient;
 }
 
-async function analyzeScreenshot(imageBase64) {
-  const client = await getOpenAI();
-  const { z } = await import("zod");
-  const { zodResponseFormat } = await import("openai/helpers/zod");
-
-  const display = screen.getPrimaryDisplay();
-  const { width, height } = display.size;
-
-  const CoordinatesSchema = z.object({
-    x: z.number().describe("X coordinate of the center of the Chrome icon"),
-    y: z.number().describe("Y coordinate of the center of the Chrome icon"),
-    width: z.number().describe("Width of the Chrome icon in pixels"),
-    height: z.number().describe("Height of the Chrome icon in pixels"),
-    confidence: z.number().describe("Confidence score between 0 and 1"),
-  });
-
-  const response = await client.chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      {
-        role: "system",
-        content: `You are a computer vision assistant. The user will send you a screenshot of a computer screen with dimensions ${width}x${height} pixels.
-Your job is to locate the Google Chrome app icon and return its exact pixel coordinates.
-Return the center x,y of the icon plus its width and height.
-Coordinates should be absolute pixel values with origin at top-left.`,
-      },
-      {
-        role: "user",
-        content: [
-          { type: "image_url", image_url: { url: `data:image/png;base64,${imageBase64}` } },
-          { type: "text", text: "Find the Google Chrome app icon and return its coordinates." },
-        ],
-      },
-    ],
-    response_format: zodResponseFormat(CoordinatesSchema, "coordinates"),
-  });
-
-  const raw = response.choices[0].message.content;
-  if (!raw) throw new Error("No coordinates returned");
-  return JSON.parse(raw);
-}
-
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().bounds;
 
@@ -63,12 +21,10 @@ function createWindow() {
     y: 0,
     width,
     height,
-
     frame: false,
     alwaysOnTop: true,
     transparent: true,
     skipTaskbar: true,
-
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -77,9 +33,80 @@ function createWindow() {
   });
 
   win.loadURL("http://localhost:3000");
-  // invisible overlay
   win.setAlwaysOnTop(true, "screen-saver");
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  win.focus();
+  win.setPosition(0, 0);
+}
+
+async function analyzeScreenshot(imageBase64) {
+  const client = await getOpenAI();
+  const fs = require("fs");
+
+  const tmpPath = "/tmp/screenshot.png";
+  fs.writeFileSync(tmpPath, Buffer.from(imageBase64, "base64"));
+
+  const file = await client.files.create({
+    file: fs.createReadStream(tmpPath),
+    purpose: "vision",
+  });
+
+  const assistant = await client.beta.assistants.create({
+    model: "gpt-4o",
+    tools: [{ type: "code_interpreter" }],
+    instructions: `You are a computer vision assistant. You MUST always run Python code using code_interpreter to analyze images. Never guess. Always execute code first. Return ONLY raw JSON, no markdown, no explanation.`,
+  });
+
+  const threadObj = await client.beta.threads.create({
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Using code_interpreter, run Python code to find the Google Chrome icon in the attached image. The Chrome icon has a red, green, yellow outer ring and blue center. It could be any size. Find the largest instance of it (ignore tiny favicons under 20px). Return ONLY this raw JSON with no markdown: {"x": center_x, "y": center_y, "width": icon_width, "height": icon_height, "confidence": 0.99}`,
+          },
+        ],
+        attachments: [
+          {
+            file_id: file.id,
+            tools: [{ type: "code_interpreter" }],
+          },
+        ],
+      },
+    ],
+  });
+
+  const tId = threadObj.id;
+  let run = await client.beta.threads.runs.create(tId, {
+    assistant_id: assistant.id,
+    tool_choice: { type: "code_interpreter" },
+  });
+  const rId = run.id;
+
+  let runStatus = run.status;
+  while (runStatus === "queued" || runStatus === "in_progress") {
+    await new Promise((r) => setTimeout(r, 1000));
+    const updatedRun = await client.beta.threads.runs.retrieve(rId, { thread_id: tId });
+    runStatus = updatedRun.status;
+    console.log("Status:", runStatus);
+  }
+
+  if (runStatus === "failed") {
+    const failedRun = await client.beta.threads.runs.retrieve(rId, { thread_id: tId });
+    console.log("Run failed reason:", JSON.stringify(failedRun.last_error));
+  }
+
+  const messages = await client.beta.threads.messages.list(tId);
+  const content = messages.data[0].content[0];
+  if (content.type !== "text") throw new Error("Unexpected response type");
+
+  await client.files.delete(file.id);
+  await client.beta.assistants.delete(assistant.id);
+
+  console.log("Assistant response:", content.text.value);
+  const raw = content.text.value.replace(/```json|```/g, "").trim();
+  return JSON.parse(raw);
 }
 
 ipcMain.handle("request-screenshot-permission", async () => {
@@ -114,12 +141,9 @@ ipcMain.handle("analyze-screenshot", async (_event, base64) => {
 app.whenReady().then(() => {
   createWindow();
 
-  // hotkey
   const shortcut = "CommandOrControl+Shift+Space";
-
   globalShortcut.register(shortcut, () => {
     if (!win) return;
-
     if (win.isVisible()) {
       win.hide();
     } else {
@@ -134,7 +158,6 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
-  // On macOS apps typically stay open until Cmd+Q
   if (process.platform !== "darwin") app.quit();
 });
 

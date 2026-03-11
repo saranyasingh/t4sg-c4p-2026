@@ -1,87 +1,88 @@
-import { execSync } from "child_process";
 import "dotenv/config";
+import * as fs from "fs";
 import OpenAI from "openai";
-import { zodResponseFormat } from "openai/helpers/zod";
-import { z } from "zod";
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const ChromeIconCoordinates = z.object({
-  x: z.number().describe("X coordinate of the center of the Chrome icon"),
-  y: z.number().describe("Y coordinate of the center of the Chrome icon"),
-  width: z.number().describe("Width of the Chrome icon in pixels"),
-  height: z.number().describe("Height of the Chrome icon in pixels"),
-  confidence: z.number().describe("Confidence score between 0 and 1"),
-});
-
-type ChromeIconCoordinates = z.infer<typeof ChromeIconCoordinates>;
-
-function getScreenDimensions(): { width: number; height: number } {
-  try {
-    if (process.platform === "darwin") {
-      const output = execSync("system_profiler SPDisplaysDataType | grep Resolution").toString();
-      const match = output.match(/(\d+) x (\d+)/);
-      if (match) return { width: parseInt(match[1]) / 2, height: parseInt(match[2]) / 2 }; // div by 2 for retina display
-    } else if (process.platform === "win32") {
-      const output = execSync(
-        "wmic path Win32_VideoController get CurrentHorizontalResolution,CurrentVerticalResolution",
-      ).toString();
-      const match = output.match(/(\d+)\s+(\d+)/);
-      if (match) return { width: parseInt(match[1]), height: parseInt(match[2]) };
-    } else {
-      const output = execSync("xrandr | grep '*'").toString();
-      const match = output.match(/(\d+)x(\d+)/);
-      if (match) return { width: parseInt(match[1]), height: parseInt(match[2]) };
-    }
-  } catch (e) {
-    console.warn("Could not detect screen size, using fallback");
-  }
-  return { width: 1280, height: 800 };
+export interface ChromeIconCoordinates {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  confidence: number;
 }
 
 export async function getChromeIconCoordinates(imageBase64: string): Promise<ChromeIconCoordinates> {
-  const { width, height } = getScreenDimensions();
+  // Write base64 to a temp file so we can upload it
+  const tmpPath = "/tmp/screenshot.png";
+  fs.writeFileSync(tmpPath, Buffer.from(imageBase64, "base64"));
 
-  const response = await client.chat.completions.create({
+  // Upload the image file
+  const file = await client.files.create({
+    file: fs.createReadStream(tmpPath),
+    purpose: "assistants",
+  });
+
+  // Create an assistant with code interpreter
+  const assistant = await client.beta.assistants.create({
     model: "gpt-4o",
+    tools: [{ type: "code_interpreter" }],
+    instructions: `You are a computer vision assistant. When given a screenshot, use code interpreter to analyze the image pixel by pixel and find the exact center coordinates of the Google Chrome icon (circular icon with red, yellow, green ring around blue center). Return ONLY a JSON object with keys: x, y, width, height, confidence. No other text.`,
+  });
+
+  // Create a thread with the image
+  const thread = await client.beta.threads.create({
     messages: [
-      {
-        role: "system",
-        content: `You are a computer vision assistant. The user will send you a screenshot of a computer screen with dimensions ${width}x${height} pixels.
-Your job is to locate the Google Chrome app icon and return its exact pixel coordinates.
-Return the center x,y of the icon plus its width and height.
-Coordinates should be absolute pixel values with origin at top-left.`,
-      },
       {
         role: "user",
         content: [
           {
-            type: "image_url",
-            image_url: {
-              url: `data:image/png;base64,${imageBase64}`,
-            },
+            type: "image_file",
+            image_file: { file_id: file.id },
           },
           {
             type: "text",
-            text: "Find the Google Chrome app icon and return its coordinates.",
+            text: `This is a 1440x900 screenshot. Write and execute Python code to:
+1. Load the image
+2. Convert to numpy array
+3. Find pixels where the red channel > 150 AND green channel < 100 (the red part of Chrome icon)
+4. Get the centroid of those pixels
+5. Print the result as JSON: {"x": centroid_x, "y": centroid_y, "width": 70, "height": 70, "confidence": 0.99}
+Return ONLY the JSON object, nothing else.`,
           },
         ],
       },
     ],
-    response_format: zodResponseFormat(ChromeIconCoordinates, "coordinates"),
   });
 
-  console.log(JSON.stringify(response.choices[0].message, null, 2));
+  // Run the assistant
+  let run = await client.beta.threads.runs.create(thread.id, {
+    assistant_id: assistant.id,
+  });
 
-  const raw = response.choices[0].message.content;
-  if (!raw) throw new Error("No coordinates");
-  const result = JSON.parse(raw) as ChromeIconCoordinates;
-  return result;
+  // Poll until complete
+  while (run.status === "queued" || run.status === "in_progress") {
+    await new Promise((r) => setTimeout(r, 1000));
+    run = await client.beta.threads.runs.retrieve(thread.id, run.id);
+    console.log("Status:", run.status);
+  }
+
+  // Get the response
+  const messages = await client.beta.threads.messages.list(thread.id);
+  messages.data.forEach((m) => console.log(JSON.stringify(m.content, null, 2)));
+  const content = messages.data[0].content[0];
+  if (content.type !== "text") throw new Error("Unexpected response type");
+
+  // Clean up
+  await client.files.del(file.id);
+  await client.beta.assistants.del(assistant.id);
+
+  const raw = content.text.value.replace(/```json|```/g, "").trim();
+  return JSON.parse(raw) as ChromeIconCoordinates;
 }
 
 // test
-import * as fs from "fs";
 const testImage = fs.readFileSync("test_screenshot.png").toString("base64");
 getChromeIconCoordinates(testImage).then(console.log).catch(console.error);

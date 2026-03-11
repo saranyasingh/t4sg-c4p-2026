@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 declare global {
   interface Window {
@@ -66,12 +66,24 @@ export default function ScreenshotButton({ onCoordinates }: ScreenshotButtonProp
       await video.play();
 
       const canvas = document.createElement("canvas");
+      console.log("Video dimensions:", video.videoWidth, video.videoHeight);
+      const dpr = window.devicePixelRatio ?? 1;
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       canvas.getContext("2d")?.drawImage(video, 0, 0);
       stream.getTracks().forEach((track) => track.stop());
 
-      const base64 = canvas.toDataURL("image/png").split(",")[1]!;
+      const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
+      const arrayBuffer = await blob.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString("base64");
+      console.log("Blob size:", blob.size);
+      console.log("Base64 length:", base64.length);
+      console.log("Canvas dimensions:", canvas.width, canvas.height);
+
+      const link = document.createElement("a");
+      link.download = "canvas-screenshot.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
 
       setStatus("analyzing");
 
@@ -80,7 +92,6 @@ export default function ScreenshotButton({ onCoordinates }: ScreenshotButtonProp
         onCoordinates(result.data);
       } else {
         throw new Error(result.error ?? "Unknown analysis error");
-
       }
     } catch (err) {
       console.error("Screenshot failed:", err);
