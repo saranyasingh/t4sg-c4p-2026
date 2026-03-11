@@ -1,0 +1,76 @@
+{
+  "home": {
+    "welcome": "Welcome",
+    "getStarted": "Get started with Chat or explore Tutorials to learn more."
+  },
+  "nav": {
+    "home": "Home",
+    "chat": "Chat",
+    "tutorials": "Tutorials",
+    "dashboard": "Dashboard"
+  },
+  "userNav": {
+    "profile": "Profile",
+    "settings": "Settings",
+    "logOut": "Log out"
+  },
+  "auth": {
+    "loginWithGoogle": "Log in with Google",
+    "somethingWentWrong": "Something went wrong."
+  },
+  "themeToggle": {
+    "toggleTheme": "Toggle theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "chat": {
+    "heading": "Chat",
+    "description": "Ask any question about your computer here.",
+    "inputPlaceholder": "Type your message...",
+    "senderUser": "You",
+    "senderAssistant": "Assistant",
+    "newMessage": "New message!"
+  },
+  "dashboard": {
+    "heading": "Dashboard",
+    "description": "This is a protected route accessible only to signed-in users."
+  },
+  "settings": {
+    "heading": "Settings",
+    "description": "Manage your account and profile settings.",
+    "navGeneral": "General",
+    "navProfile": "Profile",
+    "editGeneral": "Edit general settings"
+  },
+  "profileForm": {
+    "heading": "Profile",
+    "errorHeading": "Error",
+    "siteDescription": "This is how others will see you on the site.",
+    "usernameLabel": "Username",
+    "usernameDescription": "This is your public display name. It can be your real name or a pseudonym.",
+    "emailLabel": "Email",
+    "emailDescription": "This is your verified email address.",
+    "bioLabel": "Bio",
+    "bioPlaceholder": "Tell us a little bit about yourself",
+    "bioDescription": "A short description of yourself!",
+    "updateButton": "Update profile",
+    "cancelButton": "Cancel",
+    "editButton": "Edit Profile",
+    "validationUsernameMin": "Username must be at least 2 characters.",
+    "validationUsernameMax": "Username must not be longer than 30 characters.",
+    "validationBioMax": "Biography cannot be longer than 160 characters.",
+    "toastSuccess": "Profile updated successfully!",
+    "toastError": "Something went wrong."
+  },
+  "languageSelector": {
+    "label": "Language",
+    "en": "English",
+    "es": "Spanish"
+  },
+  "misc": {
+    "loading": "Loading...",
+    "notFound": "404 - Page not found",
+    "takePicture": "Take Picture"
+  }
+}

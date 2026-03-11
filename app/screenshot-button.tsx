@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
 
 declare global {
   interface Window {
@@ -30,6 +31,7 @@ interface ScreenshotButtonProps {
 }
 
 export default function ScreenshotButton({ onCoordinates }: ScreenshotButtonProps) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<"idle" | "capturing" | "analyzing">("idle");
 
   async function takeScreenshot() {
@@ -92,8 +94,8 @@ export default function ScreenshotButton({ onCoordinates }: ScreenshotButtonProp
   const label = status === "capturing" ? "Capturing..." : status === "analyzing" ? "Analyzing..." : "Take Picture";
 
   return (
-    <Button id="picButton" onClick={takeScreenshot} disabled={status !== "idle"}>
-      {label}
+    <Button id="picButton" onClick={takeScreenshot}>
+      {t("misc.takePicture")}
     </Button>
   );
 }

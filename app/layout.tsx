@@ -1,3 +1,4 @@
+import { LanguageSelector } from "@/app/language-selector";
 import { ModeToggle } from "@/app/(components-navbar)/mode-toggle";
 import { Toaster } from "@/components/ui/toaster";
 import AuthStatus from "./(components-navbar)/auth-status";
@@ -18,21 +19,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <div
             style={{ backgroundColor: "#00205B", WebkitAppRegion: "drag" } as React.CSSProperties}
-            className="h-6 w-full cursor-grab active:cursor-grabbing"
+            className="h-6 w-full shrink-0 cursor-grab active:cursor-grabbing"
           />
-          <div className="flex-col md:flex">
-            <div className="border-b">
+          <div className="flex min-h-screen flex-col">
+            <div className="shrink-0 border-b">
               <div className="flex h-16 items-center px-4">
                 <Navbar className="mx-6" />
                 <div className="ml-auto flex items-center space-x-4">
+                  <LanguageSelector />
                   <ModeToggle />
                   <AuthStatus />
                 </div>
               </div>
             </div>
-            {/* Conditionally display website if logged in, else display login page */}
-            <div className="space-y-6 p-10 pb-16 md:block">
-              <main>{children}</main>
+            <div className="relative min-h-0 flex-1 p-10 pb-16">
+              <main className="relative block space-y-6">{children}</main>
             </div>
           </div>
         </Providers>
