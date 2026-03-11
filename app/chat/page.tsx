@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,58 +6,102 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
 import { Send } from "lucide-react";
-import { ScrollContainer } from "./scroll-container";
+import { useState } from "react";
 import { Message, type MessageProps } from "./message";
+import { ScrollContainer } from "./scroll-container";
 
 type MessageWithId = MessageProps & { id: string; variant: "user" | "assistant" };
+interface ChatHistoryItem {
+  role: "user" | "assistant";
+  content: string;
+}
 
 export default function Chat() {
-	const { t } = useTranslation();
-	const [message, setMessage] = useState("");
-	const [messages, setMessages] = useState<MessageWithId[]>([
-		{
-			id: "1",
-			text: "This is a test message.",
-			variant: "user",
-		},
-		{
-			id: "2",
-			text: "I'm an Assistant for Granson AI!",
-			variant: "assistant",
-		},
-		{
-			id: "3",
-			text: "This is a scroll container.",
-			variant: "user",
-		},
-		{
-			id: "4",
-			text: "It sure is.",
-			variant: "assistant",
-		},
-		{
-			id: "5",
-			text: "Make sure to replace these hardcoded messages with actual messaging functionality.",
-			variant: "user",
-		},
-	]);
+  const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [messages, setMessages] = useState<MessageWithId[]>([]);
+  const [incomingMessage, setIncomingMessage] = useState("");
+  const { t } = useTranslation();
 
-	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-		e.preventDefault();
-		if (!message.trim()) return;
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!message.trim() || isLoading) return;
 
-		const newMessage: MessageWithId = {
-			id: Date.now().toString(),
-			text: message,
-			variant: "user",
-		};
+    const prompt = message.trim();
+    const history: ChatHistoryItem[] = messages
+      .map((m) => ({
+        role: m.variant,
+        content: m.text,
+      }))
+      .slice(-10);
 
-		setMessages((prev) => [...prev, newMessage]);
-		setMessage("");
-	};
+    const userMessage: MessageWithId = {
+      id: Date.now().toString(),
+      text: prompt,
+      variant: "user",
+    };
 
-	return (
-		<div className="flex h-full flex-col gap-6 p-6">
+    setMessages((prev) => [...prev, userMessage]);
+    setMessage("");
+    setIsLoading(true);
+    setIncomingMessage("");
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prompt, history }),
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error("Failed to stream response");
+      }
+
+      const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+      let fullResponse = "";
+
+      let done = false;
+
+      while (!done) {
+        const { done: isDone, value } = await reader.read();
+        done = isDone;
+
+        if (done) {
+          break;
+        }
+
+        if (value) {
+          fullResponse += value;
+          setIncomingMessage(fullResponse);
+        }
+      }
+
+      const assistantMessage: MessageWithId = {
+        id: (Date.now() + 1).toString(),
+        text: fullResponse,
+        variant: "assistant",
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+      setIncomingMessage("");
+    } catch {
+      // Error occurred while fetching response
+      const errorMessage: MessageWithId = {
+        id: (Date.now() + 1).toString(),
+        text: "Sorry, there was an error processing your request.",
+        variant: "assistant",
+      };
+      setIncomingMessage("");
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex h-full flex-col gap-6 p-6">
 			<header className="space-y-1">
 				<TypographyH2>{t("chat.heading")}</TypographyH2>
 				<TypographyP className="text-sm text-muted-foreground">
@@ -89,5 +133,5 @@ export default function Chat() {
 				</Button>
 			</form>
 		</div>
-	);
+  );
 }
