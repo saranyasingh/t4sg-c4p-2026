@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
 import { Send } from "lucide-react";
-import { useState } from "react";
 import { Message, type MessageProps } from "./message";
 import { ScrollContainer } from "./scroll-container";
 
@@ -109,29 +108,33 @@ export default function Chat() {
 				</TypographyP>
 			</header>
 
-			<section className="h-96 overflow-hidden">
-				<ScrollContainer>
-					{messages.map((msg) => (
-						<Message
-							key={msg.id}
-							text={msg.text}
-							variant={msg.variant}
-						/>
-					))}
+      <section className="h-96 overflow-hidden">
+        <ScrollContainer>
+          {messages.map((msg) => (
+            <Message key={msg.id} text={msg.text} variant={msg.variant} />
+          ))}
+          {incomingMessage && <Message text={incomingMessage} variant="assistant" />}
+          {isLoading && !incomingMessage && <Message text="Thinking..." variant="assistant" />}
         </ScrollContainer>
-			</section>
+      </section>
 
-			<form className="flex items-center gap-3" onSubmit={handleSubmit}>
-				<Input
-					placeholder={t("chat.inputPlaceholder")}
-					className="flex-1"
-					value={message}
-					onChange={(e) => setMessage(e.target.value)}
-				/>
-				<Button type="submit">
-					<Send className="h-4 w-4" />
-				</Button>
-			</form>
-		</div>
+        <form
+          className="flex items-center gap-3"
+          onSubmit={(e) => {
+            void handleSubmit(e);
+          }}
+        >
+          <Input
+            placeholder={t("chat.inputPlaceholder")}
+            className="flex-1"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            disabled={isLoading}
+          />
+          <Button type="submit" disabled={isLoading}>
+            <Send className="h-4 w-4" />
+          </Button>
+        </form>
+      </div>
   );
 }
