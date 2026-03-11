@@ -21,5 +21,6 @@ export default function Home() {
       )}
       <BoundingBoxOverlay coords={coords} />
     </div>
+    </div>
   );
 }
