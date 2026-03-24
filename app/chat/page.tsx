@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,106 @@ export default function Chat() {
   const [messages, setMessages] = useState<MessageWithId[]>([]);
   const [incomingMessage, setIncomingMessage] = useState("");
   const [audioModeEnabled, setAudioModeEnabled] = useState(false);
+  const [isSpeechPlaying, setIsSpeechPlaying] = useState(false);
+  const audioModeEnabledRef = useRef(audioModeEnabled);
+  const speechObjectUrlRef = useRef<string | null>(null);
+  const speechAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  audioModeEnabledRef.current = audioModeEnabled;
+
   const { t } = useTranslation();
+
+  useEffect(() => {
+    return () => {
+      if (speechAudioRef.current) {
+        speechAudioRef.current.pause();
+        speechAudioRef.current = null;
+      }
+      if (speechObjectUrlRef.current) {
+        URL.revokeObjectURL(speechObjectUrlRef.current);
+        speechObjectUrlRef.current = null;
+      }
+    };
+  }, []);
+
+  const playAssistantSpeech = async (assistantText: string) => {
+    const text = assistantText.trim();
+    if (!text) return;
+
+    if (speechAudioRef.current) {
+      speechAudioRef.current.pause();
+      speechAudioRef.current = null;
+    }
+    if (speechObjectUrlRef.current) {
+      URL.revokeObjectURL(speechObjectUrlRef.current);
+      speechObjectUrlRef.current = null;
+    }
+
+    setIsSpeechPlaying(true);
+
+    let objectUrl: string | null = null;
+
+    try {
+      const res = await fetch("/api/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!res.ok) {
+        throw new Error("speak request failed");
+      }
+
+      const blob = await res.blob();
+      objectUrl = URL.createObjectURL(blob);
+      speechObjectUrlRef.current = objectUrl;
+
+      const audio = new Audio(objectUrl);
+      speechAudioRef.current = audio;
+
+      await new Promise<void>((resolve, reject) => {
+        const cleanup = () => {
+          if (speechAudioRef.current === audio) {
+            speechAudioRef.current = null;
+          }
+          if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+            if (speechObjectUrlRef.current === objectUrl) {
+              speechObjectUrlRef.current = null;
+            }
+            objectUrl = null;
+          }
+        };
+
+        audio.onended = () => {
+          cleanup();
+          resolve();
+        };
+
+        audio.onerror = () => {
+          cleanup();
+          reject(new Error("audio element error"));
+        };
+
+        void audio.play().catch((err) => {
+          cleanup();
+          reject(err);
+        });
+      });
+    } catch {
+      if (speechAudioRef.current) {
+        speechAudioRef.current = null;
+      }
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        if (speechObjectUrlRef.current === objectUrl) {
+          speechObjectUrlRef.current = null;
+        }
+      }
+    } finally {
+      setIsSpeechPlaying(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -86,6 +185,10 @@ export default function Chat() {
 
       setMessages((prev) => [...prev, assistantMessage]);
       setIncomingMessage("");
+
+      if (audioModeEnabledRef.current && fullResponse.trim()) {
+        void playAssistantSpeech(fullResponse);
+      }
     } catch {
       // Error occurred while fetching response
       const errorMessage: MessageWithId = {
@@ -95,6 +198,10 @@ export default function Chat() {
       };
       setIncomingMessage("");
       setMessages((prev) => [...prev, errorMessage]);
+
+      if (audioModeEnabledRef.current && errorMessage.text.trim()) {
+        void playAssistantSpeech(errorMessage.text);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -134,9 +241,11 @@ export default function Chat() {
                 : "shrink-0 text-muted-foreground"
             }
             aria-pressed={audioModeEnabled}
+            aria-busy={isSpeechPlaying}
             onClick={() => setAudioModeEnabled((prev) => !prev)}
           >
             {audioModeEnabled ? "Audio Mode: On" : "Audio Mode: Off"}
+            {isSpeechPlaying ? " · Playing" : ""}
           </Button>
           <Input
             placeholder={t("chat.inputPlaceholder")}
