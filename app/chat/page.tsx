@@ -20,6 +20,7 @@ export default function Chat() {
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<MessageWithId[]>([]);
   const [incomingMessage, setIncomingMessage] = useState("");
+  const [audioModeEnabled, setAudioModeEnabled] = useState(false);
   const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -119,11 +120,24 @@ export default function Chat() {
       </section>
 
         <form
-          className="flex items-center gap-3"
+          className="flex flex-wrap items-center gap-3"
           onSubmit={(e) => {
             void handleSubmit(e);
           }}
         >
+          <Button
+            type="button"
+            variant={audioModeEnabled ? "default" : "outline"}
+            className={
+              audioModeEnabled
+                ? "shrink-0 ring-2 ring-primary/40"
+                : "shrink-0 text-muted-foreground"
+            }
+            aria-pressed={audioModeEnabled}
+            onClick={() => setAudioModeEnabled((prev) => !prev)}
+          >
+            {audioModeEnabled ? "Audio Mode: On" : "Audio Mode: Off"}
+          </Button>
           <Input
             placeholder={t("chat.inputPlaceholder")}
             className="flex-1"
