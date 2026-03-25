@@ -6,15 +6,15 @@
   :root {
     /* Brand kit (hex) */
     --green-1: #00d64e;
-    --black: #001407;
-    --white-1: #f4f9f6;
     --green-2: #00a33b;
     --green-3: #007029;
     --green-4: #003d16;
     --green-5: #00280e;
+    --white-1: #f4f9f6;
     --white-2: #eef4f1;
     --white-3: #eaefec;
     --white-4: #dbe0dd;
+    --black: #001407;
 
     /* App semantic tokens (HSL triplets for Tailwind) */
     --background: 144 29.4% 96.7%; /* white-1 */

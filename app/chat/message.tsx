@@ -5,23 +5,23 @@ import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 
 export interface MessageProps {
-	text: string;
-	variant?: "user" | "assistant";
+  text: string;
+  variant?: "user" | "assistant";
 }
 
 export const Message = ({ text, variant = "user" }: MessageProps) => {
-	const { t } = useTranslation();
-	const sender = variant === "user" ? t("chat.senderUser") : t("chat.senderAssistant");
+  const { t } = useTranslation();
+  const sender = variant === "user" ? t("chat.senderUser") : t("chat.senderAssistant");
 
-	return (
-		<div
-			className={cn(
-				"rounded-md p-3 text-white",
-				variant === "user" ? "bg-[hsl(var(--background)/0.22)]" : "bg-[hsl(var(--primary)/0.45)]"
-			)}
-		>
-			<TypographyP className="text-sm font-semibold text-white/90">{sender}</TypographyP>
-			<TypographyP className="text-sm text-white">{text}</TypographyP>
-		</div>
-	);
+  return (
+    <div
+      className={cn(
+        "rounded-md p-3 text-white",
+        variant === "user" ? "bg-[hsl(var(--background)/0.22)]" : "bg-[hsl(var(--primary)/0.45)]",
+      )}
+    >
+      <TypographyP className="text-sm font-semibold text-white/90">{sender}</TypographyP>
+      <TypographyP className="text-sm text-white">{text}</TypographyP>
+    </div>
+  );
 };
