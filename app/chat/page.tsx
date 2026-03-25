@@ -5,10 +5,9 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
-import { Send, X, ImageIcon } from "lucide-react";
+import { Send } from "lucide-react";
 import { Message, type MessageProps } from "./message";
 import { ScrollContainer } from "./scroll-container";
-import ScreenshotButton from "../screenshot-button";
 
 type MessageWithId = MessageProps & { id: string; variant: "user" | "assistant" };
 interface ChatHistoryItem {
@@ -21,7 +20,6 @@ export default function Chat() {
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<MessageWithId[]>([]);
   const [incomingMessage, setIncomingMessage] = useState("");
-  const [pendingScreenshot, setPendingScreenshot] = useState<string | null>(null);
   const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -42,10 +40,8 @@ export default function Chat() {
       variant: "user",
     };
 
-    const screenshotToSend = pendingScreenshot;
     setMessages((prev) => [...prev, userMessage]);
     setMessage("");
-    setPendingScreenshot(null);
     setIsLoading(true);
     setIncomingMessage("");
 
@@ -55,7 +51,7 @@ export default function Chat() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ prompt, history, imageBase64: screenshotToSend }),
+        body: JSON.stringify({ prompt, history }),
       });
 
       if (!response.ok || !response.body) {
@@ -122,28 +118,12 @@ export default function Chat() {
         </ScrollContainer>
       </section>
 
-        {pendingScreenshot && (
-          <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
-            <ImageIcon className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Screenshot attached</span>
-            <img
-              src={`data:image/png;base64,${pendingScreenshot}`}
-              alt="Screenshot preview"
-              className="h-10 rounded border"
-            />
-            <Button variant="ghost" size="sm" onClick={() => setPendingScreenshot(null)} type="button">
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-        )}
-
         <form
           className="flex items-center gap-3"
           onSubmit={(e) => {
             void handleSubmit(e);
           }}
         >
-          <ScreenshotButton onScreenshot={setPendingScreenshot} />
           <Input
             placeholder={t("chat.inputPlaceholder")}
             className="flex-1"
