@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 declare global {
@@ -82,7 +82,6 @@ export default function ScreenshotButton({ onCoordinates }: ScreenshotButtonProp
         onCoordinates(result.data);
       } else {
         throw new Error(result.error ?? "Unknown analysis error");
-
       }
     } catch (err) {
       console.error("Screenshot failed:", err);
@@ -94,7 +93,13 @@ export default function ScreenshotButton({ onCoordinates }: ScreenshotButtonProp
   const label = status === "capturing" ? "Capturing..." : status === "analyzing" ? "Analyzing..." : "Take Picture";
 
   return (
-    <Button id="picButton" onClick={takeScreenshot}>
+    <Button
+      id="picButton"
+      className="interactable"
+      onClick={() => {
+        void takeScreenshot();
+      }}
+    >
       {t("misc.takePicture")}
     </Button>
   );

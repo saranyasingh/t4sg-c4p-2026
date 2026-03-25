@@ -15,7 +15,11 @@ interface ChatHistoryItem {
   content: string;
 }
 
-export default function Chat() {
+interface ChatProps {
+  showHeader?: boolean;
+}
+
+export function Chat({ showHeader = true }: ChatProps) {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<MessageWithId[]>([]);
@@ -101,12 +105,14 @@ export default function Chat() {
 
   return (
     <div className="flex h-full flex-col gap-6 p-6">
-      <header className="space-y-1">
-        <TypographyH2>{t("chat.heading")}</TypographyH2>
-        <TypographyP className="text-sm text-muted-foreground">{t("chat.description")}</TypographyP>
-      </header>
+      {showHeader ? (
+        <header className="space-y-1">
+          <TypographyH2>{t("chat.heading")}</TypographyH2>
+          <TypographyP className="text-sm text-muted-foreground">{t("chat.description")}</TypographyP>
+        </header>
+      ) : null}
 
-      <section className="h-96 overflow-hidden">
+      <section className="min-h-0 flex-1 overflow-hidden">
         <ScrollContainer>
           {messages.map((msg) => (
             <Message key={msg.id} text={msg.text} variant={msg.variant} />
@@ -117,19 +123,19 @@ export default function Chat() {
       </section>
 
       <form
-        className="flex items-center gap-3"
+        className="interactable flex items-center gap-3"
         onSubmit={(e) => {
           void handleSubmit(e);
         }}
       >
         <Input
           placeholder={t("chat.inputPlaceholder")}
-          className="flex-1"
+          className="interactable flex-1"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           disabled={isLoading}
         />
-        <Button type="submit" disabled={isLoading}>
+        <Button type="submit" disabled={isLoading} className="interactable">
           <Send className="h-4 w-4" />
         </Button>
       </form>
