@@ -16,12 +16,12 @@ export const Message = ({ text, variant = "user" }: MessageProps) => {
 	return (
 		<div
 			className={cn(
-				"p-3 rounded-md",
-				variant === "user" ? "bg-muted" : "bg-primary/10"
+				"rounded-md p-3 text-white",
+				variant === "user" ? "bg-[hsl(var(--background)/0.22)]" : "bg-[hsl(var(--primary)/0.45)]"
 			)}
 		>
-			<TypographyP className="text-sm font-semibold">{sender}</TypographyP>
-			<TypographyP className="text-sm">{text}</TypographyP>
+			<TypographyP className="text-sm font-semibold text-white/90">{sender}</TypographyP>
+			<TypographyP className="text-sm text-white">{text}</TypographyP>
 		</div>
 	);
 };

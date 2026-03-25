@@ -24,6 +24,7 @@ export function Chat({ showHeader = true }: ChatProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<MessageWithId[]>([]);
   const [incomingMessage, setIncomingMessage] = useState("");
+  const [newMessageSignal, setNewMessageSignal] = useState(0);
   const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -89,6 +90,7 @@ export function Chat({ showHeader = true }: ChatProps) {
 
       setMessages((prev) => [...prev, assistantMessage]);
       setIncomingMessage("");
+      setNewMessageSignal((prev) => prev + 1);
     } catch {
       // Error occurred while fetching response
       const errorMessage: MessageWithId = {
@@ -98,6 +100,7 @@ export function Chat({ showHeader = true }: ChatProps) {
       };
       setIncomingMessage("");
       setMessages((prev) => [...prev, errorMessage]);
+      setNewMessageSignal((prev) => prev + 1);
     } finally {
       setIsLoading(false);
     }
@@ -113,7 +116,7 @@ export function Chat({ showHeader = true }: ChatProps) {
       ) : null}
 
       <section className="min-h-0 flex-1 overflow-hidden">
-        <ScrollContainer>
+        <ScrollContainer newMessageSignal={newMessageSignal}>
           {messages.map((msg) => (
             <Message key={msg.id} text={msg.text} variant={msg.variant} />
           ))}
