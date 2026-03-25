@@ -5,7 +5,7 @@ import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import c4pLogo from "./c4p.png";
+import c4pLogo from "../public/images/c4p.png";
 
 export function ShellLayout({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
