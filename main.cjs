@@ -84,6 +84,9 @@ function createWindow() {
 
 ipcMain.handle("request-screenshot-permission", async () => {
   if (screenshotPermissionGranted) return true;
+
+  win.setAlwaysOnTop(false);
+
   const { response } = await dialog.showMessageBox(win, {
     type: "question",
     buttons: ["Allow", "Deny"],
@@ -92,6 +95,9 @@ ipcMain.handle("request-screenshot-permission", async () => {
     title: "Screen Capture Permission",
     message: "Allow this app to take a screenshot of your screen?",
   });
+
+  win.setAlwaysOnTop(true, "screen-saver");
+
   screenshotPermissionGranted = response === 0;
   return screenshotPermissionGranted;
 });
