@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
@@ -24,8 +26,107 @@ export function Chat({ showHeader = true }: ChatProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<MessageWithId[]>([]);
   const [incomingMessage, setIncomingMessage] = useState("");
-  const [newMessageSignal, setNewMessageSignal] = useState(0);
+  const [audioModeEnabled, setAudioModeEnabled] = useState(false);
+  const [isSpeechPlaying, setIsSpeechPlaying] = useState(false);
+  const audioModeEnabledRef = useRef(audioModeEnabled);
+  const speechObjectUrlRef = useRef<string | null>(null);
+  const speechAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  audioModeEnabledRef.current = audioModeEnabled;
+
   const { t } = useTranslation();
+
+  useEffect(() => {
+    return () => {
+      if (speechAudioRef.current) {
+        speechAudioRef.current.pause();
+        speechAudioRef.current = null;
+      }
+      if (speechObjectUrlRef.current) {
+        URL.revokeObjectURL(speechObjectUrlRef.current);
+        speechObjectUrlRef.current = null;
+      }
+    };
+  }, []);
+
+  const playAssistantSpeech = async (assistantText: string) => {
+    const text = assistantText.trim();
+    if (!text) return;
+
+    if (speechAudioRef.current) {
+      speechAudioRef.current.pause();
+      speechAudioRef.current = null;
+    }
+    if (speechObjectUrlRef.current) {
+      URL.revokeObjectURL(speechObjectUrlRef.current);
+      speechObjectUrlRef.current = null;
+    }
+
+    setIsSpeechPlaying(true);
+
+    let objectUrl: string | null = null;
+
+    try {
+      const res = await fetch("/api/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!res.ok) {
+        throw new Error("speak request failed");
+      }
+
+      const blob = await res.blob();
+      objectUrl = URL.createObjectURL(blob);
+      speechObjectUrlRef.current = objectUrl;
+
+      const audio = new Audio(objectUrl);
+      speechAudioRef.current = audio;
+
+      await new Promise<void>((resolve, reject) => {
+        const cleanup = () => {
+          if (speechAudioRef.current === audio) {
+            speechAudioRef.current = null;
+          }
+          if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+            if (speechObjectUrlRef.current === objectUrl) {
+              speechObjectUrlRef.current = null;
+            }
+            objectUrl = null;
+          }
+        };
+
+        audio.onended = () => {
+          cleanup();
+          resolve();
+        };
+
+        audio.onerror = () => {
+          cleanup();
+          reject(new Error("audio element error"));
+        };
+
+        void audio.play().catch((err) => {
+          cleanup();
+          reject(err);
+        });
+      });
+    } catch {
+      if (speechAudioRef.current) {
+        speechAudioRef.current = null;
+      }
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        if (speechObjectUrlRef.current === objectUrl) {
+          speechObjectUrlRef.current = null;
+        }
+      }
+    } finally {
+      setIsSpeechPlaying(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -90,7 +191,11 @@ export function Chat({ showHeader = true }: ChatProps) {
 
       setMessages((prev) => [...prev, assistantMessage]);
       setIncomingMessage("");
-      setNewMessageSignal((prev) => prev + 1);
+
+      if (audioModeEnabledRef.current && fullResponse.trim()) {
+        void playAssistantSpeech(fullResponse);
+      }
+
     } catch {
       // Error occurred while fetching response
       const errorMessage: MessageWithId = {
@@ -100,7 +205,10 @@ export function Chat({ showHeader = true }: ChatProps) {
       };
       setIncomingMessage("");
       setMessages((prev) => [...prev, errorMessage]);
-      setNewMessageSignal((prev) => prev + 1);
+
+      if (audioModeEnabledRef.current && errorMessage.text.trim()) {
+        void playAssistantSpeech(errorMessage.text);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -125,23 +233,38 @@ export function Chat({ showHeader = true }: ChatProps) {
         </ScrollContainer>
       </section>
 
-      <form
-        className="interactable flex items-center gap-3"
-        onSubmit={(e) => {
-          void handleSubmit(e);
-        }}
-      >
-        <Input
-          placeholder={t("chat.inputPlaceholder")}
-          className="interactable flex-1"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          disabled={isLoading}
-        />
-        <Button type="submit" disabled={isLoading} className="interactable">
+        <form
+          className="interactable flex items-center gap-3"
+          onSubmit={(e) => {
+            void handleSubmit(e);
+          }}
+        >
+          <Button
+            type="button"
+            variant={audioModeEnabled ? "default" : "outline"}
+            className={
+              audioModeEnabled
+                ? "interactable shrink-0 ring-2 ring-primary/40"
+                : "interactable shrink-0 text-muted-foreground"
+            }
+            aria-pressed={audioModeEnabled}
+            aria-busy={isSpeechPlaying}
+            onClick={() => setAudioModeEnabled((prev) => !prev)}
+          >
+            {audioModeEnabled ? "Audio Mode: On" : "Audio Mode: Off"}
+            {isSpeechPlaying ? " · Playing" : ""}
+          </Button>
+          <Input
+            placeholder={t("chat.inputPlaceholder")}
+            className="interactable flex-1"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            disabled={isLoading}
+          />
+          <Button type="submit" disabled={isLoading} className="interactable">
           <Send className="h-4 w-4" />
         </Button>
-      </form>
-    </div>
+        </form>
+      </div>
   );
 }
