@@ -75,11 +75,12 @@ function createWindow() {
     width,
     height,
 
-    frame: false,
+
+    frame: true,
     alwaysOnTop: true,
     transparent: true,
     skipTaskbar: true,
-    fullscreen: true,
+
 
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -88,13 +89,14 @@ function createWindow() {
     },
   });
 
-  win.loadURL("http://localhost:3000");
+
   // invisible overlay
   win.setAlwaysOnTop(true, "torn-off-menu");
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
   // Make the entire window click-through.
   setClickThrough(true, { forward: true });
+  win.loadURL("http://localhost:3000");
 }
 
 ipcMain.on("set-ignore-mouse-events", (_event, ignore, options) => {
@@ -146,6 +148,7 @@ app.whenReady().then(() => {
       win.focus();
     }
   });
+
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
