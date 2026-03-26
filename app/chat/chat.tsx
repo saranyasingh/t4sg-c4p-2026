@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
 import { Send } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Message, type MessageProps } from "./message";
 import { ScrollContainer } from "./scroll-container";
 
@@ -15,7 +17,11 @@ interface ChatHistoryItem {
   content: string;
 }
 
-export default function Chat() {
+interface ChatProps {
+  showHeader?: boolean;
+}
+
+export function Chat({ showHeader = true }: ChatProps) {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<MessageWithId[]>([]);
@@ -189,6 +195,7 @@ export default function Chat() {
       if (audioModeEnabledRef.current && fullResponse.trim()) {
         void playAssistantSpeech(fullResponse);
       }
+
     } catch {
       // Error occurred while fetching response
       const errorMessage: MessageWithId = {
@@ -209,15 +216,15 @@ export default function Chat() {
 
   return (
     <div className="flex h-full flex-col gap-6 p-6">
-			<header className="space-y-1">
-				<TypographyH2>{t("chat.heading")}</TypographyH2>
-				<TypographyP className="text-sm text-muted-foreground">
-					{t("chat.description")}
-				</TypographyP>
-			</header>
+      {showHeader ? (
+        <header className="space-y-1">
+          <TypographyH2>{t("chat.heading")}</TypographyH2>
+          <TypographyP className="text-sm text-muted-foreground">{t("chat.description")}</TypographyP>
+        </header>
+      ) : null}
 
-      <section className="h-96 overflow-hidden">
-        <ScrollContainer>
+      <section className="min-h-0 flex-1 overflow-hidden">
+        <ScrollContainer newMessageSignal={newMessageSignal}>
           {messages.map((msg) => (
             <Message key={msg.id} text={msg.text} variant={msg.variant} />
           ))}
@@ -227,7 +234,7 @@ export default function Chat() {
       </section>
 
         <form
-          className="flex flex-wrap items-center gap-3"
+          className="interactable flex items-center gap-3"
           onSubmit={(e) => {
             void handleSubmit(e);
           }}
@@ -237,8 +244,8 @@ export default function Chat() {
             variant={audioModeEnabled ? "default" : "outline"}
             className={
               audioModeEnabled
-                ? "shrink-0 ring-2 ring-primary/40"
-                : "shrink-0 text-muted-foreground"
+                ? "interactable shrink-0 ring-2 ring-primary/40"
+                : "interactable shrink-0 text-muted-foreground"
             }
             aria-pressed={audioModeEnabled}
             aria-busy={isSpeechPlaying}
@@ -249,14 +256,14 @@ export default function Chat() {
           </Button>
           <Input
             placeholder={t("chat.inputPlaceholder")}
-            className="flex-1"
+            className="interactable flex-1"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             disabled={isLoading}
           />
-          <Button type="submit" disabled={isLoading}>
-            <Send className="h-4 w-4" />
-          </Button>
+          <Button type="submit" disabled={isLoading} className="interactable">
+          <Send className="h-4 w-4" />
+        </Button>
         </form>
       </div>
   );

@@ -68,6 +68,9 @@
     "en": "English",
     "es": "Spanish"
   },
+  "shell": {
+    "rights": "Computers 4 People. All Rights Reserved."
+  },
   "misc": {
     "loading": "Loading...",
     "notFound": "404 - Page not found",

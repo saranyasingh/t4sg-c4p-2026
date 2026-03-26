@@ -12,6 +12,7 @@
     "dev": "concurrently -k \"next dev\" \"wait-on http://localhost:3000 && electron .\""
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
     "@hookform/resolvers": "^3.6.0",
     "@radix-ui/react-avatar": "^1.0.4",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
@@ -55,11 +56,10 @@
     "concurrently": "^9.2.1",
     "cross-env": "^7.0.3",
     "dotenv-cli": "^7.4.2",
-    "electron": "^40.8.3",
-    "electronmon": "^2.0.4",
+    "electron": "^41.0.4",
+    "electron-rebuild": "^3.2.9",
     "eslint-config-next": "^14.2.4",
     "eslint-config-prettier": "^9.1.0",
-    "nodemon": "^3.1.14",
     "postcss": "^8.4.38",
     "prettier": "^3.3.2",
     "prettier-plugin-organize-imports": "^3.2.4",
