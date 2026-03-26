@@ -81,7 +81,6 @@ function createWindow() {
     transparent: true,
     skipTaskbar: true,
 
-
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -148,7 +147,6 @@ app.whenReady().then(() => {
       win.focus();
     }
   });
-
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

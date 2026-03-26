@@ -54,6 +54,7 @@
   * {
     @apply border-border;
   }
+<<<<<<< HEAD
   html,
   body {
     background: transparent !important;
@@ -61,5 +62,10 @@
   body {
     @apply text-foreground;
     text-shadow: 0 1px 3px rgba(0, 20, 7, 0.12);
+=======
+  body {
+    @apply text-foreground;
+    background: rgba(15, 15, 15, 0.3) !important;
+>>>>>>> rebase
   }
 }

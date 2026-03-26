@@ -1,7 +1,12 @@
 "use client";
 
+<<<<<<< HEAD
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+=======
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+>>>>>>> rebase
 import { useTranslation } from "react-i18next";
 
 declare global {
@@ -27,10 +32,18 @@ export interface Coordinates {
 }
 
 interface ScreenshotButtonProps {
+<<<<<<< HEAD
   onCoordinates: (coords: Coordinates) => void;
 }
 
 export default function ScreenshotButton({ onCoordinates }: ScreenshotButtonProps) {
+=======
+  onCoordinates?: (coords: Coordinates) => void;
+  onScreenshot?: (base64: string) => void;
+}
+
+export default function ScreenshotButton({ onCoordinates, onScreenshot }: ScreenshotButtonProps) {
+>>>>>>> rebase
   const { t } = useTranslation();
   const [status, setStatus] = useState<"idle" | "capturing" | "analyzing">("idle");
 
