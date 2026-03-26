@@ -224,6 +224,22 @@ export function Chat({ showHeader = true }: ChatProps) {
         </header>
       ) : null}
 
+<Button
+            type="button"
+            variant={audioModeEnabled ? "default" : "outline"}
+            className={
+              audioModeEnabled
+                ? "interactable shrink-0 ring-2 ring-primary/40"
+                : "interactable shrink-0 text-muted-foreground"
+            }
+            aria-pressed={audioModeEnabled}
+            aria-busy={isSpeechPlaying}
+            onClick={() => setAudioModeEnabled((prev) => !prev)}
+          >
+            {audioModeEnabled ? "Audio Mode: On" : "Audio Mode: Off"}
+            {isSpeechPlaying ? " · Playing" : ""}
+          </Button>
+
       <section className="min-h-0 flex-1 overflow-hidden">
         <ScrollContainer newMessageSignal={newMessageSignal}>
           {messages.map((msg) => (
@@ -240,21 +256,6 @@ export function Chat({ showHeader = true }: ChatProps) {
             void handleSubmit(e);
           }}
         >
-          <Button
-            type="button"
-            variant={audioModeEnabled ? "default" : "outline"}
-            className={
-              audioModeEnabled
-                ? "interactable shrink-0 ring-2 ring-primary/40"
-                : "interactable shrink-0 text-muted-foreground"
-            }
-            aria-pressed={audioModeEnabled}
-            aria-busy={isSpeechPlaying}
-            onClick={() => setAudioModeEnabled((prev) => !prev)}
-          >
-            {audioModeEnabled ? "Audio Mode: On" : "Audio Mode: Off"}
-            {isSpeechPlaying ? " · Playing" : ""}
-          </Button>
           <Input
             placeholder={t("chat.inputPlaceholder")}
             className="interactable flex-1"
