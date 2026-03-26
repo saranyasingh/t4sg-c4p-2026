@@ -5,9 +5,11 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
-import { Send } from "lucide-react";
+import { Send, ImageIcon, X } from "lucide-react";
 import { Message, type MessageProps } from "./message";
 import { ScrollContainer } from "./scroll-container";
+import ScreenshotButton from "../screenshot-button";
+
 
 type MessageWithId = MessageProps & { id: string; variant: "user" | "assistant" };
 interface ChatHistoryItem {
@@ -30,6 +32,7 @@ export function Chat({ showHeader = true }: ChatProps) {
   const audioModeEnabledRef = useRef(audioModeEnabled);
   const speechObjectUrlRef = useRef<string | null>(null);
   const speechAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [pendingScreenshot, setPendingScreenshot] = useState<string | null>(null);
 
   audioModeEnabledRef.current = audioModeEnabled;
 
@@ -145,11 +148,13 @@ export function Chat({ showHeader = true }: ChatProps) {
       variant: "user",
     };
 
+    const screenshotToSend = pendingScreenshot;
     setMessages((prev) => [...prev, userMessage]);
     setMessage("");
     setIsLoading(true);
     setIncomingMessage("");
     setNewMessageSignal((prev) => prev + 1);
+    setPendingScreenshot(null);
 
     try {
       const response = await fetch("/api/chat", {
@@ -157,7 +162,7 @@ export function Chat({ showHeader = true }: ChatProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ prompt, history }),
+        body: JSON.stringify({ prompt, history, imageBase64: screenshotToSend  }),
       });
 
       if (!response.ok || !response.body) {
@@ -224,7 +229,7 @@ export function Chat({ showHeader = true }: ChatProps) {
         </header>
       ) : null}
 
-<Button
+      <Button
             type="button"
             variant={audioModeEnabled ? "default" : "outline"}
             className={
@@ -239,6 +244,21 @@ export function Chat({ showHeader = true }: ChatProps) {
             {audioModeEnabled ? "Audio Mode: On" : "Audio Mode: Off"}
             {isSpeechPlaying ? " · Playing" : ""}
           </Button>
+
+          {pendingScreenshot && (
+          <div className="interactable flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
+            <ImageIcon className="interactable h-4 w-4 text-muted-foreground" />
+            <span className="interactable text-sm text-muted-foreground">Screenshot attached</span>
+            <img
+              src={`data:image/png;base64,${pendingScreenshot}`}
+              alt="Screenshot preview"
+              className="h-10 rounded border"
+            />
+            <Button variant="ghost" size="sm" onClick={() => setPendingScreenshot(null)} type="button">
+              <X className="interactable h-3 w-3" />
+            </Button>
+          </div>
+        )}
 
       <section className="min-h-0 flex-1 overflow-hidden">
         <ScrollContainer newMessageSignal={newMessageSignal}>
@@ -256,6 +276,7 @@ export function Chat({ showHeader = true }: ChatProps) {
             void handleSubmit(e);
           }}
         >
+          <ScreenshotButton onScreenshot={setPendingScreenshot} />
           <Input
             placeholder={t("chat.inputPlaceholder")}
             className="interactable flex-1"

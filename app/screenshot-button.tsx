@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 
 declare global {
@@ -81,11 +81,12 @@ export default function ScreenshotButton({ onCoordinates, onScreenshot }: Screen
       } else if (onCoordinates) {
         setStatus("analyzing");
 
-      const result = await window.electronAPI.analyzeScreenshot(base64);
-      if (result.success && result.data) {
-        onCoordinates(result.data);
-      } else {
-        throw new Error(result.error ?? "Unknown analysis error");
+        const result = await window.electronAPI.analyzeScreenshot(base64);
+        if (result.success && result.data) {
+          onCoordinates(result.data);
+        } else {
+          throw new Error(result.error ?? "Unknown analysis error");
+        }
       }
     } catch (err) {
       console.error("Screenshot failed:", err);
@@ -97,15 +98,8 @@ export default function ScreenshotButton({ onCoordinates, onScreenshot }: Screen
   const label = status === "capturing" ? "Capturing..." : status === "analyzing" ? "Analyzing..." : "Take Picture";
 
   return (
-    <Button
-      id="picButton"
-      className="interactable"
-      onClick={() => {
-        void takeScreenshot();
-      }}
-    >
+    <Button id="picButton" onClick={takeScreenshot}>
       {t("misc.takePicture")}
     </Button>
   );
-}
 }
