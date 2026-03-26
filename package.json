@@ -12,6 +12,7 @@
     "dev": "concurrently -k \"next dev\" \"wait-on http://localhost:3000 && electron .\""
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
     "@hookform/resolvers": "^3.6.0",
     "@radix-ui/react-avatar": "^1.0.4",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
@@ -23,6 +24,7 @@
     "@supabase/ssr": "^0.3.0",
     "@supabase/supabase-js": "^2.43.5",
     "@t3-oss/env-nextjs": "^0.10.1",
+    "@u4/opencv4nodejs": "^7.1.2",
     "class-variance-authority": "^0.7.0",
     "client-only": "^0.0.1",
     "clsx": "^2.1.1",
@@ -55,7 +57,8 @@
     "concurrently": "^9.2.1",
     "cross-env": "^7.0.3",
     "dotenv-cli": "^7.4.2",
-    "electron": "^40.8.4",
+    "electron": "^40.8.0",
+    "electron-rebuild": "^3.2.9",
     "electronmon": "^2.0.4",
     "eslint-config-next": "^14.2.4",
     "eslint-config-prettier": "^9.1.0",

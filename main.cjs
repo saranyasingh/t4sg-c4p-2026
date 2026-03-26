@@ -19,45 +19,51 @@ async function getOpenAI() {
 }
 
 async function analyzeScreenshot(imageBase64) {
-  const client = await getOpenAI();
-  const { z } = await import("zod");
-  const { zodResponseFormat } = await import("openai/helpers/zod");
+  const { default: Anthropic } = await import("@anthropic-ai/sdk");
+  require("dotenv/config");
+
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   const display = screen.getPrimaryDisplay();
   const { width, height } = display.size;
 
-  const CoordinatesSchema = z.object({
-    x: z.number().describe("X coordinate of the center of the Chrome icon"),
-    y: z.number().describe("Y coordinate of the center of the Chrome icon"),
-    width: z.number().describe("Width of the Chrome icon in pixels"),
-    height: z.number().describe("Height of the Chrome icon in pixels"),
-    confidence: z.number().describe("Confidence score between 0 and 1"),
-  });
-
-  const response = await client.chat.completions.create({
-    model: "gpt-4o",
+  const response = await client.messages.create({
+    model: "claude-opus-4-6",
+    max_tokens: 1024,
     messages: [
-      {
-        role: "system",
-        content: `You are a computer vision assistant. The user will send you a screenshot of a computer screen with dimensions ${width}x${height} pixels.
-Your job is to locate the Google Chrome app icon and return its exact pixel coordinates.
-Return the center x,y of the icon plus its width and height.
-Coordinates should be absolute pixel values with origin at top-left.`,
-      },
       {
         role: "user",
         content: [
-          { type: "image_url", image_url: { url: `data:image/png;base64,${imageBase64}` } },
-          { type: "text", text: "Find the Google Chrome app icon and return its coordinates." },
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: "image/png",
+              data: imageBase64,
+            },
+          },
+          {
+            type: "text",
+            text: `This screenshot is displayed at ${width}x${height} logical pixels. Find the Google Chrome app icon and return ONLY a JSON object with: x (center x in logical pixels), y (center y in logical pixels), width (icon width in logical pixels), height (icon height in logical pixels), confidence (0-1). The coordinates must be in logical pixels matching the ${width}x${height} display size.`,
+          },
         ],
       },
     ],
-    response_format: zodResponseFormat(CoordinatesSchema, "coordinates"),
   });
 
-  const raw = response.choices[0].message.content;
-  if (!raw) throw new Error("No coordinates returned");
-  return JSON.parse(raw);
+  const raw = response.content[0].text;
+  const clean = raw.replace(/```json|```/g, "").trim();
+  const result = JSON.parse(clean);
+
+  const scaleFactor = screen.getPrimaryDisplay().scaleFactor;
+  if (result.x > width * scaleFactor * 0.8 || result.y > height * scaleFactor * 0.8) {
+    result.x = Math.round(result.x / scaleFactor);
+    result.y = Math.round(result.y / scaleFactor);
+    result.width = Math.round(result.width / scaleFactor);
+    result.height = Math.round(result.height / scaleFactor);
+  }
+
+  return JSON.parse(clean);
 }
 
 function createWindow() {
@@ -84,7 +90,7 @@ function createWindow() {
 
   win.loadURL("http://localhost:3000");
   // invisible overlay
-  win.setAlwaysOnTop(true, "screen-saver");
+  win.setAlwaysOnTop(true, "torn-off-menu");
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
   // Make the entire window click-through.
