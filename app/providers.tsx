@@ -32,7 +32,7 @@ function I18nKeyedContent({ children }: { children: React.ReactNode }) {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider>
+    <ThemeProvider forcedTheme="light" enableSystem={false}>
       <I18nLangSync />
       <I18nKeyedContent>{children}</I18nKeyedContent>
     </ThemeProvider>
