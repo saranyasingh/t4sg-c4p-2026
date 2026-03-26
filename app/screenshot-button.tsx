@@ -1,12 +1,7 @@
 "use client";
 
-<<<<<<< HEAD
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-=======
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
->>>>>>> rebase
 import { useTranslation } from "react-i18next";
 
 declare global {
@@ -32,18 +27,11 @@ export interface Coordinates {
 }
 
 interface ScreenshotButtonProps {
-<<<<<<< HEAD
-  onCoordinates: (coords: Coordinates) => void;
-}
-
-export default function ScreenshotButton({ onCoordinates }: ScreenshotButtonProps) {
-=======
   onCoordinates?: (coords: Coordinates) => void;
   onScreenshot?: (base64: string) => void;
 }
 
 export default function ScreenshotButton({ onCoordinates, onScreenshot }: ScreenshotButtonProps) {
->>>>>>> rebase
   const { t } = useTranslation();
   const [status, setStatus] = useState<"idle" | "capturing" | "analyzing">("idle");
 
@@ -88,7 +76,10 @@ export default function ScreenshotButton({ onCoordinates, onScreenshot }: Screen
 
       const base64 = canvas.toDataURL("image/png").split(",")[1]!;
 
-      setStatus("analyzing");
+      if (onScreenshot) {
+        onScreenshot(base64);
+      } else if (onCoordinates) {
+        setStatus("analyzing");
 
       const result = await window.electronAPI.analyzeScreenshot(base64);
       if (result.success && result.data) {
@@ -116,4 +107,5 @@ export default function ScreenshotButton({ onCoordinates, onScreenshot }: Screen
       {t("misc.takePicture")}
     </Button>
   );
+}
 }
