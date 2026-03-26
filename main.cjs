@@ -5,6 +5,11 @@ let win = null;
 let openaiClient = null;
 let screenshotPermissionGranted = false;
 
+function setClickThrough(enabled, options) {
+  if (!win) return;
+  win.setIgnoreMouseEvents(enabled, options);
+}
+
 async function getOpenAI() {
   if (openaiClient) return openaiClient;
   const { default: OpenAI } = await import("openai");
@@ -74,6 +79,7 @@ function createWindow() {
     alwaysOnTop: true,
     transparent: true,
     skipTaskbar: true,
+    fullscreen: true,
 
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -86,8 +92,14 @@ function createWindow() {
   // invisible overlay
   win.setAlwaysOnTop(true, "torn-off-menu");
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  win.setWindowButtonVisibility(false);
+
+  // Make the entire window click-through.
+  setClickThrough(true, { forward: true });
 }
+
+ipcMain.on("set-ignore-mouse-events", (_event, ignore, options) => {
+  setClickThrough(Boolean(ignore), options);
+});
 
 ipcMain.handle("request-screenshot-permission", async () => {
   if (screenshotPermissionGranted) return true;

@@ -1,10 +1,7 @@
-import { LanguageSelector } from "@/app/language-selector";
-import { ModeToggle } from "@/app/(components-navbar)/mode-toggle";
 import { Toaster } from "@/components/ui/toaster";
-import AuthStatus from "./(components-navbar)/auth-status";
-import Navbar from "./(components-navbar)/navbar";
 import "./globals.css";
 import { Providers } from "./providers";
+import { ShellLayout } from "./shell-layout";
 
 export const metadata = {
   title: "T4SG Starter Project",
@@ -17,25 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       {/* Hydration warning suppressed because of next-themes https://github.com/pacocoursey/next-themes */}
       <body>
         <Providers>
-          <div
-            style={{ backgroundColor: "#00205B", WebkitAppRegion: "drag" } as React.CSSProperties}
-            className="h-6 w-full shrink-0 cursor-grab active:cursor-grabbing"
-          />
-          <div className="flex min-h-screen flex-col">
-            <div className="shrink-0 border-b">
-              <div className="flex h-16 items-center px-4">
-                <Navbar className="mx-6" />
-                <div className="ml-auto flex items-center space-x-4">
-                  <LanguageSelector />
-                  <ModeToggle />
-                  <AuthStatus />
-                </div>
-              </div>
-            </div>
-            <div className="relative min-h-0 flex-1 p-10 pb-16">
-              <main className="relative block space-y-6">{children}</main>
-            </div>
-          </div>
+          <ShellLayout>{children}</ShellLayout>
         </Providers>
         <Toaster />
       </body>
