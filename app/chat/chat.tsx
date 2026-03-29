@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
 import { Send } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Message, type MessageProps } from "./message";
 import { ScrollContainer } from "./scroll-container";
 
@@ -198,7 +198,6 @@ export function Chat({ showHeader = true }: ChatProps) {
       if (audioModeEnabledRef.current && fullResponse.trim()) {
         void playAssistantSpeech(fullResponse);
       }
-
     } catch {
       // Error occurred while fetching response
       const errorMessage: MessageWithId = {
@@ -236,38 +235,38 @@ export function Chat({ showHeader = true }: ChatProps) {
         </ScrollContainer>
       </section>
 
-        <form
-          className="interactable flex items-center gap-3"
-          onSubmit={(e) => {
-            void handleSubmit(e);
-          }}
+      <form
+        className="interactable flex items-center gap-3"
+        onSubmit={(e) => {
+          void handleSubmit(e);
+        }}
+      >
+        <Button
+          type="button"
+          variant={audioModeEnabled ? "default" : "outline"}
+          className={
+            audioModeEnabled
+              ? "interactable shrink-0 ring-2 ring-primary/40"
+              : "interactable shrink-0 text-muted-foreground"
+          }
+          aria-pressed={audioModeEnabled}
+          aria-busy={isSpeechPlaying}
+          onClick={() => setAudioModeEnabled((prev) => !prev)}
         >
-          <Button
-            type="button"
-            variant={audioModeEnabled ? "default" : "outline"}
-            className={
-              audioModeEnabled
-                ? "interactable shrink-0 ring-2 ring-primary/40"
-                : "interactable shrink-0 text-muted-foreground"
-            }
-            aria-pressed={audioModeEnabled}
-            aria-busy={isSpeechPlaying}
-            onClick={() => setAudioModeEnabled((prev) => !prev)}
-          >
-            {audioModeEnabled ? "Audio Mode: On" : "Audio Mode: Off"}
-            {isSpeechPlaying ? " · Playing" : ""}
-          </Button>
-          <Input
-            placeholder={t("chat.inputPlaceholder")}
-            className="interactable flex-1"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            disabled={isLoading}
-          />
-          <Button type="submit" disabled={isLoading} className="interactable">
+          {audioModeEnabled ? "Audio Mode: On" : "Audio Mode: Off"}
+          {isSpeechPlaying ? " · Playing" : ""}
+        </Button>
+        <Input
+          placeholder={t("chat.inputPlaceholder")}
+          className="interactable flex-1"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          disabled={isLoading}
+        />
+        <Button type="submit" disabled={isLoading} className="interactable">
           <Send className="h-4 w-4" />
         </Button>
-        </form>
-      </div>
+      </form>
+    </div>
   );
 }

@@ -90,8 +90,8 @@ When Chrome opens, you will see a window with a top bar (tabs and address bar) a
     // Placeholder desktop icon region (center-based coordinates).
     // Tune these values for your target display/layout.
     highlight: {
-      x: -755,
-      y: 750,
+      x: 243,
+      y: 800,
       width: 100,
       height: 100,
       confidence: 1,

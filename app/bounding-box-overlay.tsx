@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Coordinates } from "./screenshot-button";
 
 interface BoundingBoxOverlayProps {
@@ -7,7 +9,14 @@ interface BoundingBoxOverlayProps {
 }
 
 export default function BoundingBoxOverlay({ coords }: BoundingBoxOverlayProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   if (!coords) return null;
+  if (!mounted) return null;
 
   // Screenshot is captured at physical pixel resolution; CSS uses logical pixels.
   // Divide by devicePixelRatio to convert.
@@ -17,9 +26,7 @@ export default function BoundingBoxOverlay({ coords }: BoundingBoxOverlayProps) 
   const width = coords.width / dpr;
   const height = coords.height / dpr;
 
-  console.log(coords);
-
-  return (
+  return createPortal(
     <div
       style={{
         position: "fixed",
@@ -34,6 +41,7 @@ export default function BoundingBoxOverlay({ coords }: BoundingBoxOverlayProps) 
         zIndex: 9999,
         boxShadow: "0 0 0 2px yellow",
       }}
-    />
+    />,
+    document.body,
   );
 }
