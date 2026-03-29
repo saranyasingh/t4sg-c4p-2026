@@ -100,41 +100,18 @@ Return ONLY a JSON object with:
 }
 
 function createWindow() {
-  const display = screen.getPrimaryDisplay();
+  const bounds = screen.getPrimaryDisplay().bounds;
   const isDarwin = process.platform === "darwin";
-  const full = display.bounds;
-  const work = display.workArea;
-
-  /**
-   * macOS: `bounds` includes the menu-bar strip; a full-screen window is drawn underneath it and looks
-   * “cut off”. Use `workArea` for x / top / width, but extend height to the bottom of the display so we
-   * still fill down to the dock edge (workArea often stops above the dock).
-   */
-  const rect = isDarwin
-    ? {
-        x: work.x,
-        y: work.y,
-        width: work.width,
-        height: full.y + full.height - work.y,
-      }
-    : { x: full.x, y: full.y, width: full.width, height: full.height };
 
   win = new BrowserWindow({
-    x: rect.x,
-    y: rect.y,
-    width: rect.width,
-    height: rect.height,
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
 
     frame: true,
-    fullscreen: !isDarwin,
-    simpleFullscreen: false,
-    /** Lets content use the title-bar region; window frame still aligns with workArea on macOS. */
-    ...(isDarwin
-      ? {
-          titleBarStyle: "hiddenInset",
-          trafficLightPosition: { x: 12, y: 12 },
-        }
-      : {}),
+    fullscreen: true,
+    simpleFullscreen: isDarwin,
     alwaysOnTop: true,
     transparent: true,
     skipTaskbar: true,
