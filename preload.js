@@ -7,7 +7,7 @@ contextBridge.exposeInMainWorld("appInfo", {
 contextBridge.exposeInMainWorld("electronAPI", {
   requestScreenshotPermission: () => ipcRenderer.invoke("request-screenshot-permission"),
   getScreenSources: () => ipcRenderer.invoke("get-screen-sources"),
-  analyzeScreenshot: (base64) => ipcRenderer.invoke("analyze-screenshot", base64),
+  analyzeScreenshot: (payload) => ipcRenderer.invoke("analyze-screenshot", payload),
 });
 
 window.addEventListener("DOMContentLoaded", () => {

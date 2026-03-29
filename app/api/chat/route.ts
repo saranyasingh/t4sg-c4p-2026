@@ -6,12 +6,35 @@ interface ChatHistoryItem {
   content: string;
 }
 
+const CAPTURE_SCREEN_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: "capture_screen",
+    description:
+      "Capture a screenshot of the user's current screen. Call this when seeing their desktop, a specific window, error message, or browser would help you answer (for example: what a button does, where to click, or diagnosing an on-screen problem). Do not call for questions that are fully answered from the knowledge base without visual context.",
+    parameters: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
+};
+
+function streamTextResponse(result: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>) {
+  return new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      for await (const chunk of result) {
+        const delta = chunk.choices[0]?.delta?.content;
+        if (delta) controller.enqueue(encoder.encode(delta));
+      }
+      controller.close();
+    },
+  });
+}
+
 export async function POST(req: Request) {
-  const { prompt, history = [], imageBase64 } = (await req.json()) as {
-    prompt: string;
-    history?: ChatHistoryItem[];
-    imageBase64?: string;
-  };
+  const raw = (await req.json()) as Record<string, unknown>;
 
   const knowledgeBase = `You are a warm, helpful assistant for Computers 4 People (C4P), a 501(c)(3) nonprofit that bridges the digital divide. You help with TWO things:
 1. Answering questions about C4P's programs and services
@@ -114,54 +137,124 @@ DIGITAL LITERACY HELP (for computer recipients and general users):
 
 TONE: Be warm, clear, and concise. If a question falls outside your knowledge, direct users to https://www.computers4people.org/contact. Never invent policies or details.`;
 
-  const systemContent = imageBase64
-    ? knowledgeBase + "\n\nThe user has shared a screenshot of their screen. Use what you see in the screenshot to give specific, contextual answers — for example, referencing where things are on their screen. If they need help with their computer, guide them step by step using what's visible. If they are asking about C4P programs or services, answer using the knowledge base above."
-    : knowledgeBase + "\n\nIf a question about their computer would be easier to answer by seeing their screen, suggest they take a screenshot using the screenshot button.";
+  const systemBase =
+    knowledgeBase +
+    "\n\nWhen the user asks about something on their computer and you need to see their screen, call the capture_screen tool. After a screenshot is provided, use it to give specific, contextual answers. Do not ask the user to press a manual screenshot button.";
 
-  const userContent: OpenAI.Chat.Completions.ChatCompletionContentPart[] = imageBase64
-    ? [
-        { type: "image_url", image_url: { url: `data:image/png;base64,${imageBase64}` } },
-        { type: "text", text: prompt },
-      ]
-    : [{ type: "text", text: prompt }];
+  const systemWithScreenshot =
+    knowledgeBase +
+    "\n\nThe user has shared a screenshot of their screen. Use what you see to give specific answers — reference what is visible, guide step by step for computer help, and use the knowledge base for C4P questions.";
 
-  const result = await client.chat.completions.create({
-    model: "gpt-4o",
-    stream: true,
-    messages: [
+  const historyFromRaw = (raw.history ?? []) as ChatHistoryItem[];
+  const historyMessages: OpenAI.Chat.ChatCompletionMessageParam[] = historyFromRaw.map((h) => ({
+    role: h.role,
+    content: h.content,
+  }));
+
+  if (raw.phase === "complete_screenshot") {
+    const prompt = String(raw.prompt ?? "");
+    const imageBase64 = String(raw.imageBase64 ?? "");
+    const assistantMessage = raw.assistantMessage as
+      | {
+          content: string | null;
+          tool_calls: OpenAI.Chat.ChatCompletionMessage["tool_calls"];
+        }
+      | undefined;
+
+    if (!prompt || !imageBase64 || !assistantMessage?.tool_calls?.length) {
+      return Response.json({ error: "Invalid screenshot completion request" }, { status: 400 });
+    }
+
+    const toolMsgs: OpenAI.Chat.ChatCompletionToolMessageParam[] = assistantMessage.tool_calls.map(
+      (tc) => ({
+        role: "tool",
+        tool_call_id: tc.id,
+        content: JSON.stringify({
+          ok: true,
+          note: "Screenshot is attached in the following user message.",
+        }),
+      }),
+    );
+
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: "system", content: systemWithScreenshot },
+      ...historyMessages,
+      { role: "user", content: prompt },
       {
-        role: "system",
-        content: systemContent,
+        role: "assistant",
+        content: assistantMessage.content,
+        tool_calls: assistantMessage.tool_calls,
       },
-      ...history,
+      ...toolMsgs,
       {
         role: "user",
-        content: userContent,
+        content: [
+          { type: "image_url", image_url: { url: `data:image/png;base64,${imageBase64}` } },
+          { type: "text", text: "Current screenshot of the user's screen." },
+        ],
       },
+    ];
+
+    const result = await client.chat.completions.create({
+      model: "gpt-4o",
+      stream: true,
+      messages,
+    });
+
+    return new Response(streamTextResponse(result), {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+      },
+    });
+  }
+
+  const prompt = String(raw.prompt ?? "");
+  if (!prompt.trim()) {
+    return Response.json({ error: "Missing prompt" }, { status: 400 });
+  }
+
+  const completion = await client.chat.completions.create({
+    model: "gpt-4o",
+    messages: [
+      { role: "system", content: systemBase },
+      ...historyMessages,
+      { role: "user", content: prompt },
     ],
+    tools: [CAPTURE_SCREEN_TOOL],
+    tool_choice: "auto",
   });
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      const encoder = new TextEncoder();
+  const msg = completion.choices[0]?.message;
+  if (!msg) {
+    return new Response("No response from model", { status: 502 });
+  }
 
-      for await (const chunk of result) {
-        const delta = chunk.choices[0]?.delta?.content;
+  if (msg.tool_calls?.length) {
+    const wantsCapture = msg.tool_calls.some(
+      (tc) => tc.type === "function" && tc.function.name === "capture_screen",
+    );
+    if (wantsCapture) {
+      return Response.json({
+        action: "capture_screen" as const,
+        assistantMessage: {
+          content: msg.content,
+          tool_calls: msg.tool_calls,
+        },
+      });
+    }
+    return Response.json({
+      reply:
+        msg.content?.trim() ||
+        "I am not able to complete that automated action. Please describe your question in words.",
+    });
+  }
 
-        if (delta) {
-          controller.enqueue(encoder.encode(delta));
-        }
-      }
+  const text = msg.content?.trim() ?? "";
+  if (!text) {
+    return Response.json({ reply: "I could not generate a response. Please try again." });
+  }
 
-      controller.close();
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-    },
-  });
+  return Response.json({ reply: text });
 }

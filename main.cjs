@@ -1,82 +1,117 @@
 const { app, BrowserWindow, desktopCapturer, dialog, ipcMain, globalShortcut, screen } = require("electron");
 const path = require("path");
 
+/** @type {import("electron").BrowserWindow | null} */
 let win = null;
-let openaiClient = null;
 let screenshotPermissionGranted = false;
 
+/** @param {boolean} enabled @param {import("electron").IgnoreMouseEventsOptions | undefined} options */
 function setClickThrough(enabled, options) {
   if (!win) return;
   win.setIgnoreMouseEvents(enabled, options);
 }
 
-async function getOpenAI() {
-  if (openaiClient) return openaiClient;
-  const { default: OpenAI } = await import("openai");
-  require("dotenv/config");
-  openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  return openaiClient;
-}
-
-async function analyzeScreenshot(imageBase64) {
-  const { default: Anthropic } = await import("@anthropic-ai/sdk");
+/** @param {string} imageBase64 @param {number} captureWidth @param {number} captureHeight */
+async function analyzeScreenshot(imageBase64, captureWidth, captureHeight) {
+  const { default: Anthropic, toFile } = await import("@anthropic-ai/sdk");
   require("dotenv/config");
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
   const display = screen.getPrimaryDisplay();
-  const { width, height } = display.size;
+  const { width: logicalW, height: logicalH } = display.size;
+  const cw = captureWidth > 0 ? captureWidth : logicalW;
+  const ch = captureHeight > 0 ? captureHeight : logicalH;
 
-  const response = await client.messages.create({
-    model: "claude-opus-4-6",
-    max_tokens: 1024,
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: "image/png",
-              data: imageBase64,
+  const buffer = Buffer.from(imageBase64, "base64");
+  const betas = ["files-api-2025-04-14"];
+
+  let fileId = null;
+  try {
+    const upload = await client.beta.files.upload({
+      file: await toFile(buffer, "screen.png", { type: "image/png" }),
+      betas,
+    });
+    fileId = upload.id;
+
+    const promptText = `The image is a screenshot bitmap of size ${cw} x ${ch} pixels. The user's display uses ${logicalW} x ${logicalH} logical (CSS) pixels for overlay positioning.
+
+Find the Google Chrome app icon. Measure its bounding box in **bitmap pixels** (origin top-left of the image).
+
+Return ONLY a JSON object with:
+- x: center x in bitmap pixels
+- y: center y in bitmap pixels  
+- width: icon width in bitmap pixels
+- height: icon height in bitmap pixels
+- confidence: number from 0 to 1`;
+
+    const response = await client.beta.messages.create({
+      model: "claude-opus-4-6",
+      max_tokens: 1024,
+      betas,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: { type: "file", file_id: fileId },
             },
-          },
-          {
-            type: "text",
-            text: `This screenshot is displayed at ${width}x${height} logical pixels. Find the Google Chrome app icon and return ONLY a JSON object with: x (center x in logical pixels), y (center y in logical pixels), width (icon width in logical pixels), height (icon height in logical pixels), confidence (0-1). The coordinates must be in logical pixels matching the ${width}x${height} display size.`,
-          },
-        ],
-      },
-    ],
-  });
+            { type: "text", text: promptText },
+          ],
+        },
+      ],
+    });
 
-  const raw = response.content[0].text;
-  const clean = raw.replace(/```json|```/g, "").trim();
-  const result = JSON.parse(clean);
+    const textBlock = response.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") {
+      throw new Error("Claude response had no text block");
+    }
+    const raw = textBlock.text;
+    const clean = raw.replace(/```json|```/g, "").trim();
+    const parsedUnknown = JSON.parse(clean);
+    const parsed = /** @type {{ x: number; y: number; width: number; height: number; confidence: number }} */ (
+      parsedUnknown
+    );
 
-  const scaleFactor = screen.getPrimaryDisplay().scaleFactor;
-  if (result.x > width * scaleFactor * 0.8 || result.y > height * scaleFactor * 0.8) {
-    result.x = Math.round(result.x / scaleFactor);
-    result.y = Math.round(result.y / scaleFactor);
-    result.width = Math.round(result.width / scaleFactor);
-    result.height = Math.round(result.height / scaleFactor);
+    const bx = Number(parsed.x);
+    const by = Number(parsed.y);
+    const bw = Number(parsed.width);
+    const bh = Number(parsed.height);
+
+    const scaleX = logicalW / cw;
+    const scaleY = logicalH / ch;
+
+    return {
+      x: Math.round(bx * scaleX),
+      y: Math.round(by * scaleY),
+      width: Math.max(1, Math.round(bw * scaleX)),
+      height: Math.max(1, Math.round(bh * scaleY)),
+      confidence: Number(parsed.confidence),
+    };
+  } finally {
+    if (fileId) {
+      try {
+        await client.beta.files.delete(fileId, { betas });
+      } catch (err) {
+        console.warn("analyzeScreenshot: file delete failed", err);
+      }
+    }
   }
-
-  return JSON.parse(clean);
 }
 
 function createWindow() {
-  const { width, height } = screen.getPrimaryDisplay().bounds;
+  const bounds = screen.getPrimaryDisplay().bounds;
+  const isDarwin = process.platform === "darwin";
 
   win = new BrowserWindow({
-    x: 0,
-    y: 0,
-    width,
-    height,
-
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
 
     frame: true,
+    fullscreen: true,
+    simpleFullscreen: isDarwin,
     alwaysOnTop: true,
     transparent: true,
     skipTaskbar: true,
@@ -88,12 +123,9 @@ function createWindow() {
     },
   });
 
-
-  // invisible overlay
   win.setAlwaysOnTop(true, "torn-off-menu");
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
-  // Make the entire window click-through.
   setClickThrough(true, { forward: true });
   win.loadURL("http://localhost:3000");
 }
@@ -104,6 +136,7 @@ ipcMain.on("set-ignore-mouse-events", (_event, ignore, options) => {
 
 ipcMain.handle("request-screenshot-permission", async () => {
   if (screenshotPermissionGranted) return true;
+  if (!win) return false;
   const { response } = await dialog.showMessageBox(win, {
     type: "question",
     buttons: ["Allow", "Deny"],
@@ -121,20 +154,25 @@ ipcMain.handle("get-screen-sources", async () => {
   return sources.map((source) => ({ id: source.id, name: source.name }));
 });
 
-ipcMain.handle("analyze-screenshot", async (_event, base64) => {
+ipcMain.handle("analyze-screenshot", async (_event, payload) => {
   try {
-    const coords = await analyzeScreenshot(base64);
+    const base64 = typeof payload === "string" ? payload : payload?.base64;
+    const captureWidth = typeof payload === "object" && payload ? Number(payload.captureWidth) || 0 : 0;
+    const captureHeight = typeof payload === "object" && payload ? Number(payload.captureHeight) || 0 : 0;
+    if (!base64) {
+      return { success: false, error: "Missing image data" };
+    }
+    const coords = await analyzeScreenshot(base64, captureWidth, captureHeight);
     return { success: true, data: coords };
   } catch (err) {
     console.error("analyze-screenshot error:", err);
-    return { success: false, error: err.message };
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 });
 
 app.whenReady().then(() => {
   createWindow();
 
-  // hotkey
   const shortcut = "CommandOrControl+Shift+Space";
 
   globalShortcut.register(shortcut, () => {
@@ -154,7 +192,6 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
-  // On macOS apps typically stay open until Cmd+Q
   if (process.platform !== "darwin") app.quit();
 });
 
