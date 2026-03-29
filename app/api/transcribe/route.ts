@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     if (!audioFile) {
       return NextResponse.json({ error: "No audio file provided" }, { status: 400 });
     }
-    const file = new File([audioFile], "recording.webm", { type: audioFile.type });
+    const file = new File([audioFile], audioFile.name || "recording.webm", { type: audioFile.type });
 
     const transcription = await openai.audio.transcriptions.create({
       file,

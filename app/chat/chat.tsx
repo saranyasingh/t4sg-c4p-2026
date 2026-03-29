@@ -131,10 +131,14 @@ export function Chat({ showHeader = true }: ChatProps) {
     }
   };
 
-  // ← NEW: called by VoiceInput once transcription is ready
+  // Called by VoiceInput with partial results while recording
+  const handleInterimTranscript = (text: string) => {
+    setMessage(text);
+  };
+
+  // Called by VoiceInput once final transcription is ready
   const handleTranscript = (text: string) => {
     setMessage(text);
-    // Focus the input so the user can review/edit, then hit Enter or Send
     inputRef.current?.focus();
   };
 
@@ -285,7 +289,11 @@ export function Chat({ showHeader = true }: ChatProps) {
         <ScreenshotButton onScreenshot={setPendingScreenshot} />
 
         {/* ← NEW: mic button sits between screenshot and text input */}
-        <VoiceInput onTranscript={handleTranscript} disabled={isLoading} />
+        <VoiceInput
+          onTranscript={handleTranscript}
+          onInterimTranscript={handleInterimTranscript}
+          disabled={isLoading}
+        />
 
         <Input
           ref={inputRef} // ← NEW
