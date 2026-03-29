@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
 import { Send } from "lucide-react";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { Message, type MessageProps } from "./message";
 import { ScrollContainer } from "./scroll-container";
 
@@ -28,6 +26,7 @@ export function Chat({ showHeader = true }: ChatProps) {
   const [incomingMessage, setIncomingMessage] = useState("");
   const [audioModeEnabled, setAudioModeEnabled] = useState(false);
   const [isSpeechPlaying, setIsSpeechPlaying] = useState(false);
+  const [newMessageSignal, setNewMessageSignal] = useState(0);
   const audioModeEnabledRef = useRef(audioModeEnabled);
   const speechObjectUrlRef = useRef<string | null>(null);
   const speechAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -35,6 +34,10 @@ export function Chat({ showHeader = true }: ChatProps) {
   audioModeEnabledRef.current = audioModeEnabled;
 
   const { t } = useTranslation();
+
+  useEffect(() => {
+    setNewMessageSignal((n) => n + 1);
+  }, [messages, incomingMessage, isLoading]);
 
   useEffect(() => {
     return () => {

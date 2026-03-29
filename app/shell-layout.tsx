@@ -5,6 +5,7 @@ import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { TutorialController } from "./tutorial/tutorial-controller";
 import c4pLogo from "../public/images/c4p.png";
 
 export function ShellLayout({ children }: { children: React.ReactNode }) {
@@ -41,7 +42,10 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
           className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2"
           priority
         />
-        <div className="flex-1 overflow-hidden">{children}</div>
+        <div className="relative flex-1 overflow-hidden">
+          {children}
+          <TutorialController />
+        </div>
         <p className="shrink-0 px-4 pb-2 text-center text-[10px] text-white/70">{t("shell.rights")}</p>
       </section>
     </div>
