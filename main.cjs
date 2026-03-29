@@ -75,12 +75,10 @@ function createWindow() {
     width,
     height,
 
-
     frame: true,
     alwaysOnTop: true,
     transparent: true,
     skipTaskbar: true,
-
 
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -88,7 +86,6 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-
 
   // invisible overlay
   win.setAlwaysOnTop(true, "torn-off-menu");
@@ -148,7 +145,6 @@ app.whenReady().then(() => {
       win.focus();
     }
   });
-
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

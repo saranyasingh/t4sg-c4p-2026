@@ -11,7 +11,6 @@ export default function BoundingBoxOverlay({ coords }: BoundingBoxOverlayProps) 
 
   // Screenshot is captured at physical pixel resolution; CSS uses logical pixels.
   // Divide by devicePixelRatio to convert.
-  // const dpr = window.devicePixelRatio ?? 1;
   const dpr = 1;
   const left = (coords.x - coords.width / 2) / dpr;
   const top = (coords.y - coords.height / 2) / dpr;

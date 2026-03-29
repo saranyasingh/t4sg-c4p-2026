@@ -1,13 +1,13 @@
 /**
  * Screen region for step highlights (same shape as `Coordinates` from screenshot analysis).
  */
-export type ScreenHighlight = {
+export interface ScreenHighlight {
   x: number;
   y: number;
   width: number;
   height: number;
   confidence: number;
-};
+}
 
 /** Mirrors lesson tags: TEXT-only, SCREEN demo, or both. */
 export type StepVisual = "text" | "screen" | "screen_text";
@@ -15,171 +15,137 @@ export type StepVisual = "text" | "screen" | "screen_text";
 /**
  * One screen in a tutorial. Optional `highlight` draws a bounding box when you have coordinates.
  */
-export type TutorialStep = {
+export interface TutorialStep {
   id: string;
   /** Section label, e.g. "4.2 Address bar" */
   title?: string;
   text: string;
   visual: StepVisual;
   highlight?: ScreenHighlight | null;
-};
+}
 
-export type Tutorial = {
+export interface Tutorial {
   id: string;
   title: string;
   steps: readonly TutorialStep[];
-};
+}
 
 const googleSearchSteps: TutorialStep[] = [
   {
     id: "gs-01-intro",
-    title: "1. Introduction",
+    title: "Welcome to Lesson 1: Basic Google Search",
     visual: "text",
-    text: `This lesson covers how to use the internet: opening a web browser, understanding what you see on screen, and searching for websites.
+    text: `Welcome! This lesson is an introduction to using the internet.
 
-You will learn step by step: what the internet and the Web are, how to open Chrome, how the browser works, what websites and URLs are, how search engines help you, how to run a search, and how to move around online — ending with a short practice and review.`,
+Here is what you will learn today:
+• Terms
+• Browser Layout
+• Navigating the Internet
+• Using Google Chrome
+• Searching for Websites`,
   },
   {
     id: "gs-02-internet",
-    title: "2. What is the Internet?",
+    title: "Term: The Internet",
     visual: "text",
-    text: `The internet is a global network of connected computers and devices. It carries information and lets people communicate — email, video, websites, and more all travel over the internet.`,
+    text: `The Internet is a global computer network providing a variety of information and communication facilities, consisting of interconnected networks using standardized communication protocols.`,
   },
   {
-    id: "gs-03-open-chrome",
-    title: "3. Opening Google Chrome",
+    id: "gs-03-www",
+    title: "Term: World Wide Web (WWW)",
+    visual: "text",
+    text: `The World Wide Web (WWW), commonly known as the Web, is an information system enabling documents and other web resources to be accessed over the Internet.`,
+  },
+  {
+    id: "gs-04-search-engine",
+    title: "Term: Search Engine",
+    visual: "text",
+    text: `A search engine is a service that allows Internet users to search for content via the World Wide Web (WWW).`,
+  },
+  {
+    id: "gs-05-websites",
+    title: "Term: Websites",
+    visual: "text",
+    text: `A website is a set of related web pages located under a single domain name, typically produced by a single person or organization.`,
+  },
+  {
+    id: "gs-06-url",
+    title: "Term: Web Address / URL",
+    visual: "text",
+    text: `The web address contains information about the location of the webpage.
+
+There are 4 parts to a URL!`,
+  },
+  {
+    id: "gs-07-open-chrome",
+    title: "Using Google Chrome",
     visual: "screen",
-    text: `Locate the Google Chrome icon on your desktop, taskbar, or Start menu.
+    text: `Let's open Google Chrome!
+
+Locate the Google Chrome icon on your desktop, taskbar, or Start menu.
 
 Double-click the icon to open the browser.
 
-Watch the screen: when Chrome opens, you should see a window with a top bar (tabs and address bar) and the main page area below. That is your workspace for browsing.`,
+When Chrome opens, you will see a window with a top bar (tabs and address bar) and the main page area below. That is your workspace for browsing.`,
+    // Placeholder desktop icon region (center-based coordinates).
+    // Tune these values for your target display/layout.
+    highlight: {
+      x: -755,
+      y: 750,
+      width: 100,
+      height: 100,
+      confidence: 1,
+    },
   },
   {
-    id: "gs-04-1-tabs",
-    title: "4.1 Tabs",
+    id: "gs-08-tabs",
+    title: "Browser Layout: Tabs",
     visual: "screen_text",
-    text: `Tabs are the clickable areas along the top of the browser. Each tab can show a different page.
+    text: `A tab is a clickable area at the top of a window that shows another page or area.
 
-Try opening a new tab: use the "+" next to your tabs, or the menu option for a new tab. A new empty tab usually appears so you can go to another site without closing the first one.`,
+Try opening a new tab: use the "+" next to your tabs, or the menu option for a new tab. A new empty tab will appear so you can go to another site without closing the first one.`,
   },
   {
-    id: "gs-04-2-address",
-    title: "4.2 Address bar",
+    id: "gs-09-address",
+    title: "Browser Layout: Address Bar",
     visual: "screen_text",
-    text: `The address bar shows the website address (URL) of the page you are on.
+    text: `The address bar is a text box in a web browser displaying the address of the web page that is currently being viewed.
 
-Click inside the address bar to select or edit the text. You can type a full address (for example, starting with https://) and press Enter to go there.`,
+Click inside the address bar to select or edit the text. You can type a full address and press Enter to go there.`,
   },
   {
-    id: "gs-04-3-nav",
-    title: "4.3 Back, forward, and refresh",
+    id: "gs-10-nav",
+    title: "Browser Layout: Backward / Forward / Refresh",
     visual: "screen_text",
-    text: `Back and Forward move between pages you have already visited in this tab.
+    text: `Backward and Forward allow web users to display the pages that have already been visited.
 
-Refresh reloads the current page from the server — useful if something did not load or you want the latest version.`,
+Refresh allows the web user to reload the page — useful if something did not load or you want the latest version.`,
   },
   {
-    id: "gs-04-4-search-bar",
-    title: "4.4 Search bar (Google page)",
+    id: "gs-11-search-bar",
+    title: "Browser Layout: Search Bar",
     visual: "screen_text",
-    text: `On Google’s homepage, the search bar is where you type when you do not know the exact website or you have a question.
+    text: `The search bar is used when you don't know the exact address of a site you are looking for, or when you have a question on a topic.
+
+The search bar can also be used to find Images and Videos.
 
 Click in the search bar, type your words, then press Enter to see results.`,
   },
   {
-    id: "gs-04-5-tools",
-    title: "4.5 Other tools (quick overview)",
+    id: "gs-12-other-tools",
+    title: "Browser Layout: Other Tools",
     visual: "screen_text",
-    text: `Bookmarks: save a site so you can open it again quickly.
+    text: `Here are a few more helpful tools in Chrome:
 
-Share: send a link to a page.
+Add / Remove Bookmarks: You can save a website to your bookmarks for easier access.
 
-Chrome menu: settings and browser options.
+Share Page: You can share a website via a link.
 
-User icon: sign in and account-related settings.
+Open Tabs / Recently Closed: You can easily reopen a tab that you either closed by accident or realized you still needed open.
 
-Reopen closed tabs: bring back a tab you closed by mistake.`,
-  },
-  {
-    id: "gs-05-website",
-    title: "5. What is a website?",
-    visual: "screen_text",
-    text: `A website is a group of related pages published under one site name or organization — for example, a news site, a school site, or a shop.
+Chrome User: You can click this for your Google Account settings.
 
-On screen, look at the page in front of you: that is one page of a website. The address bar shows which site and page you are viewing.`,
-  },
-  {
-    id: "gs-06-url",
-    title: "6. What is a web address (URL)?",
-    visual: "screen_text",
-    text: `A URL (web address) tells the browser exactly where a webpage lives on the internet.
-
-Look at the address bar in Chrome: the text there is the URL for the page you are on. It often starts with https:// and includes the site name and path.`,
-  },
-  {
-    id: "gs-07-www",
-    title: "7. What is the World Wide Web (WWW)?",
-    visual: "text",
-    text: `The World Wide Web is a system of linked documents and pages you open in a browser. The Web runs on top of the internet — the internet is the network; the Web is one way people access sites and pages through browsers like Chrome.`,
-  },
-  {
-    id: "gs-08-search-engine",
-    title: "8. What is a search engine?",
-    visual: "screen_text",
-    text: `A search engine helps you find information online by matching your words to pages across the Web.
-
-Google is a widely used example. You type what you are looking for, and the search engine shows a list of results you can open.`,
-  },
-  {
-    id: "gs-09-searching-core",
-    title: "9. Searching for something (core task)",
-    visual: "screen",
-    text: `Follow these steps on screen:
-
-1. Click the search bar (for example on Google’s homepage).
-2. Type a word or a short question.
-3. Press Enter.
-4. Read the list of results.
-5. Click a result to open a page.
-
-Take your time and try each step in order.`,
-  },
-  {
-    id: "gs-10-navigating",
-    title: "10. Navigating the internet",
-    visual: "screen_text",
-    text: `Click links on a page to move to other pages or sites.
-
-Scroll up and down to see more content on long pages.
-
-Use the Back button to return to a page you visited before in this tab.`,
-  },
-  {
-    id: "gs-11-practice",
-    title: "11. Practice activity",
-    visual: "screen",
-    text: `Hands-on practice — try this now:
-
-• Search for something you care about (for example weather, a hobby, or videos).
-• Open a website from the results.
-• Use Back to return to the results list.
-• Bookmark a page you might want again.
-
-Pause after each action and notice what changed on screen.`,
-  },
-  {
-    id: "gs-12-review",
-    title: "12. Review",
-    visual: "text",
-    text: `Check your understanding (answer in your own words or with a helper):
-
-• Where do you find pages you saved for later?
-• What does “WWW” refer to?
-• What is a search engine?
-• What are the basic steps to search for something?
-
-When you are done, use Finish or Exit tutorial to return to the home screen.`,
+Chrome Menu: You can click this for your Google Chrome menu.`,
   },
 ];
 
