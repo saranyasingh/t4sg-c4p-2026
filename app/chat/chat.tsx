@@ -7,6 +7,9 @@ import { ImageIcon, Send, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import ScreenshotButton from "../screenshot-button";
+import { Send } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Message, type MessageProps } from "./message";
 import { ScrollContainer } from "./scroll-container";
 import { VoiceInput } from "./voice-input"; // ← NEW
@@ -38,6 +41,10 @@ export function Chat({ showHeader = true }: ChatProps) {
   audioModeEnabledRef.current = audioModeEnabled;
 
   const { t } = useTranslation();
+
+  useEffect(() => {
+    setNewMessageSignal((n) => n + 1);
+  }, [messages, incomingMessage, isLoading]);
 
   useEffect(() => {
     return () => {

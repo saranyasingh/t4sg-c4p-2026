@@ -3,6 +3,16 @@
     "welcome": "Welcome",
     "getStarted": "Get started with Chat or explore Tutorials to learn more."
   },
+  "tutorial": {
+    "back": "Back",
+    "next": "Next",
+    "finish": "Finish",
+    "exit": "Exit tutorial",
+    "visualText": "Text",
+    "visualScreen": "Screen",
+    "visualScreenText": "Screen + text",
+    "visualBadgeHint": "Lesson format: text only, screen demo, or both"
+  },
   "nav": {
     "home": "Home",
     "chat": "Chat",

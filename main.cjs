@@ -75,8 +75,8 @@ function createWindow() {
     width,
     height,
 
-
-    frame: true,
+    frame: false,
+    hasShadow: false,
     alwaysOnTop: true,
     transparent: true,
     skipTaskbar: true,
@@ -88,10 +88,11 @@ function createWindow() {
     },
   });
 
-
   // invisible overlay
-  win.setAlwaysOnTop(true, "torn-off-menu");
+  // Use a higher always-on-top level so highlights can appear over system UI (e.g., Dock on macOS).
+  win.setAlwaysOnTop(true, "screen-saver", 100);
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  win.moveTop();
 
   // Make the entire window click-through.
   setClickThrough(true, { forward: true });
@@ -144,6 +145,8 @@ app.whenReady().then(() => {
       win.hide();
     } else {
       win.show();
+      win.setAlwaysOnTop(true, "screen-saver", 100);
+      win.moveTop();
       win.focus();
     }
   });
