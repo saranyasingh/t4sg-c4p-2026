@@ -3,6 +3,7 @@
 import { TypographyP } from "@/components/ui/typography";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import ReactMarkdown from "react-markdown";
 
 export interface MessageProps {
   text: string;
@@ -21,7 +22,9 @@ export const Message = ({ text, variant = "user" }: MessageProps) => {
       )}
     >
       <TypographyP className="text-sm font-semibold text-white/90">{sender}</TypographyP>
-      <TypographyP className="text-sm text-white">{text}</TypographyP>
+      <div className="text-sm text-white whitespace-pre-wrap break-words">
+        <ReactMarkdown>{text}</ReactMarkdown>
+      </div>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 
 declare global {
@@ -27,10 +27,11 @@ export interface Coordinates {
 }
 
 interface ScreenshotButtonProps {
-  onCoordinates: (coords: Coordinates) => void;
+  onCoordinates?: (coords: Coordinates) => void;
+  onScreenshot?: (base64: string) => void;
 }
 
-export default function ScreenshotButton({ onCoordinates }: ScreenshotButtonProps) {
+export default function ScreenshotButton({ onCoordinates, onScreenshot }: ScreenshotButtonProps) {
   const { t } = useTranslation();
   const [status, setStatus] = useState<"idle" | "capturing" | "analyzing">("idle");
 
@@ -75,13 +76,17 @@ export default function ScreenshotButton({ onCoordinates }: ScreenshotButtonProp
 
       const base64 = canvas.toDataURL("image/png").split(",")[1]!;
 
-      setStatus("analyzing");
+      if (onScreenshot) {
+        onScreenshot(base64);
+      } else if (onCoordinates) {
+        setStatus("analyzing");
 
-      const result = await window.electronAPI.analyzeScreenshot(base64);
-      if (result.success && result.data) {
-        onCoordinates(result.data);
-      } else {
-        throw new Error(result.error ?? "Unknown analysis error");
+        const result = await window.electronAPI.analyzeScreenshot(base64);
+        if (result.success && result.data) {
+          onCoordinates(result.data);
+        } else {
+          throw new Error(result.error ?? "Unknown analysis error");
+        }
       }
     } catch (err) {
       console.error("Screenshot failed:", err);
@@ -93,13 +98,7 @@ export default function ScreenshotButton({ onCoordinates }: ScreenshotButtonProp
   const label = status === "capturing" ? "Capturing..." : status === "analyzing" ? "Analyzing..." : "Take Picture";
 
   return (
-    <Button
-      id="picButton"
-      className="interactable"
-      onClick={() => {
-        void takeScreenshot();
-      }}
-    >
+    <Button id="picButton" onClick={takeScreenshot}>
       {t("misc.takePicture")}
     </Button>
   );
