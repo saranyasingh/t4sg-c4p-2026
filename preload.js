@@ -7,7 +7,11 @@ contextBridge.exposeInMainWorld("appInfo", {
 contextBridge.exposeInMainWorld("electronAPI", {
   requestScreenshotPermission: () => ipcRenderer.invoke("request-screenshot-permission"),
   getScreenSources: () => ipcRenderer.invoke("get-screen-sources"),
-  analyzeScreenshot: (base64) => ipcRenderer.invoke("analyze-screenshot", base64),
+  getPrimaryScreenMediaSourceId: () => ipcRenderer.invoke("get-primary-screen-media-source-id"),
+  getWindowContentBounds: () => ipcRenderer.invoke("get-window-content-bounds"),
+  getPrimaryDisplayBounds: () => ipcRenderer.invoke("get-primary-display-bounds"),
+  analyzeScreenshot: (base64, targetDescription, imageWidth, imageHeight) =>
+    ipcRenderer.invoke("analyze-screenshot", base64, targetDescription, imageWidth, imageHeight),
 });
 
 window.addEventListener("DOMContentLoaded", () => {
