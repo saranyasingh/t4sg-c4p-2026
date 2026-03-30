@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button";
 import { TypographyP } from "@/components/ui/typography";
 import BoundingBoxOverlay from "@/app/bounding-box-overlay";
 import { useTranslation } from "react-i18next";
-import type { StepVisual } from "@/lib/tutorials";
+import type { ScreenHighlight, StepVisual } from "@/lib/tutorials";
+import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
+import { findTargetViaChunkedVision } from "@/lib/screen-chunk-pipeline";
+import { useEffect, useState } from "react";
 import { useTutorial } from "./tutorial-provider";
 
 function visualLabelKey(v: StepVisual): string {
@@ -30,15 +33,81 @@ export function TutorialController() {
     isLastStep,
   } = useTutorial();
 
+  const [highlightPayload, setHighlightPayload] = useState<{
+    coords: ScreenHighlight;
+    screenshotWidth: number;
+    screenshotHeight: number;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function syncHighlight() {
+      if (!currentStep) {
+        setHighlightPayload(null);
+        return;
+      }
+
+      if (currentStep.highlightDescription) {
+        setHighlightPayload(null);
+        if (typeof window === "undefined" || !window.electronAPI) {
+          return;
+        }
+
+        const cap = await captureScreenToPngBase64();
+        if (cancelled || !cap) return;
+
+        const d = await findTargetViaChunkedVision(cap, currentStep.highlightDescription);
+        if (cancelled) return;
+
+        if (d) {
+          setHighlightPayload({
+            coords: {
+              x: d.x,
+              y: d.y,
+              width: d.width,
+              height: d.height,
+              confidence: d.confidence,
+            },
+            screenshotWidth: cap.width,
+            screenshotHeight: cap.height,
+          });
+        }
+        return;
+      }
+
+      if (currentStep.highlight) {
+        setHighlightPayload({
+          coords: currentStep.highlight,
+          screenshotWidth: typeof window !== "undefined" ? window.innerWidth : 1,
+          screenshotHeight: typeof window !== "undefined" ? window.innerHeight : 1,
+        });
+        return;
+      }
+
+      setHighlightPayload(null);
+    }
+
+    void syncHighlight();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentStep]);
+
   if (!tutorialId || !activeTutorial || !currentStep) {
     return null;
   }
 
-  const highlight = currentStep.highlight ?? null;
+  const fallbackW = typeof window !== "undefined" ? window.innerWidth : 1;
+  const fallbackH = typeof window !== "undefined" ? window.innerHeight : 1;
 
   return (
     <>
-      <BoundingBoxOverlay coords={highlight} />
+      <BoundingBoxOverlay
+        coords={highlightPayload?.coords ?? null}
+        screenshotWidth={highlightPayload?.screenshotWidth ?? fallbackW}
+        screenshotHeight={highlightPayload?.screenshotHeight ?? fallbackH}
+      />
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col justify-end p-4">
         <div

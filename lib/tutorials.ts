@@ -1,5 +1,6 @@
 /**
  * Screen region for step highlights (same shape as `Coordinates` from screenshot analysis).
+ * x,y are the top-left corner of the rectangle in screenshot / overlay pixel space.
  */
 export interface ScreenHighlight {
   x: number;
@@ -13,7 +14,9 @@ export interface ScreenHighlight {
 export type StepVisual = "text" | "screen" | "screen_text";
 
 /**
- * One screen in a tutorial. Optional `highlight` draws a bounding box when you have coordinates.
+ * One screen in a tutorial.
+ * - `highlightDescription`: capture + vision API locates this target; bounding box is drawn for that step.
+ * - `highlight`: optional fixed coordinates (same space as fullscreen overlay) when you are not using the API.
  */
 export interface TutorialStep {
   id: string;
@@ -21,6 +24,8 @@ export interface TutorialStep {
   title?: string;
   text: string;
   visual: StepVisual;
+  /** Natural-language target for Claude (e.g. "the Google Chrome icon in the Dock"). */
+  highlightDescription?: string;
   highlight?: ScreenHighlight | null;
 }
 
@@ -87,23 +92,18 @@ Locate the Google Chrome icon on your desktop, taskbar, or Start menu.
 Double-click the icon to open the browser.
 
 When Chrome opens, you will see a window with a top bar (tabs and address bar) and the main page area below. That is your workspace for browsing.`,
-    // Placeholder desktop icon region (center-based coordinates).
-    // Tune these values for your target display/layout.
-    highlight: {
-      x: 243,
-      y: 800,
-      width: 100,
-      height: 100,
-      confidence: 1,
-    },
+    highlightDescription:
+      "The Google Chrome application icon on the desktop, taskbar, Windows Start menu, or macOS Dock.",
   },
   {
     id: "gs-08-tabs",
     title: "Browser Layout: Tabs",
-    visual: "screen_text",
+    visual: "screen",
     text: `A tab is a clickable area at the top of a window that shows another page or area.
 
 Try opening a new tab: use the "+" next to your tabs, or the menu option for a new tab. A new empty tab will appear so you can go to another site without closing the first one.`,
+    highlightDescription:
+          "The new tab button near the top of the browser window. The plus sign next to the tabs.",
   },
   {
     id: "gs-09-address",

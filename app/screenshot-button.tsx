@@ -3,21 +3,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
+import {
+  captureScreenToPngBase64,
+  downscalePngBase64ForAnthropicVision,
+  mapAnthropicVisionBoxToCaptureSpace,
+} from "@/lib/electron-screen-capture";
 
-declare global {
-  interface Window {
-    electronAPI: {
-      requestScreenshotPermission: () => Promise<boolean>;
-      getScreenSources: () => Promise<{ id: string; name: string }[]>;
-      analyzeScreenshot: (base64: string) => Promise<{
-        success: boolean;
-        data?: { x: number; y: number; width: number; height: number; confidence: number };
-        error?: string;
-      }>;
-    };
-  }
-}
-
+/** Vision / overlay box: top-left (x,y) plus size in screenshot pixels. */
 export interface Coordinates {
   x: number;
   y: number;
@@ -42,48 +34,27 @@ export default function ScreenshotButton({ onCoordinates, onScreenshot }: Screen
     }
 
     try {
-      const allowed = await window.electronAPI.requestScreenshotPermission();
-      if (!allowed) return;
-
       setStatus("capturing");
 
-      const sources = await window.electronAPI.getScreenSources();
-      const screen = sources[0];
-      if (!screen) throw new Error("No screen source found");
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
-          mandatory: {
-            chromeMediaSource: "desktop",
-            chromeMediaSourceId: screen.id,
-          },
-        } as unknown as MediaTrackConstraints,
-      });
-
-      const video = document.createElement("video");
-      video.srcObject = stream;
-      await new Promise<void>((resolve) => {
-        video.addEventListener("loadedmetadata", () => resolve());
-      });
-      await video.play();
-
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext("2d")?.drawImage(video, 0, 0);
-      stream.getTracks().forEach((track) => track.stop());
-
-      const base64 = canvas.toDataURL("image/png").split(",")[1]!;
+      const cap = await captureScreenToPngBase64();
+      if (!cap) return;
 
       if (onScreenshot) {
-        onScreenshot(base64);
+        onScreenshot(cap.base64);
       } else if (onCoordinates) {
         setStatus("analyzing");
 
-        const result = await window.electronAPI.analyzeScreenshot(base64);
+        const forApi = await downscalePngBase64ForAnthropicVision(cap);
+        const result = await window.electronAPI.analyzeScreenshot(
+          forApi.base64,
+          undefined,
+          forApi.width,
+          forApi.height,
+        );
         if (result.success && result.data) {
-          onCoordinates(result.data);
+          onCoordinates(
+            mapAnthropicVisionBoxToCaptureSpace(result.data, forApi.scaleToOriginalX, forApi.scaleToOriginalY),
+          );
         } else {
           throw new Error(result.error ?? "Unknown analysis error");
         }
