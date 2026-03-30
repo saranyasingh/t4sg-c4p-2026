@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
-import { Send, ImageIcon, X } from "lucide-react";
+import { Send } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Message, type MessageProps } from "./message";
 import { ScrollContainer } from "./scroll-container";
 import ScreenshotButton from "../screenshot-button";
@@ -37,6 +37,10 @@ export function Chat({ showHeader = true }: ChatProps) {
   audioModeEnabledRef.current = audioModeEnabled;
 
   const { t } = useTranslation();
+
+  useEffect(() => {
+    setNewMessageSignal((n) => n + 1);
+  }, [messages, incomingMessage, isLoading]);
 
   useEffect(() => {
     return () => {
@@ -201,7 +205,6 @@ export function Chat({ showHeader = true }: ChatProps) {
       if (audioModeEnabledRef.current && fullResponse.trim()) {
         void playAssistantSpeech(fullResponse);
       }
-
     } catch {
       // Error occurred while fetching response
       const errorMessage: MessageWithId = {
@@ -270,11 +273,23 @@ export function Chat({ showHeader = true }: ChatProps) {
         </ScrollContainer>
       </section>
 
-        <form
-          className="interactable flex items-center gap-3"
-          onSubmit={(e) => {
-            void handleSubmit(e);
-          }}
+      <form
+        className="interactable flex items-center gap-3"
+        onSubmit={(e) => {
+          void handleSubmit(e);
+        }}
+      >
+        <Button
+          type="button"
+          variant={audioModeEnabled ? "default" : "outline"}
+          className={
+            audioModeEnabled
+              ? "interactable shrink-0 ring-2 ring-primary/40"
+              : "interactable shrink-0 text-muted-foreground"
+          }
+          aria-pressed={audioModeEnabled}
+          aria-busy={isSpeechPlaying}
+          onClick={() => setAudioModeEnabled((prev) => !prev)}
         >
           <ScreenshotButton onScreenshot={setPendingScreenshot} />
           <Input
@@ -287,7 +302,7 @@ export function Chat({ showHeader = true }: ChatProps) {
           <Button type="submit" disabled={isLoading} className="interactable">
           <Send className="h-4 w-4" />
         </Button>
-        </form>
-      </div>
+      </form>
+    </div>
   );
 }

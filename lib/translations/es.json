@@ -3,6 +3,16 @@
     "welcome": "Bienvenido",
     "getStarted": "Comienza con el Chat o explora los Tutoriales para aprender más."
   },
+  "tutorial": {
+    "back": "Atrás",
+    "next": "Siguiente",
+    "finish": "Terminar",
+    "exit": "Salir del tutorial",
+    "visualText": "Texto",
+    "visualScreen": "Pantalla",
+    "visualScreenText": "Texto + pantalla",
+    "visualBadgeHint": "Formato de la lección: solo texto, demo en pantalla, o ambos"
+  },
   "nav": {
     "home": "Inicio",
     "chat": "Chat",
