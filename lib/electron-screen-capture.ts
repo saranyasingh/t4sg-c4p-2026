@@ -16,6 +16,17 @@ declare global {
         data?: { x: number; y: number; width: number; height: number; confidence: number };
         error?: string;
       }>;
+      analyzeScreenshotTile: (
+        base64: string,
+        targetDescription?: string,
+        imageWidth?: number,
+        imageHeight?: number,
+      ) => Promise<{
+        success: boolean;
+        found: boolean;
+        data?: { x: number; y: number; width: number; height: number; confidence: number };
+        error?: string;
+      }>;
     };
   }
 }

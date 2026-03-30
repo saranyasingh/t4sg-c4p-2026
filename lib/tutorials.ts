@@ -98,7 +98,7 @@ When Chrome opens, you will see a window with a top bar (tabs and address bar) a
   {
     id: "gs-08-tabs",
     title: "Browser Layout: Tabs",
-    visual: "screen_text",
+    visual: "screen",
     text: `A tab is a clickable area at the top of a window that shows another page or area.
 
 Try opening a new tab: use the "+" next to your tabs, or the menu option for a new tab. A new empty tab will appear so you can go to another site without closing the first one.`,

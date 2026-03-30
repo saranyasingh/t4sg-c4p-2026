@@ -5,11 +5,8 @@ import { TypographyP } from "@/components/ui/typography";
 import BoundingBoxOverlay from "@/app/bounding-box-overlay";
 import { useTranslation } from "react-i18next";
 import type { ScreenHighlight, StepVisual } from "@/lib/tutorials";
-import {
-  captureScreenToPngBase64,
-  downscalePngBase64ForAnthropicVision,
-  mapAnthropicVisionBoxToCaptureSpace,
-} from "@/lib/electron-screen-capture";
+import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
+import { findTargetViaChunkedVision } from "@/lib/screen-chunk-pipeline";
 import { useEffect, useState } from "react";
 import { useTutorial } from "./tutorial-provider";
 
@@ -60,21 +57,10 @@ export function TutorialController() {
         const cap = await captureScreenToPngBase64();
         if (cancelled || !cap) return;
 
-        const forApi = await downscalePngBase64ForAnthropicVision(cap);
-        const result = await window.electronAPI.analyzeScreenshot(
-          forApi.base64,
-          currentStep.highlightDescription,
-          forApi.width,
-          forApi.height,
-        );
+        const d = await findTargetViaChunkedVision(cap, currentStep.highlightDescription);
         if (cancelled) return;
 
-        if (result.success && result.data) {
-          const d = mapAnthropicVisionBoxToCaptureSpace(
-            result.data,
-            forApi.scaleToOriginalX,
-            forApi.scaleToOriginalY,
-          );
+        if (d) {
           setHighlightPayload({
             coords: {
               x: d.x,

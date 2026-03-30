@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getPrimaryDisplayBounds: () => ipcRenderer.invoke("get-primary-display-bounds"),
   analyzeScreenshot: (base64, targetDescription, imageWidth, imageHeight) =>
     ipcRenderer.invoke("analyze-screenshot", base64, targetDescription, imageWidth, imageHeight),
+  analyzeScreenshotTile: (base64, targetDescription, imageWidth, imageHeight) =>
+    ipcRenderer.invoke("analyze-screenshot-tile", base64, targetDescription, imageWidth, imageHeight),
 });
 
 window.addEventListener("DOMContentLoaded", () => {
