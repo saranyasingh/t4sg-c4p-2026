@@ -3,13 +3,16 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
+import { ImageIcon, Send, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import ScreenshotButton from "../screenshot-button";
 import { Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Message, type MessageProps } from "./message";
 import { ScrollContainer } from "./scroll-container";
-import ScreenshotButton from "../screenshot-button";
-
+import { VoiceInput } from "./voice-input"; // ← NEW
 
 type MessageWithId = MessageProps & { id: string; variant: "user" | "assistant" };
 interface ChatHistoryItem {
@@ -33,6 +36,7 @@ export function Chat({ showHeader = true }: ChatProps) {
   const speechObjectUrlRef = useRef<string | null>(null);
   const speechAudioRef = useRef<HTMLAudioElement | null>(null);
   const [pendingScreenshot, setPendingScreenshot] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null); // ← NEW: for refocusing after transcript
 
   audioModeEnabledRef.current = audioModeEnabled;
 
@@ -134,6 +138,17 @@ export function Chat({ showHeader = true }: ChatProps) {
     }
   };
 
+  // Called by VoiceInput with partial results while recording
+  const handleInterimTranscript = (text: string) => {
+    setMessage(text);
+  };
+
+  // Called by VoiceInput once final transcription is ready
+  const handleTranscript = (text: string) => {
+    setMessage(text);
+    inputRef.current?.focus();
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!message.trim() || isLoading) return;
@@ -166,7 +181,7 @@ export function Chat({ showHeader = true }: ChatProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ prompt, history, imageBase64: screenshotToSend  }),
+        body: JSON.stringify({ prompt, history, imageBase64: screenshotToSend }),
       });
 
       if (!response.ok || !response.body) {
@@ -206,7 +221,6 @@ export function Chat({ showHeader = true }: ChatProps) {
         void playAssistantSpeech(fullResponse);
       }
     } catch {
-      // Error occurred while fetching response
       const errorMessage: MessageWithId = {
         id: (Date.now() + 1).toString(),
         text: "Sorry, there was an error processing your request.",
@@ -233,35 +247,35 @@ export function Chat({ showHeader = true }: ChatProps) {
       ) : null}
 
       <Button
-            type="button"
-            variant={audioModeEnabled ? "default" : "outline"}
-            className={
-              audioModeEnabled
-                ? "interactable shrink-0 ring-2 ring-primary/40"
-                : "interactable shrink-0 text-muted-foreground"
-            }
-            aria-pressed={audioModeEnabled}
-            aria-busy={isSpeechPlaying}
-            onClick={() => setAudioModeEnabled((prev) => !prev)}
-          >
-            {audioModeEnabled ? "Audio Mode: On" : "Audio Mode: Off"}
-            {isSpeechPlaying ? " · Playing" : ""}
-          </Button>
+        type="button"
+        variant={audioModeEnabled ? "default" : "outline"}
+        className={
+          audioModeEnabled
+            ? "interactable shrink-0 ring-2 ring-primary/40"
+            : "interactable shrink-0 text-muted-foreground"
+        }
+        aria-pressed={audioModeEnabled}
+        aria-busy={isSpeechPlaying}
+        onClick={() => setAudioModeEnabled((prev) => !prev)}
+      >
+        {audioModeEnabled ? "Audio Mode: On" : "Audio Mode: Off"}
+        {isSpeechPlaying ? " · Playing" : ""}
+      </Button>
 
-          {pendingScreenshot && (
-          <div className="interactable flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
-            <ImageIcon className="interactable h-4 w-4 text-muted-foreground" />
-            <span className="interactable text-sm text-muted-foreground">Screenshot attached</span>
-            <img
-              src={`data:image/png;base64,${pendingScreenshot}`}
-              alt="Screenshot preview"
-              className="h-10 rounded border"
-            />
-            <Button variant="ghost" size="sm" onClick={() => setPendingScreenshot(null)} type="button">
-              <X className="interactable h-3 w-3" />
-            </Button>
-          </div>
-        )}
+      {pendingScreenshot && (
+        <div className="interactable flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
+          <ImageIcon className="interactable h-4 w-4 text-muted-foreground" />
+          <span className="interactable text-sm text-muted-foreground">Screenshot attached</span>
+          <img
+            src={`data:image/png;base64,${pendingScreenshot}`}
+            alt="Screenshot preview"
+            className="h-10 rounded border"
+          />
+          <Button variant="ghost" size="sm" onClick={() => setPendingScreenshot(null)} type="button">
+            <X className="interactable h-3 w-3" />
+          </Button>
+        </div>
+      )}
 
       <section className="min-h-0 flex-1 overflow-hidden">
         <ScrollContainer newMessageSignal={newMessageSignal}>
@@ -279,27 +293,24 @@ export function Chat({ showHeader = true }: ChatProps) {
           void handleSubmit(e);
         }}
       >
-        <Button
-          type="button"
-          variant={audioModeEnabled ? "default" : "outline"}
-          className={
-            audioModeEnabled
-              ? "interactable shrink-0 ring-2 ring-primary/40"
-              : "interactable shrink-0 text-muted-foreground"
-          }
-          aria-pressed={audioModeEnabled}
-          aria-busy={isSpeechPlaying}
-          onClick={() => setAudioModeEnabled((prev) => !prev)}
-        >
-          <ScreenshotButton onScreenshot={setPendingScreenshot} />
-          <Input
-            placeholder={t("chat.inputPlaceholder")}
-            className="interactable flex-1"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            disabled={isLoading}
-          />
-          <Button type="submit" disabled={isLoading} className="interactable">
+        <ScreenshotButton onScreenshot={setPendingScreenshot} />
+
+        {/* ← NEW: mic button sits between screenshot and text input */}
+        <VoiceInput
+          onTranscript={handleTranscript}
+          onInterimTranscript={handleInterimTranscript}
+          disabled={isLoading}
+        />
+
+        <Input
+          ref={inputRef} // ← NEW
+          placeholder={t("chat.inputPlaceholder")}
+          className="interactable flex-1"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          disabled={isLoading}
+        />
+        <Button type="submit" disabled={isLoading || !message.trim()} className="interactable">
           <Send className="h-4 w-4" />
         </Button>
       </form>
