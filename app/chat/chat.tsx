@@ -7,9 +7,6 @@ import { ImageIcon, Send, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import ScreenshotButton from "../screenshot-button";
-import { Send } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { Message, type MessageProps } from "./message";
 import { ScrollContainer } from "./scroll-container";
 import { VoiceInput } from "./voice-input"; // ← NEW
