@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 export interface Coordinates {
@@ -16,18 +16,30 @@ interface BoundingBoxOverlayProps {
   coords: Coordinates | null;
   screenshotWidth: number;   // actual width of analyzed screenshot
   screenshotHeight: number;  // actual height of analyzed screenshot
+  expandFactor?: number;
+  onSpotlightRectChange?: (rect: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    centerX: number;
+    centerY: number;
+  } | null) => void;
 }
 
 export default function BoundingBoxOverlay({
   coords,
   screenshotWidth,
   screenshotHeight,
+  expandFactor = 2.2,
+  onSpotlightRectChange,
 }: BoundingBoxOverlayProps) {
   const [mounted, setMounted] = useState(false);
   const [viewportCss, setViewportCss] = useState(() => ({
     w: typeof window !== "undefined" ? window.innerWidth : 1,
     h: typeof window !== "undefined" ? window.innerHeight : 1,
   }));
+  const glowId = useMemo(() => `spotlight-glow-${Math.random().toString(36).slice(2)}`, []);
 
   useEffect(() => {
     setMounted(true);
@@ -60,7 +72,13 @@ export default function BoundingBoxOverlay({
     return () => window.removeEventListener("resize", syncViewport);
   }, []);
 
-  if (!mounted || !coords) return null;
+  const hasSpotlight = Boolean(mounted && coords);
+
+  useEffect(() => {
+    if (!hasSpotlight) {
+      onSpotlightRectChange?.(null);
+    }
+  }, [hasSpotlight, onSpotlightRectChange]);
 
   const vw = viewportCss.w;
   const vh = viewportCss.h;
@@ -71,28 +89,83 @@ export default function BoundingBoxOverlay({
   const scaleX = vw / sw;
   const scaleY = vh / sh;
 
-  const left = coords.x * scaleX;
-  const top = coords.y * scaleY;
-  const width = coords.width * scaleX;
-  const height = coords.height * scaleY;
+  const rawLeft = (coords?.x ?? 0) * scaleX;
+  const rawTop = (coords?.y ?? 0) * scaleY;
+  const rawWidth = (coords?.width ?? 0) * scaleX;
+  const rawHeight = (coords?.height ?? 0) * scaleY;
+
+  const minPadding = 36;
+  const grownWidth = Math.max(rawWidth * expandFactor, rawWidth + minPadding * 2);
+  const grownHeight = Math.max(rawHeight * expandFactor, rawHeight + minPadding * 2);
+  const centerX = rawLeft + rawWidth / 2;
+  const centerY = rawTop + rawHeight / 2;
+
+  const width = Math.min(grownWidth, vw - 8);
+  const height = Math.min(grownHeight, vh - 8);
+  const left = Math.max(4, Math.min(centerX - width / 2, vw - width - 4));
+  const top = Math.max(4, Math.min(centerY - height / 2, vh - height - 4));
+
+  useEffect(() => {
+    if (!hasSpotlight) return;
+    onSpotlightRectChange?.({
+      left,
+      top,
+      width,
+      height,
+      centerX,
+      centerY,
+    });
+  }, [centerX, centerY, hasSpotlight, height, left, onSpotlightRectChange, top, width]);
+
+  if (!hasSpotlight || !coords) {
+    return null;
+  }
+
+  const ellipseCx = left + width / 2;
+  const ellipseCy = top + height / 2;
+  const ellipseRx = width / 2;
+  const ellipseRy = height / 2;
 
   return createPortal(
-    <div
+    <svg
+      width={vw}
+      height={vh}
+      viewBox={`0 0 ${vw} ${vh}`}
       style={{
         position: "fixed",
-        left,
-        top,
-        width,
-        height,
-        boxSizing: "border-box",
-        background: "rgba(255, 50, 50, 0.25)",
-        border: "3px solid red",
-        borderRadius: 8,
+        inset: 0,
         pointerEvents: "none",
-        zIndex: 999999,
-        boxShadow: "0 0 0 2px yellow",
+        zIndex: 999996,
       }}
-    />,
+      aria-hidden="true"
+    >
+      <defs>
+        <radialGradient id={glowId} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="rgba(255,255,180,0.45)" />
+          <stop offset="65%" stopColor="rgba(255,220,120,0.18)" />
+          <stop offset="100%" stopColor="rgba(255,220,120,0)" />
+        </radialGradient>
+      </defs>
+
+      <ellipse
+        cx={ellipseCx}
+        cy={ellipseCy}
+        rx={ellipseRx}
+        ry={ellipseRy}
+        fill={`url(#${glowId})`}
+      />
+
+      <ellipse
+        cx={ellipseCx}
+        cy={ellipseCy}
+        rx={Math.max(ellipseRx - 1, 1)}
+        ry={Math.max(ellipseRy - 1, 1)}
+        fill="transparent"
+        stroke="rgba(255, 235, 140, 0.96)"
+        strokeWidth={3}
+        strokeDasharray="10 8"
+      />
+    </svg>,
     document.body,
   );
 }

@@ -102,8 +102,7 @@ When Chrome opens, you will see a window with a top bar (tabs and address bar) a
     text: `A tab is a clickable area at the top of a window that shows another page or area.
 
 Try opening a new tab: use the "+" next to your tabs, or the menu option for a new tab. A new empty tab will appear so you can go to another site without closing the first one.`,
-    highlightDescription:
-          "The new tab button near the top of the browser window. The plus sign next to the tabs.",
+    highlightDescription: "The new tab button near the top of the browser window. The plus sign next to the tabs.",
   },
   {
     id: "gs-09-address",
