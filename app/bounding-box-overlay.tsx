@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 
 export interface Coordinates {
@@ -14,17 +14,19 @@ export interface Coordinates {
 
 interface BoundingBoxOverlayProps {
   coords: Coordinates | null;
-  screenshotWidth: number;   // actual width of analyzed screenshot
-  screenshotHeight: number;  // actual height of analyzed screenshot
+  screenshotWidth: number; // actual width of analyzed screenshot
+  screenshotHeight: number; // actual height of analyzed screenshot
   expandFactor?: number;
-  onSpotlightRectChange?: (rect: {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-    centerX: number;
-    centerY: number;
-  } | null) => void;
+  onSpotlightRectChange?: (
+    rect: {
+      left: number;
+      top: number;
+      width: number;
+      height: number;
+      centerX: number;
+      centerY: number;
+    } | null,
+  ) => void;
 }
 
 export default function BoundingBoxOverlay({
@@ -34,12 +36,12 @@ export default function BoundingBoxOverlay({
   expandFactor = 2.2,
   onSpotlightRectChange,
 }: BoundingBoxOverlayProps) {
+  const maskId = useId();
   const [mounted, setMounted] = useState(false);
   const [viewportCss, setViewportCss] = useState(() => ({
     w: typeof window !== "undefined" ? window.innerWidth : 1,
     h: typeof window !== "undefined" ? window.innerHeight : 1,
   }));
-  const glowId = useMemo(() => `spotlight-glow-${Math.random().toString(36).slice(2)}`, []);
 
   useEffect(() => {
     setMounted(true);
@@ -140,20 +142,13 @@ export default function BoundingBoxOverlay({
       aria-hidden="true"
     >
       <defs>
-        <radialGradient id={glowId} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="rgba(255,255,180,0.45)" />
-          <stop offset="65%" stopColor="rgba(255,220,120,0.18)" />
-          <stop offset="100%" stopColor="rgba(255,220,120,0)" />
-        </radialGradient>
+        <mask id={maskId}>
+          <rect x="0" y="0" width={vw} height={vh} fill="white" />
+          <ellipse cx={ellipseCx} cy={ellipseCy} rx={ellipseRx} ry={ellipseRy} fill="black" />
+        </mask>
       </defs>
 
-      <ellipse
-        cx={ellipseCx}
-        cy={ellipseCy}
-        rx={ellipseRx}
-        ry={ellipseRy}
-        fill={`url(#${glowId})`}
-      />
+      <rect x={0} y={0} width={vw} height={vh} fill="rgba(8, 10, 16, 0.54)" mask={`url(#${maskId})`} />
 
       <ellipse
         cx={ellipseCx}

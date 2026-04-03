@@ -1,14 +1,14 @@
 "use client";
 
+import BoundingBoxOverlay from "@/app/bounding-box-overlay";
 import { Button } from "@/components/ui/button";
 import { TypographyP } from "@/components/ui/typography";
-import BoundingBoxOverlay from "@/app/bounding-box-overlay";
-import { useTranslation } from "react-i18next";
-import type { ScreenHighlight, StepVisual } from "@/lib/tutorials";
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
 import { findTargetViaChunkedVision } from "@/lib/screen-chunk-pipeline";
+import type { ScreenHighlight, StepVisual } from "@/lib/tutorials";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { useTutorial } from "./tutorial-provider";
 
 function visualLabelKey(v: StepVisual): string {
@@ -151,36 +151,25 @@ export function TutorialController() {
 
     if (spotlightRect) {
       const preferBelow = spotlightRect.top + spotlightRect.height + 220 < vh;
-      const top = preferBelow
-        ? spotlightRect.top + spotlightRect.height + 12
-        : spotlightRect.top - 200;
-      const left = clamp(
-        spotlightRect.left + spotlightRect.width / 2 - maxW / 2,
-        margin,
-        vw - maxW - margin,
-      );
+      const top = preferBelow ? spotlightRect.top + spotlightRect.height + 12 : spotlightRect.top - 200;
+      const left = clamp(spotlightRect.left + spotlightRect.width / 2 - maxW / 2, margin, vw - maxW - margin);
 
       return {
         width: maxW,
         left,
         top: clamp(top, margin, vh - 180 - margin),
+        bottom: undefined as number | undefined,
       };
     }
 
-    const idHash = (currentStep?.id ?? "").split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-    const slot = idHash % 3;
-    if (slot === 0) {
-      return { width: maxW, left: margin, top: margin };
-    }
-    if (slot === 1) {
-      return { width: maxW, left: margin, top: Math.max(margin, Math.floor(vh * 0.36)) };
-    }
+    // No detected spotlight: keep tutorial text anchored above bottom-left controls.
     return {
       width: maxW,
       left: margin,
-      top: Math.max(margin, vh - 220 - margin),
+      top: undefined as number | undefined,
+      bottom: 64,
     };
-  }, [currentStep?.id, spotlightRect, viewport.h, viewport.w]);
+  }, [spotlightRect, viewport.h, viewport.w]);
 
   if (!mounted || !tutorialId || !activeTutorial || !currentStep) {
     return null;
@@ -188,20 +177,23 @@ export function TutorialController() {
 
   const shouldWaitForBox = Boolean(currentStep.highlightDescription);
   const showStepText = !shouldWaitForBox || !isLoadingHighlight;
+  const hasSpotlight = Boolean(highlightPayload?.coords);
 
   return (
     <>
-      {createPortal(
-        <div
-          className="pointer-events-none fixed inset-0"
-          style={{
-            zIndex: 999991,
-            background: "rgba(8, 10, 16, 0.54)",
-          }}
-          aria-hidden="true"
-        />,
-        document.body,
-      )}
+      {!hasSpotlight
+        ? createPortal(
+            <div
+              className="pointer-events-none fixed inset-0"
+              style={{
+                zIndex: 999991,
+                background: "rgba(8, 10, 16, 0.54)",
+              }}
+              aria-hidden="true"
+            />,
+            document.body,
+          )
+        : null}
 
       <BoundingBoxOverlay
         coords={highlightPayload?.coords ?? null}
@@ -218,7 +210,9 @@ export function TutorialController() {
               style={{
                 left: textBoxStyle.left,
                 top: textBoxStyle.top,
+                bottom: textBoxStyle.bottom,
                 width: textBoxStyle.width,
+                maxHeight: textBoxStyle.bottom ? "calc(100vh - 96px)" : undefined,
               }}
               role="dialog"
               aria-labelledby="tutorial-step-title"
@@ -226,7 +220,9 @@ export function TutorialController() {
             >
               <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0 space-y-0.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-white/60">{activeTutorial.title}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-white/60">
+                    {activeTutorial.title}
+                  </p>
                   <h2 id="tutorial-step-title" className="text-base font-semibold leading-snug text-white">
                     {currentStep.title ?? activeTutorial.title}
                   </h2>
@@ -245,7 +241,11 @@ export function TutorialController() {
             document.body,
           )
         : createPortal(
-            <div className="pointer-events-none fixed inset-0 z-[999997] flex items-center justify-center px-6" role="status" aria-live="polite">
+            <div
+              className="pointer-events-none fixed inset-0 z-[999997] flex items-center justify-center px-6"
+              role="status"
+              aria-live="polite"
+            >
               <div className="rounded-lg border border-white/30 bg-black/70 px-4 py-2 text-sm font-medium tracking-wide text-white">
                 Loading...
               </div>
@@ -256,7 +256,12 @@ export function TutorialController() {
       {createPortal(
         <div className="fixed bottom-4 left-4 z-[999998] flex flex-wrap items-center gap-2">
           {canGoPrevious ? (
-            <Button type="button" variant="outline" className="interactable border-white/40 bg-black/60 text-white" onClick={previousStep}>
+            <Button
+              type="button"
+              variant="outline"
+              className="interactable border-white/40 bg-black/60 text-white"
+              onClick={previousStep}
+            >
               {t("tutorial.back")}
             </Button>
           ) : null}
