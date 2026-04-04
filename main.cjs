@@ -90,14 +90,18 @@ async function analyzeScreenshot(imageBase64, targetDescription, imageWidth, ima
             type: "text",
             text: `This screenshot image is ${w} pixels wide by ${h} pixels tall. Locate the following on screen: ${target}
 
-Return ONLY a JSON object using **normalized fractions** (decimals from 0 to 1, not pixels):
+If the target IS visible, return ONLY a JSON object using **normalized fractions** (decimals from 0 to 1, not pixels):
+{ "found": true, "left": <0-1>, "top": <0-1>, "width": <0-1>, "height": <0-1>, "confidence": <0-1> }
+
 - left: distance from the image's left edge to the tight bounding box's left edge, divided by the full image width
 - top: distance from the image's top edge to the box's top edge, divided by the full image height
 - width: box width divided by the full image width
 - height: box height divided by the full image height
-- confidence: 0 to 1
 
-Example: a small icon centered horizontally near the bottom might look like { "left": 0.48, "top": 0.88, "width": 0.04, "height": 0.06, "confidence": 0.9 }`,
+If the target is NOT visible, return ONLY a JSON object:
+{ "found": false, "explanation": "<brief, helpful explanation of why it was not found and what the user can do to find it>" }
+
+In the explanation, describe what you DO see on the screen and give the user practical advice for locating the target. For example: "The Docker taskbar is not visible on screen, so the Chrome icon cannot be located there. On a Mac, try hovering your mouse near the bottom of the screen to reveal the Dock. You could also use the magnifying glass icon at the top right to search for Chrome."`,
           },
         ],
       },
@@ -107,10 +111,15 @@ Example: a small icon centered horizontally near the bottom might look like { "l
   const raw = extractAssistantText(response).replace(/```json|```/g, "").trim();
   const parsed = JSON.parse(raw);
 
+  if (parsed.found === false || parsed.found === "false") {
+    return { found: false, explanation: parsed.explanation || "The target could not be located on screen." };
+  }
+
   const box = normalizedBoxToPixels(parsed, w, h);
-  if (box) return box;
+  if (box) return { found: true, ...box };
 
   return {
+    found: true,
     x: parsed.x,
     y: parsed.y,
     width: parsed.width,
@@ -189,15 +198,18 @@ When found is true, use normalized fractions relative to THIS crop only (top-lef
 }
 
 function createWindow() {
-  const { width, height } = screen.getPrimaryDisplay().bounds;
+  const bounds = screen.getPrimaryDisplay().bounds;
+  const isDarwin = process.platform === "darwin";
 
   win = new BrowserWindow({
-    x: 0,
-    y: 0,
-    width,
-    height,
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
 
     frame: false,
+    fullscreen: true,
+    simpleFullscreen: isDarwin,
     hasShadow: false,
     alwaysOnTop: true,
     transparent: true,
@@ -210,11 +222,9 @@ function createWindow() {
     },
   });
 
-  // invisible overlay
-  // Use a higher always-on-top level so highlights can appear over system UI (e.g., Dock on macOS).
-  win.setAlwaysOnTop(true, "screen-saver", 100);
+  // Use torn-off-menu level so the overlay appears above system UI (Dock, taskbar).
+  win.setAlwaysOnTop(true, "torn-off-menu");
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  win.moveTop();
 
   // Make the entire window click-through.
   setClickThrough(true, { forward: true });
@@ -270,8 +280,12 @@ ipcMain.handle("get-primary-display-bounds", () => {
 
 ipcMain.handle("analyze-screenshot", async (_event, base64, targetDescription, imageWidth, imageHeight) => {
   try {
-    const coords = await analyzeScreenshot(base64, targetDescription, imageWidth, imageHeight);
-    return { success: true, data: coords };
+    const result = await analyzeScreenshot(base64, targetDescription, imageWidth, imageHeight);
+    if (result.found === false) {
+      return { success: true, found: false, explanation: result.explanation };
+    }
+    const { found, ...data } = result;
+    return { success: true, found: true, data };
   } catch (err) {
     console.error("analyze-screenshot error:", err);
     return { success: false, error: err.message };
@@ -303,8 +317,6 @@ app.whenReady().then(() => {
       win.hide();
     } else {
       win.show();
-      win.setAlwaysOnTop(true, "screen-saver", 100);
-      win.moveTop();
       win.focus();
     }
   });

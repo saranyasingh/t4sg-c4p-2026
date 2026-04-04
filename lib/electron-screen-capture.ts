@@ -13,7 +13,9 @@ declare global {
         imageHeight?: number,
       ) => Promise<{
         success: boolean;
+        found?: boolean;
         data?: { x: number; y: number; width: number; height: number; confidence: number };
+        explanation?: string;
         error?: string;
       }>;
       analyzeScreenshotTile: (

@@ -39,17 +39,21 @@ export function TutorialController() {
     screenshotHeight: number;
   } | null>(null);
 
+  const [highlightError, setHighlightError] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
 
     async function syncHighlight() {
       if (!currentStep) {
         setHighlightPayload(null);
+        setHighlightError(null);
         return;
       }
 
       if (currentStep.highlightDescription) {
         setHighlightPayload(null);
+        setHighlightError(null);
         if (typeof window === "undefined" || !window.electronAPI) {
           return;
         }
@@ -57,26 +61,31 @@ export function TutorialController() {
         const cap = await captureScreenToPngBase64();
         if (cancelled || !cap) return;
 
-        const d = await findTargetViaChunkedVision(cap, currentStep.highlightDescription);
+        const result = await findTargetViaChunkedVision(cap, currentStep.highlightDescription);
         if (cancelled) return;
 
-        if (d) {
+        if (result.found) {
+          setHighlightError(null);
           setHighlightPayload({
             coords: {
-              x: d.x,
-              y: d.y,
-              width: d.width,
-              height: d.height,
-              confidence: d.confidence,
+              x: result.box.x,
+              y: result.box.y,
+              width: result.box.width,
+              height: result.box.height,
+              confidence: result.box.confidence,
             },
             screenshotWidth: cap.width,
             screenshotHeight: cap.height,
           });
+        } else {
+          setHighlightPayload(null);
+          setHighlightError(result.explanation);
         }
         return;
       }
 
       if (currentStep.highlight) {
+        setHighlightError(null);
         setHighlightPayload({
           coords: currentStep.highlight,
           screenshotWidth: typeof window !== "undefined" ? window.innerWidth : 1,
@@ -86,6 +95,7 @@ export function TutorialController() {
       }
 
       setHighlightPayload(null);
+      setHighlightError(null);
     }
 
     void syncHighlight();
@@ -133,6 +143,13 @@ export function TutorialController() {
           <TypographyP id="tutorial-step-body" className="whitespace-pre-wrap text-sm leading-relaxed">
             {currentStep.text}
           </TypographyP>
+
+          {highlightError && (
+            <div className="mt-3 rounded-lg border border-yellow-400/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-200">
+              <p className="mb-0.5 font-semibold text-yellow-300">Could not locate target</p>
+              <p className="leading-snug">{highlightError}</p>
+            </div>
+          )}
 
           <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
             {canGoPrevious ? (
