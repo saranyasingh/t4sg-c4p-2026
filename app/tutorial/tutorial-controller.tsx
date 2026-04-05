@@ -105,22 +105,22 @@ export function TutorialController() {
           return;
         }
 
-        if (result.found) {
+        if (d.found) {
           setHighlightError(null);
           setHighlightPayload({
             coords: {
-              x: result.box.x,
-              y: result.box.y,
-              width: result.box.width,
-              height: result.box.height,
-              confidence: result.box.confidence,
+              x: d.box.x,
+              y: d.box.y,
+              width: d.box.width,
+              height: d.box.height,
+              confidence: d.box.confidence,
             },
             screenshotWidth: cap.width,
             screenshotHeight: cap.height,
           });
         } else {
           setHighlightPayload(null);
-          setHighlightError(result.explanation);
+          setHighlightError(d.explanation);
         }
         setIsLoadingHighlight(false);
         return;
@@ -231,10 +231,10 @@ export function TutorialController() {
               <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0 space-y-0.5">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-white/60">
-                    {activeTutorial.title}
+                    {t(activeTutorial.title)}
                   </p>
                   <h2 id="tutorial-step-title" className="text-base font-semibold leading-snug text-white">
-                    {currentStep.title ?? activeTutorial.title}
+                    {currentStep.title ? t(currentStep.title) : t(activeTutorial.title)}
                   </h2>
                 </div>
                 <span
@@ -245,7 +245,7 @@ export function TutorialController() {
                 </span>
               </div>
               <TypographyP id="tutorial-step-body" className="whitespace-pre-wrap text-sm leading-relaxed">
-                {currentStep.text}
+                {t(currentStep.text)}
               </TypographyP>
             </div>,
             document.body,

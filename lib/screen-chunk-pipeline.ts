@@ -12,30 +12,30 @@ export type VisionResult =
   | { found: false; explanation: string };
 
 /** Coarse grid before optional refinement or full-screen fine grid. */
-const COARSE_ROWS = 2;
-const COARSE_COLS = 2;
+const COARSE_ROWS = 4;
+const COARSE_COLS = 4;
 /** Local refinement grid inside one coarse tile. */
-const REFINE_ROWS = 3;
-const REFINE_COLS = 3;
+const REFINE_ROWS = 4;
+const REFINE_COLS = 4;
 /** Full-screen fine grid when coarse finds nothing. */
-const FINE_ROWS = 3;
-const FINE_COLS = 3;
+const FINE_ROWS = 4;
+const FINE_COLS = 4;
 
 /**
  * One downscaled full-frame pass: at or above this confidence we skip all tiling.
  */
-const FULL_FRAME_SKIP_TILES_CONF = 0.82;
+const FULL_FRAME_SKIP_TILES_CONF = 0.95;
 
 /**
  * After a batch of tile API calls completes, stop scheduling further batches if any hit
  * meets or exceeds this (saves calls when the model is already sure).
  */
-const EARLY_EXIT_TILE_CONF = 0.85;
+const EARLY_EXIT_TILE_CONF = 0.95;
 
 /**
  * Coarse-tile hit at or above this is returned as-is (no local 3×3 refinement inside that tile).
  */
-const COARSE_GOOD_ENOUGH_CONF = 0.72;
+const COARSE_GOOD_ENOUGH_CONF = 0.90;
 
 /** Slight overlap so targets on tile edges are still large in at least one crop. */
 const TILE_OVERLAP_FRAC = 0.12;

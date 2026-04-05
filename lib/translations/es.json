@@ -243,7 +243,7 @@
     "visualScreenText": "Texto + pantalla",
     "visualBadgeHint": "Formato de la lección: solo texto, demo en pantalla, o ambos",
     "highlightErrorTitle": "No se encontró el elemento",
-    "highlightErrorHint": "Asegúrate de que Chrome esté visible y vuelve a intentar con Siguiente."
+    "highlightErrorHint": "Asegúrate de que Chrome esté visible y vuelve a intentar con Siguiente.",
     "courseTitles": {
       "google-search": "Búsqueda de Google"
     }
@@ -303,10 +303,6 @@
     "description": "Esta es una ruta protegida accesible solo para usuarios que han iniciado sesión.",
     "notConfigured": "El inicio de sesión aún no está configurado (faltan la URL y la clave de Supabase). Añade NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY en tu archivo .env para usar el panel.",
     "signedInAs": "Has iniciado sesión como {{email}}."
-  },
-  "tutorials": {
-    "landingDescription": "Las lecciones del tutorial se inician desde la página de inicio. Usa los botones de lección allí para comenzar.",
-    "backToHome": "Ir al inicio"
   },
   "errors": {
     "supabaseNotConfigured": "El inicio de sesión no está configurado. No puedes guardar cambios del perfil hasta configurar las variables de entorno de Supabase."
