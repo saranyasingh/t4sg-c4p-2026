@@ -132,7 +132,7 @@ export function TutorialController() {
                 {t(activeTutorial.title)}
               </p>
               <h2 id="tutorial-step-title" className="text-base font-semibold leading-snug text-white">
-                {t(currentStep.title ?? activeTutorial.title)}
+                {currentStep.title ? t(currentStep.title) : t(activeTutorial.title)}
               </h2>
             </div>
             <span

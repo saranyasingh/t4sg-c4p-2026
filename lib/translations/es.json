@@ -112,94 +112,7 @@
           "body": "Aprenderemos más sobre cómo mantenernos seguros en internet."
         }
       }
-    }
-  },
-  "tutorial": {
-    "back": "Atrás",
-    "next": "Siguiente",
-    "finish": "Terminar",
-    "exit": "Salir del tutorial",
-    "visualText": "Texto",
-    "visualScreen": "Pantalla",
-    "visualScreenText": "Texto + pantalla",
-    "visualBadgeHint": "Formato de la lección: solo texto, demo en pantalla, o ambos",
-    "highlightErrorTitle": "No se encontró el elemento",
-    "highlightErrorHint": "Asegúrate de que Chrome esté visible y vuelve a intentar con Siguiente."
-  },
-  "nav": {
-    "home": "Inicio",
-    "chat": "Chat",
-    "tutorials": "Tutoriales",
-    "dashboard": "Panel"
-  },
-  "userNav": {
-    "profile": "Perfil",
-    "settings": "Configuración",
-    "logOut": "Cerrar sesión"
-  },
-  "auth": {
-    "loginWithGoogle": "Iniciar sesión con Google",
-    "somethingWentWrong": "Algo salió mal."
-  },
-  "themeToggle": {
-    "toggleTheme": "Cambiar tema",
-    "light": "Claro",
-    "dark": "Oscuro",
-    "system": "Sistema"
-  },
-  "chat": {
-    "heading": "Chat",
-    "description": "Haz cualquier pregunta sobre tu computadora aquí.",
-    "inputPlaceholder": "Escribe tu mensaje...",
-    "senderUser": "Tú",
-    "senderAssistant": "Asistente",
-    "newMessage": "¡Nuevo mensaje!"
-  },
-  "dashboard": {
-    "heading": "Panel",
-    "description": "Esta es una ruta protegida accesible solo para usuarios que han iniciado sesión."
-  },
-  "settings": {
-    "heading": "Configuración",
-    "description": "Administra la configuración de tu cuenta y perfil.",
-    "navGeneral": "General",
-    "navProfile": "Perfil",
-    "editGeneral": "Editar configuración general"
-  },
-  "profileForm": {
-    "heading": "Perfil",
-    "errorHeading": "Error",
-    "siteDescription": "Así es como otros te verán en el sitio.",
-    "usernameLabel": "Nombre de usuario",
-    "usernameDescription": "Este es tu nombre para mostrar públicamente. Puede ser tu nombre real o un seudónimo.",
-    "emailLabel": "Correo electrónico",
-    "emailDescription": "Esta es tu dirección de correo electrónico verificada.",
-    "bioLabel": "Biografía",
-    "bioPlaceholder": "Cuéntanos un poco sobre ti",
-    "bioDescription": "¡Una breve descripción de ti mismo!",
-    "updateButton": "Actualizar perfil",
-    "cancelButton": "Cancelar",
-    "editButton": "Editar perfil",
-    "validationUsernameMin": "El nombre de usuario debe tener al menos 2 caracteres.",
-    "validationUsernameMax": "El nombre de usuario no puede tener más de 30 caracteres.",
-    "validationBioMax": "La biografía no puede tener más de 160 caracteres.",
-    "toastSuccess": "¡Perfil actualizado exitosamente!",
-    "toastError": "Algo salió mal."
-  },
-  "languageSelector": {
-    "label": "Idioma",
-    "en": "Inglés",
-    "es": "Español"
-  },
-  "shell": {
-    "rights": "Computers 4 People. Todos los derechos reservados."
-  },
-  "misc": {
-    "loading": "Cargando...",
-    "notFound": "404 - Página no encontrada",
-    "takePicture": "Tomar foto"
-  },
-  "tutorials": {
+    },
     "gmail": {
       "gm-01-intro": {
         "title": "Bienvenido a la Lección 6: Introducción a Gmail",
@@ -318,5 +231,90 @@
         "text": "Cuando termines, haz clic en el botón \"Enviar\".\n\n¡Tu correo ha sido enviado! Verás una notificación de \"Mensaje enviado\" aparecer en la esquina inferior izquierda de la pantalla."
       }
     }
+  },
+  "tutorial": {
+    "back": "Atrás",
+    "next": "Siguiente",
+    "finish": "Terminar",
+    "exit": "Salir del tutorial",
+    "visualText": "Texto",
+    "visualScreen": "Pantalla",
+    "visualScreenText": "Texto + pantalla",
+    "visualBadgeHint": "Formato de la lección: solo texto, demo en pantalla, o ambos",
+    "highlightErrorTitle": "No se encontró el elemento",
+    "highlightErrorHint": "Asegúrate de que Chrome esté visible y vuelve a intentar con Siguiente."
+  },
+  "nav": {
+    "home": "Inicio",
+    "chat": "Chat",
+    "tutorials": "Tutoriales",
+    "dashboard": "Panel"
+  },
+  "userNav": {
+    "profile": "Perfil",
+    "settings": "Configuración",
+    "logOut": "Cerrar sesión"
+  },
+  "auth": {
+    "loginWithGoogle": "Iniciar sesión con Google",
+    "somethingWentWrong": "Algo salió mal."
+  },
+  "themeToggle": {
+    "toggleTheme": "Cambiar tema",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema"
+  },
+  "chat": {
+    "heading": "Chat",
+    "description": "Haz cualquier pregunta sobre tu computadora aquí.",
+    "inputPlaceholder": "Escribe tu mensaje...",
+    "senderUser": "Tú",
+    "senderAssistant": "Asistente",
+    "newMessage": "¡Nuevo mensaje!"
+  },
+  "dashboard": {
+    "heading": "Panel",
+    "description": "Esta es una ruta protegida accesible solo para usuarios que han iniciado sesión."
+  },
+  "settings": {
+    "heading": "Configuración",
+    "description": "Administra la configuración de tu cuenta y perfil.",
+    "navGeneral": "General",
+    "navProfile": "Perfil",
+    "editGeneral": "Editar configuración general"
+  },
+  "profileForm": {
+    "heading": "Perfil",
+    "errorHeading": "Error",
+    "siteDescription": "Así es como otros te verán en el sitio.",
+    "usernameLabel": "Nombre de usuario",
+    "usernameDescription": "Este es tu nombre para mostrar públicamente. Puede ser tu nombre real o un seudónimo.",
+    "emailLabel": "Correo electrónico",
+    "emailDescription": "Esta es tu dirección de correo electrónico verificada.",
+    "bioLabel": "Biografía",
+    "bioPlaceholder": "Cuéntanos un poco sobre ti",
+    "bioDescription": "¡Una breve descripción de ti mismo!",
+    "updateButton": "Actualizar perfil",
+    "cancelButton": "Cancelar",
+    "editButton": "Editar perfil",
+    "validationUsernameMin": "El nombre de usuario debe tener al menos 2 caracteres.",
+    "validationUsernameMax": "El nombre de usuario no puede tener más de 30 caracteres.",
+    "validationBioMax": "La biografía no puede tener más de 160 caracteres.",
+    "toastSuccess": "¡Perfil actualizado exitosamente!",
+    "toastError": "Algo salió mal."
+  },
+  "languageSelector": {
+    "label": "Idioma",
+    "en": "Inglés",
+    "es": "Español"
+  },
+  "shell": {
+    "rights": "Computers 4 People. Todos los derechos reservados."
+  },
+  "misc": {
+    "loading": "Cargando...",
+    "notFound": "404 - Página no encontrada",
+    "takePicture": "Tomar foto"
   }
 }
