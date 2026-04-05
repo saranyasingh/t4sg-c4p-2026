@@ -198,5 +198,125 @@
     "loading": "Loading...",
     "notFound": "404 - Page not found",
     "takePicture": "Take Picture"
+  },
+  "tutorials": {
+    "gmail": {
+      "gm-01-intro": {
+        "title": "Welcome to Lesson 6: Intro to Gmail",
+        "text": "Welcome! This lesson is an Introduction on how to use Email (Gmail).\n\nWhat You Will Learn Today:\n• What's an Email?\n• Signing up for a Gmail account\n• Logging into Gmail\n• Opening and Replying to Emails\n• Sending Emails\n• Practicing Sending Emails"
+      },
+      "gm-02-what-is-email": {
+        "title": "What's an Email?",
+        "text": "Sending an email is just like mailing someone a letter at the post office.\n\n• The letter is mailed digitally through the Internet, and the person receives the letter instantly.\n• You can include pictures, documents, videos & other computer files.\n• You can send an email to one person, or to multiple people at the same time.\n• You can access your email on any device that has the internet.\n• It's FREE!"
+      },
+      "gm-03-email-parts-labels": {
+        "title": "Parts of an Email Address",
+        "text": "Example: jeanpierreellameh@computers4people.org\n\n• Like a real address, the email address has to be typed correctly, or the other person will not receive their mail.\n\n• It will always have two main parts, which are connected by the \"@\" symbol."
+      },
+      "gm-04-email-parts-rules": {
+        "title": "Parts of an Email Address",
+        "text": "Example: jeanpierreellameh@computers4people.org\n\n• The first part of the email address is the person's username (here, jeanpierreellameh).\n\n• This is similar to the name you write on a regular mailing address."
+      },
+      "gm-05-email-username": {
+        "title": "Parts of an Email Address",
+        "text": "Example: jeanpierreellameh@computers4people.org\n\n• The second part of the email address is the location (here, computers4people).\n\n• It could be the name of an email provider, the organization the person works for, or a website that the person is associated with."
+      },
+      "gm-08-open-chrome": {
+        "title": "Signing up for a Gmail Account",
+        "text": "Let's sign up for a Gmail account!\n\nFirst, open Google Chrome on your computer.\n\nIn the address bar at the top, type: www.gmail.com and press Enter.\n\nYou will see the Gmail sign-in page."
+      },
+      "gm-09-create-account": {
+        "title": "Signing up for a Gmail Account",
+        "text": "Click \"Create account\" next to the sign-in box.\n\nA form will appear asking for your information."
+      },
+      "gm-10-enter-name": {
+        "title": "Signing up for a Gmail Account",
+        "text": "Enter your first and last name in the fields provided.\n\nThen click \"Next\" to continue."
+      },
+      "gm-11-choose-email": {
+        "title": "Signing up for a Gmail Account",
+        "text": "Choose your Gmail address. This will be your username.\n\n• Usernames are unique to each account, and it may be hard to find something that is not already taken.\n\n• Use something appropriate to share with anyone you may give your email to.\n\nThen click \"Next\" to continue."
+      },
+      "gm-12-choose-password": {
+        "title": "Signing up for a Gmail Account",
+        "text": "Create a password for your account.\n\n• Your password must be at least 8 characters. Use a mix of letters, numbers, and symbols to make it strong.\n\n• Do not use your name or other common words.\n\nType your password again to confirm it, then click \"Next\"."
+      },
+      "gm-12a-personal-info": {
+        "title": "Signing up for a Gmail Account",
+        "text": "Google will now ask for some personal information.\n\nYou may enter a phone number and recovery email address. These are optional, but help keep your account secure.\n\nEnter your birthday using the Month, Day, and Year fields.\n\nSelect your gender from the dropdown menu.\n\nWhen you are done, click \"Next\" to continue."
+      },
+      "gm-12b-verify-phone": {
+        "title": "Signing up for a Gmail Account",
+        "text": "Google will send a 6-digit verification code to your phone number as a text message.\n\nCheck your phone for the text message from Google.\n\nType the 6-digit code into the \"Enter verification code\" field.\n\nThen click \"Verify\" to continue."
+      },
+      "gm-13-logging-in": {
+        "title": "Logging into Gmail",
+        "text": "Let's log into your Gmail account!"
+      },
+      "gm-14-go-to-google": {
+        "title": "Logging into Gmail",
+        "text": "Open Google Chrome and go to www.google.com.\n\nIn the top right corner, click \"Gmail\"."
+      },
+      "gm-15-enter-email": {
+        "title": "Logging into Gmail",
+        "text": "You will see a Sign In page.\n\nType your Gmail address into the \"Email or phone\" field.\n\nThen click \"Next\"."
+      },
+      "gm-16-enter-password": {
+        "title": "Logging into Gmail",
+        "text": "Type your password into the \"Enter your password\" field.\n\nThen click \"Next\"."
+      },
+      "gm-17-inbox": {
+        "title": "Logging into Gmail",
+        "text": "You are now logged in!\n\nThis is your Gmail inbox. Here you can see your emails, compose new ones, and navigate your mail folders on the left side."
+      },
+      "gm-18-opening-replying": {
+        "title": "Opening and Replying to Email",
+        "text": "Now let's open and reply to an email!"
+      },
+      "gm-19-open-inbox": {
+        "title": "Opening and Replying to Email",
+        "text": "Click on \"Inbox\" on the left side of the screen.\n\nYou will see a list of emails you have received. Click on an email to open it."
+      },
+      "gm-20-read-email": {
+        "title": "Opening and Replying to Email",
+        "text": "The email is now open and you can read the full message.\n\nAt the bottom of the email you will see a \"Reply\" button and a \"Forward\" button."
+      },
+      "gm-21-click-reply": {
+        "title": "Opening and Replying to Email",
+        "text": "To reply, click the \"Reply\" button at the bottom of the email, or the reply arrow icon in the top right corner of the message."
+      },
+      "gm-22-type-reply": {
+        "title": "Opening and Replying to Email",
+        "text": "A text box will appear at the bottom of the screen.\n\nType your reply message in the text box.\n\nWhen you are done, click the \"Send\" button to send your reply."
+      },
+      "gm-23-reply-sent": {
+        "title": "Opening and Replying to Email",
+        "text": "Your reply has been sent!\n\nYou will see your sent message appear in the email thread, and a \"Message sent\" notification at the bottom of the screen."
+      },
+      "gm-24-sending-email": {
+        "title": "Sending Email",
+        "text": "Now let's send an email!"
+      },
+      "gm-25-click-compose": {
+        "title": "Sending Email",
+        "text": "Click the \"Compose\" button in the top left corner of your inbox."
+      },
+      "gm-26-new-message": {
+        "title": "Sending Email",
+        "text": "A \"New Message\" window will appear in the bottom right corner of your screen.\n\nClick on the \"To\" field and type the email address of the person you want to send the email to."
+      },
+      "gm-27-enter-recipient": {
+        "title": "Sending Email",
+        "text": "Type the email address of the person you are sending the email to and press Enter.\n\nTheir name will appear in the \"To\" field."
+      },
+      "gm-28-type-message": {
+        "title": "Sending Email",
+        "text": "Click on the \"Subject\" field and type a short description of your email.\n\nThen click in the large area below and type your message."
+      },
+      "gm-29-message-sent": {
+        "title": "Sending Email",
+        "text": "When you are done, click the \"Send\" button.\n\nYour email has been sent! You will see a \"Message sent\" notification appear in the bottom left corner of the screen."
+      }
+    }
   }
 }
