@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/server-utils";
+import { isSupabaseConfigured } from "@/lib/supabase-config";
 import { redirect } from "next/navigation";
 import SettingsLayoutClient from "./settings-layout-client";
 
@@ -7,6 +8,10 @@ interface SettingsLayoutProps {
 }
 
 export default async function SettingsLayout({ children }: SettingsLayoutProps) {
+  if (!isSupabaseConfigured()) {
+    redirect("/");
+  }
+
   const supabase = createServerSupabaseClient();
   const {
     data: { user },

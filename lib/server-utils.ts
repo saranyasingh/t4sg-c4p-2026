@@ -1,8 +1,8 @@
 import "server-only";
 // Add util functions that should only be run in server components. Importing these in client components will throw an error.
 // For more info on how to avoid poisoning your server/client components: https://www.youtube.com/watch?v=BZlwtR9pDp4
-import { env } from "@/env.mjs";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { isSupabaseConfigured } from "./supabase-config";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { type Database } from "./schema";
@@ -24,6 +24,13 @@ import { type Database } from "./schema";
  * You need to reconfigure the fetch call anew for every request to your server, because you need the cookies from the request.
  */
 export const createServerSupabaseClient = () => {
+  if (!isSupabaseConfigured()) {
+    throw new Error(
+      "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.",
+    );
+  }
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
   /*
     Note that cookies is called before any calls to Supabase, which opts fetch calls out of Next.js's caching.
     This is important for authenticated data fetches, to ensure that users get access only to their own data.
@@ -33,7 +40,7 @@ export const createServerSupabaseClient = () => {
   */
   const cookieStore = cookies();
 
-  const supabase = createServerClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+  const supabase = createServerClient<Database>(url, anonKey, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value;

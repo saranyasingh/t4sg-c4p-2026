@@ -1,8 +1,40 @@
 const { app, BrowserWindow, desktopCapturer, dialog, ipcMain, globalShortcut, screen } = require("electron");
+
+// Assistant TTS runs after async chat responses; without this, Chromium often blocks HTMLAudioElement.play().
+app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+const fs = require("fs");
 const path = require("path");
 
+/** Load repo-root .env then app .env (same order as Next.js load-root-env.mjs). */
+function loadEnvFromFileSync(absolutePath) {
+  try {
+    if (!fs.existsSync(absolutePath)) return;
+    const raw = fs.readFileSync(absolutePath, "utf8");
+    for (const line of raw.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const rest = trimmed.startsWith("export ") ? trimmed.slice(7).trim() : trimmed;
+      const eq = rest.indexOf("=");
+      if (eq === -1) continue;
+      const key = rest.slice(0, eq).trim();
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue;
+      let value = rest.slice(eq + 1).trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      process.env[key] = value;
+    }
+  } catch {
+    /* ignore */
+  }
+}
+loadEnvFromFileSync(path.join(__dirname, "..", ".env"));
+loadEnvFromFileSync(path.join(__dirname, ".env"));
+
 let win = null;
-let openaiClient = null;
 let screenshotPermissionGranted = false;
 
 function setClickThrough(enabled, options) {
@@ -41,14 +73,6 @@ function extractAssistantText(response) {
   return textBlock?.text ?? "";
 }
 
-async function getOpenAI() {
-  if (openaiClient) return openaiClient;
-  const { default: OpenAI } = await import("openai");
-  require("dotenv/config");
-  openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  return openaiClient;
-}
-
 async function analyzeScreenshot(imageBase64, targetDescription, imageWidth, imageHeight) {
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   require("dotenv/config");
@@ -71,8 +95,9 @@ async function analyzeScreenshot(imageBase64, targetDescription, imageWidth, ima
       ? targetDescription.trim()
       : "the Google Chrome app icon on the desktop, taskbar, or Dock";
 
+  const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514";
   const response = await client.messages.create({
-    model: "claude-opus-4-6",
+    model,
     max_tokens: 1024,
     messages: [
       {
@@ -151,9 +176,10 @@ async function analyzeScreenshotTile(imageBase64, targetDescription, imageWidth,
     typeof targetDescription === "string" && targetDescription.trim().length > 0
       ? targetDescription.trim()
       : "the Google Chrome app icon";
-  console.log(target)
+  console.log(target);
+  const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514";
   const response = await client.messages.create({
-    model: "claude-opus-4-6",
+    model,
     max_tokens: 512,
     messages: [
       {
