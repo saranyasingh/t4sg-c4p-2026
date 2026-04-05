@@ -39,7 +39,7 @@ export default function Home() {
                 onClick={() => startTutorial(tutorial.id)}
               >
                 <BookOpen className="h-4 w-4 shrink-0" />
-                {tutorial.title}
+                {t(tutorial.title)}
               </Button>
             );
           })}

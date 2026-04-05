@@ -3,6 +3,117 @@
     "welcome": "Welcome",
     "getStarted": "Get started with Chat or explore Tutorials to learn more."
   },
+  "tutorials": {
+    "googleSearch": {
+      "title": "Basic Google Search",
+      "steps": {
+        "gs-intro": {
+          "title": "Lesson 3: Basic Google Search",
+          "body": "An introduction to using the internet.\n\nWhat you will learn today:\n• Terms\n• Browser Layout\n• Navigating the Internet\n• Using Google Chrome\n• Searching for Websites"
+        },
+        "gs-internet": {
+          "title": "The Internet",
+          "body": "A global computer network for information and communication—many connected networks using shared rules (protocols)."
+        },
+        "gs-www": {
+          "title": "World Wide Web (WWW)",
+          "body": "The Web: a system for reaching documents and other pages over the Internet."
+        },
+        "gs-search-engine": {
+          "title": "Search engine",
+          "body": "A service that lets you search for content on the World Wide Web (WWW)."
+        },
+        "gs-websites": {
+          "title": "Websites",
+          "body": "Related web pages under one domain name, usually from one person or organization."
+        },
+        "gs-url": {
+          "title": "Web address / URL",
+          "body": "Tells where a page lives on the Web. There are four parts to a URL."
+        },
+        "gs-browser-layout": {
+          "title": "Browser layout",
+          "body": "Next: the main parts of the Chrome window—follow the highlights."
+        },
+        "gs-tabs": {
+          "title": "Tabs",
+          "body": "A tab is another page at the top of the window.\n\nClick the + next to your tabs to open a new tab."
+        },
+        "gs-back-forward-refresh": {
+          "title": "Back, Forward, Refresh",
+          "body": "Back / Forward: pages you already visited.\nRefresh: reload this page.\n\nFind these left of the address bar. After you open a link, try Back."
+        },
+        "gs-address-bar": {
+          "title": "Address bar",
+          "body": "Shows the page’s address.\n\nClick it, type an address (try wikipedia.org), press Enter."
+        },
+        "gs-open-tabs-recent": {
+          "title": "Open tabs / Recently closed",
+          "body": "Reopen a tab you closed by mistake.\n\nUse the tab search or list control in the tab row (or right‑click a tab)."
+        },
+        "gs-share-page": {
+          "title": "Share page",
+          "body": "Send this page as a link.\n\nClick the Share icon (near the address bar)."
+        },
+        "gs-bookmarks": {
+          "title": "Add / remove bookmarks",
+          "body": "Save this page to find it again.\n\nClick the star on the right of the address bar."
+        },
+        "gs-chrome-user": {
+          "title": "Chrome user",
+          "body": "Your Google account.\n\nClick your picture or initial (top right)."
+        },
+        "gs-chrome-menu": {
+          "title": "Chrome menu",
+          "body": "More tools and settings.\n\nClick the three dots ⋮ (top right)."
+        },
+        "gs-search-bar": {
+          "title": "Search bar",
+          "body": "Use when you don’t know the exact address—or you have a question.\n\nType in the top field or Google’s box, press Enter. Try Images or Videos in the results."
+        },
+        "gs-try-layout": {
+          "title": "Let’s try it out",
+          "body": "You’ve seen the layout. Next: open Chrome and go somewhere."
+        },
+        "gs-navigating": {
+          "title": "Navigating the Internet",
+          "body": "Open Chrome, then type a site you know in the address bar."
+        },
+        "gs-open-chrome": {
+          "title": "Open Google Chrome",
+          "body": "Double‑click the Chrome icon (desktop, taskbar, Start menu, or Dock)."
+        },
+        "gs-navigate-url": {
+          "title": "Go to a website",
+          "body": "Click the address bar, type a site, press Enter. Use Back when you’re done."
+        },
+        "gs-try-again": {
+          "title": "Let’s try it out",
+          "body": "Next: practice search when you don’t have the exact address."
+        },
+        "gs-searching-intro": {
+          "title": "Searching for websites",
+          "body": "Use search for a topic or question—not only when you know the URL."
+        },
+        "gs-search-practice": {
+          "title": "Try a search",
+          "body": "Click the search/address field, type a short question or topic, press Enter. Open one result."
+        },
+        "gs-more-options": {
+          "title": "More options",
+          "body": "Extra tools live under ⋮ and your profile icon."
+        },
+        "gs-review": {
+          "title": "Let’s review",
+          "body": "Think through:\n1. Where are favorite saved pages?\n2. What does WWW mean?\n3. Where can you find videos in search?\n4. How do you save an image from Image results?\n5. Name a popular search engine.\n6. How do categories help on a website?\n7. How might you find a place’s location?"
+        },
+        "gs-next-time": {
+          "title": "Next time",
+          "body": "We’ll learn more about staying safe on the Internet."
+        }
+      }
+    }
+  },
   "tutorial": {
     "back": "Back",
     "next": "Next",
@@ -11,7 +122,9 @@
     "visualText": "Text",
     "visualScreen": "Screen",
     "visualScreenText": "Screen + text",
-    "visualBadgeHint": "Lesson format: text only, screen demo, or both"
+    "visualBadgeHint": "Lesson format: text only, screen demo, or both",
+    "highlightErrorTitle": "Could not locate target",
+    "highlightErrorHint": "Make sure Chrome is visible, then try Next again."
   },
   "nav": {
     "home": "Home",

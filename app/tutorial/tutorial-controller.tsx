@@ -128,9 +128,11 @@ export function TutorialController() {
         >
           <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0 space-y-0.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-white/60">{activeTutorial.title}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-white/60">
+                {t(activeTutorial.title)}
+              </p>
               <h2 id="tutorial-step-title" className="text-base font-semibold leading-snug text-white">
-                {currentStep.title ?? activeTutorial.title}
+                {currentStep.title ? t(currentStep.title) : t(activeTutorial.title)}
               </h2>
             </div>
             <span
@@ -141,13 +143,14 @@ export function TutorialController() {
             </span>
           </div>
           <TypographyP id="tutorial-step-body" className="whitespace-pre-wrap text-sm leading-relaxed">
-            {currentStep.text}
+            {t(currentStep.text)}
           </TypographyP>
 
           {highlightError && (
             <div className="mt-3 rounded-lg border border-yellow-400/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-200">
-              <p className="mb-0.5 font-semibold text-yellow-300">Could not locate target</p>
-              <p className="leading-snug">{highlightError}</p>
+              <p className="mb-0.5 font-semibold text-yellow-300">{t("tutorial.highlightErrorTitle")}</p>
+              <p className="mb-1 leading-snug">{highlightError}</p>
+              <p className="text-xs text-yellow-200/90">{t("tutorial.highlightErrorHint")}</p>
             </div>
           )}
 

@@ -3,6 +3,117 @@
     "welcome": "Bienvenido",
     "getStarted": "Comienza con el Chat o explora los Tutoriales para aprender más."
   },
+  "tutorials": {
+    "googleSearch": {
+      "title": "Búsqueda básica en Google",
+      "steps": {
+        "gs-intro": {
+          "title": "Lección 3: Búsqueda básica en Google",
+          "body": "Una introducción a usar internet.\n\nQué aprenderás hoy:\n• Términos\n• Partes del navegador\n• Navegar en internet\n• Usar Google Chrome\n• Buscar sitios web"
+        },
+        "gs-internet": {
+          "title": "Internet",
+          "body": "Una red mundial de computadoras para información y comunicación: muchas redes conectadas con reglas compartidas (protocolos)."
+        },
+        "gs-www": {
+          "title": "World Wide Web (WWW)",
+          "body": "La Web: un sistema para acceder a documentos y páginas a través de Internet."
+        },
+        "gs-search-engine": {
+          "title": "Motor de búsqueda",
+          "body": "Un servicio que te permite buscar contenido en la World Wide Web (WWW)."
+        },
+        "gs-websites": {
+          "title": "Sitios web",
+          "body": "Páginas relacionadas bajo un mismo nombre de dominio, normalmente de una persona u organización."
+        },
+        "gs-url": {
+          "title": "Dirección web / URL",
+          "body": "Indica dónde está una página en la Web. Una URL tiene cuatro partes."
+        },
+        "gs-browser-layout": {
+          "title": "Partes del navegador",
+          "body": "Siguiente: las partes principales de Chrome—sigue los resaltados en pantalla."
+        },
+        "gs-tabs": {
+          "title": "Pestañas",
+          "body": "Cada pestaña es otra página arriba de la ventana.\n\nHaz clic en el + junto a las pestañas para abrir una nueva."
+        },
+        "gs-back-forward-refresh": {
+          "title": "Atrás, Adelante, Actualizar",
+          "body": "Atrás / Adelante: páginas que ya visitaste.\nActualizar: volver a cargar esta página.\n\nEstán a la izquierda de la barra de direcciones. Abre un enlace y prueba Atrás."
+        },
+        "gs-address-bar": {
+          "title": "Barra de direcciones",
+          "body": "Muestra la dirección de la página.\n\nHaz clic, escribe una dirección (prueba wikipedia.org), pulsa Entrar."
+        },
+        "gs-open-tabs-recent": {
+          "title": "Pestañas abiertas / Cerradas recientemente",
+          "body": "Vuelve a abrir una pestaña que cerraste sin querer.\n\nUsa el buscador o la lista de pestañas en la franja de pestañas (o clic derecho en una pestaña)."
+        },
+        "gs-share-page": {
+          "title": "Compartir página",
+          "body": "Envía esta página como enlace.\n\nHaz clic en el icono Compartir (cerca de la barra de direcciones)."
+        },
+        "gs-bookmarks": {
+          "title": "Añadir / quitar marcadores",
+          "body": "Guarda esta página para encontrarla después.\n\nHaz clic en la estrella a la derecha de la barra de direcciones."
+        },
+        "gs-chrome-user": {
+          "title": "Usuario de Chrome",
+          "body": "Tu cuenta de Google.\n\nHaz clic en tu foto o inicial (arriba a la derecha)."
+        },
+        "gs-chrome-menu": {
+          "title": "Menú de Chrome",
+          "body": "Más herramientas y ajustes.\n\nHaz clic en los tres puntos ⋮ (arriba a la derecha)."
+        },
+        "gs-search-bar": {
+          "title": "Barra de búsqueda",
+          "body": "Úsala cuando no sabes la dirección exacta—o tienes una pregunta.\n\nEscribe en el campo de arriba o en el cuadro de Google y pulsa Entrar. Prueba Imágenes o Videos en los resultados."
+        },
+        "gs-try-layout": {
+          "title": "Probémoslo",
+          "body": "Ya viste las partes del navegador. Siguiente: abre Chrome y entra a un sitio."
+        },
+        "gs-navigating": {
+          "title": "Navegar en internet",
+          "body": "Abre Chrome y escribe en la barra de direcciones un sitio que conozcas."
+        },
+        "gs-open-chrome": {
+          "title": "Abrir Google Chrome",
+          "body": "Haz doble clic en el icono de Chrome (escritorio, barra de tareas, menú Inicio o Dock)."
+        },
+        "gs-navigate-url": {
+          "title": "Ir a un sitio web",
+          "body": "Haz clic en la barra de direcciones, escribe un sitio, pulsa Entrar. Usa Atrás cuando termines."
+        },
+        "gs-try-again": {
+          "title": "Probémoslo otra vez",
+          "body": "Siguiente: practica la búsqueda cuando no tengas la dirección exacta."
+        },
+        "gs-searching-intro": {
+          "title": "Buscar sitios web",
+          "body": "Usa la búsqueda para un tema o pregunta—no solo cuando conoces la URL."
+        },
+        "gs-search-practice": {
+          "title": "Haz una búsqueda",
+          "body": "Haz clic en el campo de búsqueda o direcciones, escribe una pregunta corta o un tema, pulsa Entrar. Abre un resultado."
+        },
+        "gs-more-options": {
+          "title": "Más opciones",
+          "body": "Herramientas extra están bajo ⋮ y tu icono de perfil."
+        },
+        "gs-review": {
+          "title": "Repasemos",
+          "body": "Piensa en:\n1. ¿Dónde están las páginas favoritas guardadas?\n2. ¿Qué significa WWW?\n3. ¿Dónde encuentras videos en la búsqueda?\n4. ¿Cómo guardas una imagen desde resultados de Imágenes?\n5. Nombra un motor de búsqueda popular.\n6. ¿Cómo ayudan las categorías en un sitio?\n7. ¿Cómo podrías encontrar la ubicación de un lugar?"
+        },
+        "gs-next-time": {
+          "title": "La próxima vez",
+          "body": "Aprenderemos más sobre cómo mantenernos seguros en internet."
+        }
+      }
+    }
+  },
   "tutorial": {
     "back": "Atrás",
     "next": "Siguiente",
@@ -11,7 +122,9 @@
     "visualText": "Texto",
     "visualScreen": "Pantalla",
     "visualScreenText": "Texto + pantalla",
-    "visualBadgeHint": "Formato de la lección: solo texto, demo en pantalla, o ambos"
+    "visualBadgeHint": "Formato de la lección: solo texto, demo en pantalla, o ambos",
+    "highlightErrorTitle": "No se encontró el elemento",
+    "highlightErrorHint": "Asegúrate de que Chrome esté visible y vuelve a intentar con Siguiente."
   },
   "nav": {
     "home": "Inicio",
