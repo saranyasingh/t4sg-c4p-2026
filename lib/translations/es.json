@@ -85,5 +85,125 @@
     "loading": "Cargando...",
     "notFound": "404 - Página no encontrada",
     "takePicture": "Tomar foto"
+  },
+  "tutorials": {
+    "gmail": {
+      "gm-01-intro": {
+        "title": "Bienvenido a la Lección 6: Introducción a Gmail",
+        "text": "¡Bienvenido! Esta lección es una introducción sobre cómo usar el correo electrónico (Gmail).\n\nLo que aprenderás hoy:\n• ¿Qué es un correo electrónico?\n• Registrarse para obtener una cuenta de Gmail\n• Iniciar sesión en Gmail\n• Abrir y responder correos electrónicos\n• Enviar correos electrónicos\n• Practicar el envío de correos electrónicos"
+      },
+      "gm-02-what-is-email": {
+        "title": "¿Qué es un correo electrónico?",
+        "text": "Enviar un correo electrónico es como enviarle una carta a alguien por correo postal.\n\n• La carta se envía digitalmente a través de Internet y la persona la recibe al instante.\n• Puedes incluir fotos, documentos, videos y otros archivos de computadora.\n• Puedes enviar un correo a una persona o a varias personas al mismo tiempo.\n• Puedes acceder a tu correo desde cualquier dispositivo con internet.\n• ¡Es GRATIS!"
+      },
+      "gm-03-email-parts-labels": {
+        "title": "Partes de una dirección de correo electrónico",
+        "text": "Ejemplo: jeanpierreellameh@computers4people.org\n\n• Al igual que una dirección real, la dirección de correo electrónico debe escribirse correctamente, o la otra persona no recibirá su correo.\n\n• Siempre tendrá dos partes principales, que están conectadas por el símbolo \"@\"."
+      },
+      "gm-04-email-parts-rules": {
+        "title": "Partes de una dirección de correo electrónico",
+        "text": "Ejemplo: jeanpierreellameh@computers4people.org\n\n• La primera parte de la dirección de correo electrónico es el nombre de usuario de la persona (aquí, jeanpierreellameh).\n\n• Esto es similar al nombre que escribes en una dirección postal."
+      },
+      "gm-05-email-username": {
+        "title": "Partes de una dirección de correo electrónico",
+        "text": "Ejemplo: jeanpierreellameh@computers4people.org\n\n• La segunda parte de la dirección de correo electrónico es la ubicación (aquí, computers4people).\n\n• Puede ser el nombre de un proveedor de correo electrónico, la organización para la que trabaja la persona, o un sitio web con el que está asociada."
+      },
+      "gm-08-open-chrome": {
+        "title": "Registrarse para obtener una cuenta de Gmail",
+        "text": "¡Vamos a registrarnos para obtener una cuenta de Gmail!\n\nPrimero, abre Google Chrome en tu computadora.\n\nEn la barra de direcciones en la parte superior, escribe: www.gmail.com y presiona Enter.\n\nVerás la página de inicio de sesión de Gmail."
+      },
+      "gm-09-create-account": {
+        "title": "Registrarse para obtener una cuenta de Gmail",
+        "text": "Haz clic en \"Crear cuenta\" junto al cuadro de inicio de sesión.\n\nAparecerá un formulario pidiendo tu información."
+      },
+      "gm-10-enter-name": {
+        "title": "Registrarse para obtener una cuenta de Gmail",
+        "text": "Ingresa tu nombre y apellido en los campos proporcionados.\n\nLuego haz clic en \"Siguiente\" para continuar."
+      },
+      "gm-11-choose-email": {
+        "title": "Registrarse para obtener una cuenta de Gmail",
+        "text": "Elige tu dirección de Gmail. Este será tu nombre de usuario.\n\n• Los nombres de usuario son únicos para cada cuenta, y puede ser difícil encontrar uno que no esté tomado.\n\n• Usa algo apropiado para compartir con cualquier persona a quien le des tu correo.\n\nLuego haz clic en \"Siguiente\" para continuar."
+      },
+      "gm-12-choose-password": {
+        "title": "Registrarse para obtener una cuenta de Gmail",
+        "text": "Crea una contraseña para tu cuenta.\n\n• Tu contraseña debe tener al menos 8 caracteres. Usa una combinación de letras, números y símbolos para hacerla segura.\n\n• No uses tu nombre ni otras palabras comunes.\n\nEscribe tu contraseña nuevamente para confirmarla, luego haz clic en \"Siguiente\"."
+      },
+      "gm-12a-personal-info": {
+        "title": "Registrarse para obtener una cuenta de Gmail",
+        "text": "Google ahora te pedirá información personal.\n\nPuedes ingresar un número de teléfono y una dirección de correo de recuperación. Son opcionales, pero ayudan a mantener tu cuenta segura.\n\nIngresa tu fecha de nacimiento usando los campos de Mes, Día y Año.\n\nSelecciona tu género del menú desplegable.\n\nCuando termines, haz clic en \"Siguiente\" para continuar."
+      },
+      "gm-12b-verify-phone": {
+        "title": "Registrarse para obtener una cuenta de Gmail",
+        "text": "Google enviará un código de verificación de 6 dígitos a tu número de teléfono como mensaje de texto.\n\nRevisa tu teléfono para ver el mensaje de texto de Google.\n\nEscribe el código de 6 dígitos en el campo \"Ingresar código de verificación\".\n\nLuego haz clic en \"Verificar\" para continuar."
+      },
+      "gm-13-logging-in": {
+        "title": "Iniciar sesión en Gmail",
+        "text": "¡Vamos a iniciar sesión en tu cuenta de Gmail!"
+      },
+      "gm-14-go-to-google": {
+        "title": "Iniciar sesión en Gmail",
+        "text": "Abre Google Chrome y ve a www.google.com.\n\nEn la esquina superior derecha, haz clic en \"Gmail\"."
+      },
+      "gm-15-enter-email": {
+        "title": "Iniciar sesión en Gmail",
+        "text": "Verás una página de inicio de sesión.\n\nEscribe tu dirección de Gmail en el campo \"Correo electrónico o teléfono\".\n\nLuego haz clic en \"Siguiente\"."
+      },
+      "gm-16-enter-password": {
+        "title": "Iniciar sesión en Gmail",
+        "text": "Escribe tu contraseña en el campo \"Ingresar tu contraseña\".\n\nLuego haz clic en \"Siguiente\"."
+      },
+      "gm-17-inbox": {
+        "title": "Iniciar sesión en Gmail",
+        "text": "¡Ya iniciaste sesión!\n\nEsta es tu bandeja de entrada de Gmail. Aquí puedes ver tus correos, redactar nuevos y navegar por tus carpetas de correo en el lado izquierdo."
+      },
+      "gm-18-opening-replying": {
+        "title": "Abrir y responder correos electrónicos",
+        "text": "¡Ahora vamos a abrir y responder un correo electrónico!"
+      },
+      "gm-19-open-inbox": {
+        "title": "Abrir y responder correos electrónicos",
+        "text": "Haz clic en \"Bandeja de entrada\" en el lado izquierdo de la pantalla.\n\nVerás una lista de correos que has recibido. Haz clic en un correo para abrirlo."
+      },
+      "gm-20-read-email": {
+        "title": "Abrir y responder correos electrónicos",
+        "text": "El correo ahora está abierto y puedes leer el mensaje completo.\n\nEn la parte inferior del correo verás un botón \"Responder\" y un botón \"Reenviar\"."
+      },
+      "gm-21-click-reply": {
+        "title": "Abrir y responder correos electrónicos",
+        "text": "Para responder, haz clic en el botón \"Responder\" en la parte inferior del correo, o en el ícono de flecha de respuesta en la esquina superior derecha del mensaje."
+      },
+      "gm-22-type-reply": {
+        "title": "Abrir y responder correos electrónicos",
+        "text": "Aparecerá un cuadro de texto en la parte inferior de la pantalla.\n\nEscribe tu mensaje de respuesta en el cuadro de texto.\n\nCuando termines, haz clic en el botón \"Enviar\" para enviar tu respuesta."
+      },
+      "gm-23-reply-sent": {
+        "title": "Abrir y responder correos electrónicos",
+        "text": "¡Tu respuesta ha sido enviada!\n\nVerás tu mensaje enviado aparecer en el hilo del correo y una notificación de \"Mensaje enviado\" en la parte inferior de la pantalla."
+      },
+      "gm-24-sending-email": {
+        "title": "Enviar correo electrónico",
+        "text": "¡Ahora vamos a enviar un correo electrónico!"
+      },
+      "gm-25-click-compose": {
+        "title": "Enviar correo electrónico",
+        "text": "Haz clic en el botón \"Redactar\" en la esquina superior izquierda de tu bandeja de entrada."
+      },
+      "gm-26-new-message": {
+        "title": "Enviar correo electrónico",
+        "text": "Aparecerá una ventana de \"Nuevo mensaje\" en la esquina inferior derecha de tu pantalla.\n\nHaz clic en el campo \"Para\" y escribe la dirección de correo electrónico de la persona a quien quieres enviarle el correo."
+      },
+      "gm-27-enter-recipient": {
+        "title": "Enviar correo electrónico",
+        "text": "Escribe la dirección de correo electrónico de la persona a quien le envías el correo y presiona Enter.\n\nSu nombre aparecerá en el campo \"Para\"."
+      },
+      "gm-28-type-message": {
+        "title": "Enviar correo electrónico",
+        "text": "Haz clic en el campo \"Asunto\" y escribe una breve descripción de tu correo.\n\nLuego haz clic en el área grande de abajo y escribe tu mensaje."
+      },
+      "gm-29-message-sent": {
+        "title": "Enviar correo electrónico",
+        "text": "Cuando termines, haz clic en el botón \"Enviar\".\n\n¡Tu correo ha sido enviado! Verás una notificación de \"Mensaje enviado\" aparecer en la esquina inferior izquierda de la pantalla."
+      }
+    }
   }
 }

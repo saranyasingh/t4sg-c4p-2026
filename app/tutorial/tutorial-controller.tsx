@@ -1,13 +1,13 @@
 "use client";
 
+import BoundingBoxOverlay from "@/app/bounding-box-overlay";
 import { Button } from "@/components/ui/button";
 import { TypographyP } from "@/components/ui/typography";
-import BoundingBoxOverlay from "@/app/bounding-box-overlay";
-import { useTranslation } from "react-i18next";
-import type { ScreenHighlight, StepVisual } from "@/lib/tutorials";
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
 import { findTargetViaChunkedVision } from "@/lib/screen-chunk-pipeline";
+import type { ScreenHighlight, StepVisual } from "@/lib/tutorials";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useTutorial } from "./tutorial-provider";
 
 function visualLabelKey(v: StepVisual): string {
@@ -130,7 +130,7 @@ export function TutorialController() {
             <div className="min-w-0 space-y-0.5">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-white/60">{activeTutorial.title}</p>
               <h2 id="tutorial-step-title" className="text-base font-semibold leading-snug text-white">
-                {currentStep.title ?? activeTutorial.title}
+                {t(currentStep.title ?? activeTutorial.title)}
               </h2>
             </div>
             <span
@@ -141,7 +141,7 @@ export function TutorialController() {
             </span>
           </div>
           <TypographyP id="tutorial-step-body" className="whitespace-pre-wrap text-sm leading-relaxed">
-            {currentStep.text}
+            {t(currentStep.text)}
           </TypographyP>
 
           {highlightError && (
