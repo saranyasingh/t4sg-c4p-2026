@@ -26,7 +26,7 @@
   },
   "chat": {
     "heading": "Chat",
-    "description": "Ask any question about your computer here.",
+    "description": "Ask any question about your computer here. The assistant can capture your screen automatically when it helps answer.",
     "inputPlaceholder": "Type your message...",
     "senderUser": "You",
     "senderAssistant": "Assistant",

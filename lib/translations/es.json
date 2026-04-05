@@ -1,7 +1,8 @@
 {
   "home": {
     "welcome": "Bienvenido",
-    "getStarted": "Comienza con el Chat o explora los Tutoriales para aprender más."
+    "getStarted": "Comienza con el Chat o explora los Tutoriales para aprender más.",
+    "brandTitle": "Granson AI"
   },
   "tutorial": {
     "back": "Atrás",
@@ -11,7 +12,10 @@
     "visualText": "Texto",
     "visualScreen": "Pantalla",
     "visualScreenText": "Texto + pantalla",
-    "visualBadgeHint": "Formato de la lección: solo texto, demo en pantalla, o ambos"
+    "visualBadgeHint": "Formato de la lección: solo texto, demo en pantalla, o ambos",
+    "courseTitles": {
+      "google-search": "Búsqueda de Google"
+    }
   },
   "nav": {
     "home": "Inicio",
@@ -36,15 +40,45 @@
   },
   "chat": {
     "heading": "Chat",
-    "description": "Haz cualquier pregunta sobre tu computadora aquí.",
+    "description": "Haz cualquier pregunta sobre tu computadora aquí. El asistente puede capturar tu pantalla automáticamente cuando ayude a responder.",
     "inputPlaceholder": "Escribe tu mensaje...",
     "senderUser": "Tú",
     "senderAssistant": "Asistente",
-    "newMessage": "¡Nuevo mensaje!"
+    "newMessage": "¡Nuevo mensaje!",
+    "thinking": "Pensando…",
+    "audioModeOn": "Modo de audio: activado",
+    "audioModeOff": "Modo de audio: desactivado",
+    "audioPlaying": " · Reproduciendo",
+    "capturingScreen": "Capturando tu pantalla…",
+    "screenCaptureFailed": "Intenté ver tu pantalla pero no pude capturarla (concede permiso de pantalla en Ajustes del sistema o usa la app de escritorio). Describe lo que ves en su lugar.",
+    "finishScreenFailed": "No pude terminar de analizar tu pantalla.",
+    "emptyResponse": "No pude generar una respuesta. Inténtalo de nuevo.",
+    "unexpectedResponse": "La respuesta del asistente no era la esperada.",
+    "assistantUnavailable": "El asistente no está disponible ({{status}}).",
+    "errorWithDetail": "Lo sentimos, hubo un error: {{detail}}",
+    "unknownError": "Error desconocido",
+    "streamErrors": {
+      "noResponseBody": "No hubo respuesta del asistente.",
+      "invalidCapture": "Respuesta no válida al preparar la captura de pantalla.",
+      "incomplete": "La transmisión de la respuesta terminó de forma inesperada."
+    },
+    "voiceStart": "Iniciar entrada de voz",
+    "voiceStop": "Detener grabación",
+    "audioFailedTitle": "No se pudo reproducir el audio",
+    "audioFailedDescription": "Comprueba que OPENAI_API_KEY esté configurada para texto a voz, o desactiva y vuelve a activar el modo de audio tras hacer clic en la app."
   },
   "dashboard": {
     "heading": "Panel",
-    "description": "Esta es una ruta protegida accesible solo para usuarios que han iniciado sesión."
+    "description": "Esta es una ruta protegida accesible solo para usuarios que han iniciado sesión.",
+    "notConfigured": "El inicio de sesión aún no está configurado (faltan la URL y la clave de Supabase). Añade NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY en tu archivo .env para usar el panel.",
+    "signedInAs": "Has iniciado sesión como {{email}}."
+  },
+  "tutorials": {
+    "landingDescription": "Las lecciones del tutorial se inician desde la página de inicio. Usa los botones de lección allí para comenzar.",
+    "backToHome": "Ir al inicio"
+  },
+  "errors": {
+    "supabaseNotConfigured": "El inicio de sesión no está configurado. No puedes guardar cambios del perfil hasta configurar las variables de entorno de Supabase."
   },
   "settings": {
     "heading": "Configuración",

@@ -1,20 +1,39 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
-import { ImageIcon, Send, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
+import { Send } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import ScreenshotButton from "../screenshot-button";
+import { toast } from "@/components/ui/use-toast";
 import { Message, type MessageProps } from "./message";
 import { ScrollContainer } from "./scroll-container";
 import { VoiceInput } from "./voice-input"; // ← NEW
+
+/** Tiny silent WAV — played once when enabling audio mode to satisfy browser autoplay rules. */
+const SILENT_WAV =
+  "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAAAAAA==";
 
 type MessageWithId = MessageProps & { id: string; variant: "user" | "assistant" };
 interface ChatHistoryItem {
   role: "user" | "assistant";
   content: string;
+}
+
+const CHAT_STORAGE_KEY = "t4sg-c4p-chat-messages-v1";
+
+function parseStoredMessages(raw: unknown): MessageWithId[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (m): m is MessageWithId =>
+      Boolean(m) &&
+      typeof m === "object" &&
+      typeof (m as MessageWithId).id === "string" &&
+      typeof (m as MessageWithId).text === "string" &&
+      ((m as MessageWithId).variant === "user" || (m as MessageWithId).variant === "assistant"),
+  );
 }
 
 interface ChatProps {
@@ -25,23 +44,59 @@ export function Chat({ showHeader = true }: ChatProps) {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<MessageWithId[]>([]);
+  const [messagesHydrated, setMessagesHydrated] = useState(false);
   const [incomingMessage, setIncomingMessage] = useState("");
   const [audioModeEnabled, setAudioModeEnabled] = useState(false);
   const [isSpeechPlaying, setIsSpeechPlaying] = useState(false);
-  const [newMessageSignal, setNewMessageSignal] = useState(0);
   const audioModeEnabledRef = useRef(audioModeEnabled);
   const speechObjectUrlRef = useRef<string | null>(null);
   const speechAudioRef = useRef<HTMLAudioElement | null>(null);
-  const [pendingScreenshot, setPendingScreenshot] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null); // ← NEW: for refocusing after transcript
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   audioModeEnabledRef.current = audioModeEnabled;
+
+  const TEXTAREA_MAX_PX = 168;
+
+  const resizeTextarea = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const cap = Math.min(
+      typeof window !== "undefined" ? Math.round(window.innerHeight * 0.24) : TEXTAREA_MAX_PX,
+      TEXTAREA_MAX_PX,
+    );
+    const next = Math.min(el.scrollHeight, cap);
+    el.style.height = `${next}px`;
+    el.style.overflowY = el.scrollHeight > cap ? "auto" : "hidden";
+  }, []);
+
+  useLayoutEffect(() => {
+    resizeTextarea();
+  }, [message, resizeTextarea]);
 
   const { t } = useTranslation();
 
   useEffect(() => {
-    setNewMessageSignal((n) => n + 1);
-  }, [messages, incomingMessage, isLoading]);
+    try {
+      const raw = localStorage.getItem(CHAT_STORAGE_KEY);
+      if (raw) {
+        const parsed = parseStoredMessages(JSON.parse(raw) as unknown);
+        if (parsed.length) setMessages(parsed);
+      }
+    } catch {
+      /* ignore corrupt storage */
+    }
+    setMessagesHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!messagesHydrated) return;
+    try {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+    } catch {
+      /* quota / private mode */
+    }
+  }, [messages, messagesHydrated]);
 
   useEffect(() => {
     return () => {
@@ -73,6 +128,14 @@ export function Chat({ showHeader = true }: ChatProps) {
 
     let objectUrl: string | null = null;
 
+    const fail = (message: string) => {
+      toast({
+        title: t("chat.audioFailedTitle"),
+        description: message,
+        variant: "destructive",
+      });
+    };
+
     try {
       const res = await fetch("/api/speak", {
         method: "POST",
@@ -80,15 +143,28 @@ export function Chat({ showHeader = true }: ChatProps) {
         body: JSON.stringify({ text }),
       });
 
+      const ct = res.headers.get("content-type") ?? "";
+
       if (!res.ok) {
-        throw new Error("speak request failed");
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error ?? `HTTP ${res.status}`);
+      }
+
+      if (!ct.includes("audio") && !ct.includes("octet-stream")) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error ?? t("chat.audioFailedDescription"));
       }
 
       const blob = await res.blob();
+      if (blob.size < 32) {
+        throw new Error(t("chat.audioFailedDescription"));
+      }
+
       objectUrl = URL.createObjectURL(blob);
       speechObjectUrlRef.current = objectUrl;
 
       const audio = new Audio(objectUrl);
+      audio.setAttribute("playsinline", "");
       speechAudioRef.current = audio;
 
       await new Promise<void>((resolve, reject) => {
@@ -117,10 +193,10 @@ export function Chat({ showHeader = true }: ChatProps) {
 
         void audio.play().catch((err) => {
           cleanup();
-          reject(err);
+          reject(err instanceof Error ? err : new Error(String(err)));
         });
       });
-    } catch {
+    } catch (e) {
       if (speechAudioRef.current) {
         speechAudioRef.current = null;
       }
@@ -130,6 +206,8 @@ export function Chat({ showHeader = true }: ChatProps) {
           speechObjectUrlRef.current = null;
         }
       }
+      const msg = e instanceof Error ? e.message : t("chat.audioFailedDescription");
+      fail(msg);
     } finally {
       setIsSpeechPlaying(false);
     }
@@ -143,7 +221,132 @@ export function Chat({ showHeader = true }: ChatProps) {
   // Called by VoiceInput once final transcription is ready
   const handleTranscript = (text: string) => {
     setMessage(text);
-    inputRef.current?.focus();
+    textareaRef.current?.focus();
+  };
+
+  const parseChatError = async (response: Response): Promise<string> => {
+    let detail = `Request failed (${response.status})`;
+    const ct = response.headers.get("content-type") ?? "";
+    if (ct.includes("application/json")) {
+      try {
+        const data = (await response.json()) as { error?: string; hint?: string; model?: string };
+        if (data.error) detail = data.error;
+        if (data.hint) detail += ` — ${data.hint}`;
+        if (data.model) detail += ` [model: ${data.model}]`;
+      } catch {
+        /* ignore */
+      }
+    }
+    return detail;
+  };
+
+  const readTextStream = async (response: Response): Promise<string> => {
+    if (!response.body) throw new Error("No response body");
+    const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+    let fullResponse = "";
+    let done = false;
+    while (!done) {
+      const { done: isDone, value } = await reader.read();
+      done = isDone;
+      if (done) break;
+      if (value) {
+        fullResponse += value;
+        setIncomingMessage(fullResponse);
+      }
+    }
+    return fullResponse;
+  };
+
+  type InitialNdjsonResult =
+    | { ok: true; action: "capture_screen"; assistantContent: unknown }
+    | { ok: true; action: null; reply: string }
+    | { ok: false; i18nKey: string; values?: Record<string, string> };
+
+  /** First-turn assistant: NDJSON lines `{type:"token"}`, then `{type:"done"}` or `{type:"error"}`. */
+  const readNdjsonInitialStream = async (
+    response: Response,
+    onToken: (delta: string) => void,
+  ): Promise<InitialNdjsonResult> => {
+    if (!response.body) {
+      return { ok: false, i18nKey: "chat.streamErrors.noResponseBody" };
+    }
+    const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buffer = "";
+    let streamDone = false;
+    while (!streamDone) {
+      const { done: isDone, value } = await reader.read();
+      streamDone = isDone;
+      if (value) buffer += value;
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        let evt: unknown;
+        try {
+          evt = JSON.parse(trimmed) as unknown;
+        } catch {
+          continue;
+        }
+        if (typeof evt !== "object" || evt === null || !("type" in evt)) continue;
+        const row = evt as Record<string, unknown>;
+        const rowType = row.type;
+        if (rowType === "token" && typeof row.text === "string") {
+          onToken(row.text);
+          continue;
+        }
+        if (rowType === "done") {
+          const action = row.action;
+          if (action === "capture_screen") {
+            const assistantContent = row.assistantContent;
+            if (assistantContent == null) {
+              return { ok: false, i18nKey: "chat.streamErrors.invalidCapture" };
+            }
+            return { ok: true, action: "capture_screen", assistantContent };
+          }
+          const reply = typeof row.reply === "string" ? row.reply : "";
+          return { ok: true, action: null, reply };
+        }
+        if (rowType === "error") {
+          const err = typeof row.error === "string" ? row.error : "Request failed";
+          const hint = typeof row.hint === "string" ? row.hint : "";
+          return {
+            ok: false,
+            i18nKey: "chat.errorWithDetail",
+            values: { detail: hint ? `${err} — ${hint}` : err },
+          };
+        }
+      }
+    }
+    const tail = buffer.trim();
+    if (tail) {
+      try {
+        const parsed: unknown = JSON.parse(tail);
+        if (typeof parsed === "object" && parsed !== null && "type" in parsed) {
+          const row = parsed as Record<string, unknown>;
+          if (row.type === "done") {
+            if (row.action === "capture_screen" && row.assistantContent != null) {
+              return { ok: true, action: "capture_screen", assistantContent: row.assistantContent };
+            }
+            if (typeof row.reply === "string") {
+              return { ok: true, action: null, reply: row.reply };
+            }
+          }
+          if (row.type === "error") {
+            const err = typeof row.error === "string" ? row.error : "Request failed";
+            const hint = typeof row.hint === "string" ? row.hint : "";
+            return {
+              ok: false,
+              i18nKey: "chat.errorWithDetail",
+              values: { detail: hint ? `${err} — ${hint}` : err },
+            };
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    return { ok: false, i18nKey: "chat.streamErrors.incomplete" };
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -156,7 +359,7 @@ export function Chat({ showHeader = true }: ChatProps) {
         role: m.variant,
         content: m.text,
       }))
-      .slice(-10);
+      .slice(-30);
 
     const userMessage: MessageWithId = {
       id: Date.now().toString(),
@@ -164,71 +367,179 @@ export function Chat({ showHeader = true }: ChatProps) {
       variant: "user",
     };
 
-    const screenshotToSend = pendingScreenshot;
     setMessages((prev) => [...prev, userMessage]);
     setMessage("");
     setIsLoading(true);
     setIncomingMessage("");
-    setNewMessageSignal((prev) => prev + 1);
-    setPendingScreenshot(null);
 
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ prompt, history, imageBase64: screenshotToSend }),
-      });
-
-      if (!response.ok || !response.body) {
-        throw new Error("Failed to stream response");
-      }
-
-      const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-      let fullResponse = "";
-
-      let done = false;
-
-      while (!done) {
-        const { done: isDone, value } = await reader.read();
-        done = isDone;
-
-        if (done) {
-          break;
-        }
-
-        if (value) {
-          fullResponse += value;
-          setIncomingMessage(fullResponse);
-        }
-      }
-
+    const finishAssistant = (fullResponse: string) => {
       const assistantMessage: MessageWithId = {
         id: (Date.now() + 1).toString(),
         text: fullResponse,
         variant: "assistant",
       };
-
       setMessages((prev) => [...prev, assistantMessage]);
-      setNewMessageSignal((prev) => prev + 1);
       setIncomingMessage("");
-
       if (audioModeEnabledRef.current && fullResponse.trim()) {
         void playAssistantSpeech(fullResponse);
       }
-    } catch {
+    };
+
+    const failAssistant = (reason: string) => {
       const errorMessage: MessageWithId = {
         id: (Date.now() + 1).toString(),
-        text: "Sorry, there was an error processing your request.",
+        text: reason,
         variant: "assistant",
       };
       setIncomingMessage("");
       setMessages((prev) => [...prev, errorMessage]);
-
       if (audioModeEnabledRef.current && errorMessage.text.trim()) {
         void playAssistantSpeech(errorMessage.text);
       }
+    };
+
+    try {
+      let response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, history, streaming: true }),
+      });
+
+      const ct = response.headers.get("content-type") ?? "";
+
+      if (ct.includes("ndjson") && response.ok) {
+        let streamed = "";
+        const streamResult = await readNdjsonInitialStream(response, (delta) => {
+          streamed += delta;
+          setIncomingMessage(streamed);
+        });
+
+        if (!streamResult.ok) {
+          failAssistant(t(streamResult.i18nKey, streamResult.values ?? {}));
+          return;
+        }
+
+        if (streamResult.action === "capture_screen") {
+          setIncomingMessage(t("chat.capturingScreen"));
+          const cap = await captureScreenToPngBase64();
+          if (!cap) {
+            failAssistant(t("chat.screenCaptureFailed"));
+            return;
+          }
+
+          response = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              phase: "complete_screenshot",
+              prompt,
+              history,
+              imageBase64: cap.base64,
+              assistantContent: streamResult.assistantContent,
+            }),
+          });
+
+          if (!response.ok) {
+            failAssistant(t("chat.errorWithDetail", { detail: await parseChatError(response) }));
+            return;
+          }
+
+          const streamCt = response.headers.get("content-type") ?? "";
+          if (!streamCt.includes("text/plain")) {
+            failAssistant(t("chat.finishScreenFailed"));
+            return;
+          }
+
+          setIncomingMessage("");
+          const fullResponse = await readTextStream(response);
+          finishAssistant(fullResponse);
+          return;
+        }
+
+        const finalText = streamResult.reply.trim() ? streamResult.reply : streamed.trim();
+        finishAssistant(finalText || t("chat.emptyResponse"));
+        return;
+      }
+
+      if (ct.includes("application/json")) {
+        const data = (await response.json()) as
+          | { error?: string; reply?: string; action?: string; assistantContent?: unknown }
+          | Record<string, unknown>;
+
+        if (!response.ok) {
+          const msg =
+            typeof data.error === "string"
+              ? t("chat.errorWithDetail", { detail: data.error })
+              : t("chat.assistantUnavailable", { status: String(response.status) });
+          failAssistant(msg);
+          return;
+        }
+
+        if ("error" in data && typeof data.error === "string") {
+          failAssistant(t("chat.errorWithDetail", { detail: data.error }));
+          return;
+        }
+
+        if ("reply" in data && typeof data.reply === "string") {
+          finishAssistant(data.reply);
+          return;
+        }
+
+        if (data.action === "capture_screen" && data.assistantContent) {
+          setIncomingMessage(t("chat.capturingScreen"));
+          const cap = await captureScreenToPngBase64();
+          if (!cap) {
+            failAssistant(t("chat.screenCaptureFailed"));
+            return;
+          }
+
+          response = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              phase: "complete_screenshot",
+              prompt,
+              history,
+              imageBase64: cap.base64,
+              assistantContent: data.assistantContent,
+            }),
+          });
+
+          if (!response.ok) {
+            failAssistant(t("chat.errorWithDetail", { detail: await parseChatError(response) }));
+            return;
+          }
+
+          const streamCt = response.headers.get("content-type") ?? "";
+          if (!streamCt.includes("text/plain")) {
+            failAssistant(t("chat.finishScreenFailed"));
+            return;
+          }
+
+          setIncomingMessage("");
+          const fullResponse = await readTextStream(response);
+          finishAssistant(fullResponse);
+          return;
+        }
+
+        failAssistant(t("chat.unexpectedResponse"));
+        return;
+      }
+
+      if (!response.ok) {
+        failAssistant(t("chat.errorWithDetail", { detail: await parseChatError(response) }));
+        return;
+      }
+
+      if (!response.body) {
+        throw new Error("No response body");
+      }
+
+      const fullResponse = await readTextStream(response);
+      finishAssistant(fullResponse);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : t("chat.unknownError");
+      failAssistant(t("chat.errorWithDetail", { detail: reason }));
     } finally {
       setIsLoading(false);
     }
@@ -253,61 +564,62 @@ export function Chat({ showHeader = true }: ChatProps) {
         }
         aria-pressed={audioModeEnabled}
         aria-busy={isSpeechPlaying}
-        onClick={() => setAudioModeEnabled((prev) => !prev)}
+        onClick={() => {
+          const next = !audioModeEnabled;
+          if (next) {
+            const unlock = new Audio(SILENT_WAV);
+            unlock.volume = 0.01;
+            void unlock.play().catch(() => {
+              /* ignore — Electron / no-user-gesture path may still allow later play */
+            });
+          }
+          setAudioModeEnabled(next);
+        }}
       >
-        {audioModeEnabled ? "Audio Mode: On" : "Audio Mode: Off"}
-        {isSpeechPlaying ? " · Playing" : ""}
+        {audioModeEnabled ? t("chat.audioModeOn") : t("chat.audioModeOff")}
+        {isSpeechPlaying ? t("chat.audioPlaying") : ""}
       </Button>
 
-      {pendingScreenshot && (
-        <div className="interactable flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
-          <ImageIcon className="interactable h-4 w-4 text-muted-foreground" />
-          <span className="interactable text-sm text-muted-foreground">Screenshot attached</span>
-          <img
-            src={`data:image/png;base64,${pendingScreenshot}`}
-            alt="Screenshot preview"
-            className="h-10 rounded border"
-          />
-          <Button variant="ghost" size="sm" onClick={() => setPendingScreenshot(null)} type="button">
-            <X className="interactable h-3 w-3" />
-          </Button>
-        </div>
-      )}
-
       <section className="min-h-0 flex-1 overflow-hidden">
-        <ScrollContainer newMessageSignal={newMessageSignal}>
+        <ScrollContainer>
           {messages.map((msg) => (
             <Message key={msg.id} text={msg.text} variant={msg.variant} />
           ))}
           {incomingMessage && <Message text={incomingMessage} variant="assistant" />}
-          {isLoading && !incomingMessage && <Message text="Thinking..." variant="assistant" />}
+          {isLoading && !incomingMessage && <Message text={t("chat.thinking")} variant="assistant" />}
         </ScrollContainer>
       </section>
 
       <form
-        className="interactable flex items-center gap-3"
+        className="interactable flex items-end gap-3"
         onSubmit={(e) => {
           void handleSubmit(e);
         }}
       >
-        <ScreenshotButton onScreenshot={setPendingScreenshot} />
-
-        {/* ← NEW: mic button sits between screenshot and text input */}
         <VoiceInput
           onTranscript={handleTranscript}
           onInterimTranscript={handleInterimTranscript}
           disabled={isLoading}
         />
 
-        <Input
-          ref={inputRef} // ← NEW
+        <Textarea
+          ref={textareaRef}
           placeholder={t("chat.inputPlaceholder")}
-          className="interactable flex-1"
+          rows={1}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           disabled={isLoading}
+          className="interactable min-h-10 flex-1 resize-none py-2 leading-snug"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              if (!isLoading && message.trim()) {
+                e.currentTarget.form?.requestSubmit();
+              }
+            }
+          }}
         />
-        <Button type="submit" disabled={isLoading || !message.trim()} className="interactable">
+        <Button type="submit" disabled={isLoading || !message.trim()} className="interactable shrink-0">
           <Send className="h-4 w-4" />
         </Button>
       </form>

@@ -19,7 +19,7 @@ export default function Home() {
       </div>
 
       <div className="shrink-0 space-y-3 px-6">
-        <TypographyH2>Granson AI</TypographyH2>
+        <TypographyH2>{t("home.brandTitle")}</TypographyH2>
         <TypographyP>{t("home.getStarted")}</TypographyP>
         <div className="flex flex-wrap gap-2">
           {TUTORIALS.map((tutorial) => {
@@ -32,7 +32,7 @@ export default function Home() {
                 className="interactable"
                 onClick={() => startTutorial(tutorial.id)}
               >
-                {tutorial.title}
+                {t(`tutorial.courseTitles.${tutorial.id}`, { defaultValue: tutorial.title })}
               </Button>
             );
           })}
