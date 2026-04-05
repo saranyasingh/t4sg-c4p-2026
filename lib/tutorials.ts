@@ -40,6 +40,14 @@ export interface Tutorial {
 
 const googleSearchSteps: TutorialStep[] = [
   {
+    id: "gs-open-chrome",
+    title: "tutorials.googleSearch.steps.gs-open-chrome.title",
+    text: "tutorials.googleSearch.steps.gs-open-chrome.body",
+    visual: "screen",
+    highlightDescription:
+      "The Google Chrome application icon on the desktop, taskbar, Windows Start menu, or macOS Dock. Return a larger bounding box than necessary. ",
+  },
+  {
     id: "gs-intro",
     title: "tutorials.googleSearch.steps.gs-intro.title",
     text: "tutorials.googleSearch.steps.gs-intro.body",
@@ -160,14 +168,6 @@ const googleSearchSteps: TutorialStep[] = [
     title: "tutorials.googleSearch.steps.gs-navigating.title",
     text: "tutorials.googleSearch.steps.gs-navigating.body",
     visual: "text",
-  },
-  {
-    id: "gs-open-chrome",
-    title: "tutorials.googleSearch.steps.gs-open-chrome.title",
-    text: "tutorials.googleSearch.steps.gs-open-chrome.body",
-    visual: "screen",
-    highlightDescription:
-      "The Google Chrome application icon on the desktop, taskbar, Windows Start menu, or macOS Dock.",
   },
   {
     id: "gs-08-tabs",
