@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Mic, MicOff } from "lucide-react";
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface VoiceInputProps {
   onTranscript: (text: string) => void;
@@ -33,6 +34,7 @@ async function transcribeBlob(blob: Blob, mimeType: string): Promise<string> {
 }
 
 export function VoiceInput({ onTranscript, onInterimTranscript, disabled, onRecordingStart }: VoiceInputProps) {
+  const { t } = useTranslation();
   const [state, setState] = useState<State>("idle");
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -153,11 +155,10 @@ export function VoiceInput({ onTranscript, onInterimTranscript, disabled, onReco
     <Button
       type="button"
       variant={isRecording ? "default" : "outline"}
-      size="icon"
       disabled={disabled}
       onClick={handleClick}
-      aria-label={isRecording ? "Stop recording" : "Start voice input"}
-      className={`interactable relative shrink-0 ${isRecording ? "ring-2 ring-red-400/60" : ""}`}
+      aria-label={isRecording ? t("chat.voiceStop") : t("chat.voiceStart")}
+      className={`interactable relative h-10 w-10 shrink-0 p-0 ${isRecording ? "ring-2 ring-red-400/60" : ""}`}
     >
       {isRecording ? (
         <>

@@ -1,7 +1,238 @@
 {
   "home": {
     "welcome": "Welcome",
-    "getStarted": "Get started with Chat or explore Tutorials to learn more."
+    "getStarted": "Get started with Chat or explore Tutorials to learn more.",
+    "brandTitle": "Granson AI"
+  },
+  "tutorials": {
+    "googleSearch": {
+      "title": "Basic Google Search",
+      "steps": {
+        "gs-intro": {
+          "title": "Lesson 3: Basic Google Search",
+          "body": "An introduction to using the internet.\n\nWhat you will learn today:\n• Terms\n• Browser Layout\n• Navigating the Internet\n• Using Google Chrome\n• Searching for Websites"
+        },
+        "gs-internet": {
+          "title": "The Internet",
+          "body": "A global computer network for information and communication—many connected networks using shared rules (protocols)."
+        },
+        "gs-www": {
+          "title": "World Wide Web (WWW)",
+          "body": "The Web: a system for reaching documents and other pages over the Internet."
+        },
+        "gs-search-engine": {
+          "title": "Search engine",
+          "body": "A service that lets you search for content on the World Wide Web (WWW)."
+        },
+        "gs-websites": {
+          "title": "Websites",
+          "body": "Related web pages under one domain name, usually from one person or organization."
+        },
+        "gs-url": {
+          "title": "Web address / URL",
+          "body": "Tells where a page lives on the Web. There are four parts to a URL."
+        },
+        "gs-browser-layout": {
+          "title": "Browser layout",
+          "body": "Next: the main parts of the Chrome window—follow the highlights."
+        },
+        "gs-tabs": {
+          "title": "Tabs",
+          "body": "A tab is another page at the top of the window.\n\nClick the + next to your tabs to open a new tab."
+        },
+        "gs-back-forward-refresh": {
+          "title": "Back, Forward, Refresh",
+          "body": "Back / Forward: pages you already visited.\nRefresh: reload this page.\n\nFind these left of the address bar. After you open a link, try Back."
+        },
+        "gs-address-bar": {
+          "title": "Address bar",
+          "body": "Shows the page’s address.\n\nClick it, type an address (try wikipedia.org), press Enter."
+        },
+        "gs-open-tabs-recent": {
+          "title": "Open tabs / Recently closed",
+          "body": "Reopen a tab you closed by mistake.\n\nUse the tab search or list control in the tab row (or right‑click a tab)."
+        },
+        "gs-share-page": {
+          "title": "Share page",
+          "body": "Send this page as a link.\n\nClick the Share icon (near the address bar)."
+        },
+        "gs-bookmarks": {
+          "title": "Add / remove bookmarks",
+          "body": "Save this page to find it again.\n\nClick the star on the right of the address bar."
+        },
+        "gs-chrome-user": {
+          "title": "Chrome user",
+          "body": "Your Google account.\n\nClick your picture or initial (top right)."
+        },
+        "gs-chrome-menu": {
+          "title": "Chrome menu",
+          "body": "More tools and settings.\n\nClick the three dots ⋮ (top right)."
+        },
+        "gs-search-bar": {
+          "title": "Search bar",
+          "body": "Use when you don’t know the exact address—or you have a question.\n\nType in the top field or Google’s box, press Enter. Try Images or Videos in the results."
+        },
+        "gs-try-layout": {
+          "title": "Let’s try it out",
+          "body": "You’ve seen the layout. Next: open Chrome and go somewhere."
+        },
+        "gs-navigating": {
+          "title": "Navigating the Internet",
+          "body": "Open Chrome, then type a site you know in the address bar."
+        },
+        "gs-open-chrome": {
+          "title": "Open Google Chrome",
+          "body": "Double‑click the Chrome icon (desktop, taskbar, Start menu, or Dock)."
+        },
+        "gs-navigate-url": {
+          "title": "Go to a website",
+          "body": "Click the address bar, type a site, press Enter. Use Back when you’re done."
+        },
+        "gs-try-again": {
+          "title": "Let’s try it out",
+          "body": "Next: practice search when you don’t have the exact address."
+        },
+        "gs-searching-intro": {
+          "title": "Searching for websites",
+          "body": "Use search for a topic or question—not only when you know the URL."
+        },
+        "gs-search-practice": {
+          "title": "Try a search",
+          "body": "Click the search/address field, type a short question or topic, press Enter. Open one result."
+        },
+        "gs-more-options": {
+          "title": "More options",
+          "body": "Extra tools live under ⋮ and your profile icon."
+        },
+        "gs-review": {
+          "title": "Let’s review",
+          "body": "Think through:\n1. Where are favorite saved pages?\n2. What does WWW mean?\n3. Where can you find videos in search?\n4. How do you save an image from Image results?\n5. Name a popular search engine.\n6. How do categories help on a website?\n7. How might you find a place’s location?"
+        },
+        "gs-next-time": {
+          "title": "Next time",
+          "body": "We’ll learn more about staying safe on the Internet."
+        }
+      }
+    },
+
+    "gmail": {
+      "gm-01-intro": {
+        "title": "Welcome to Lesson 6: Intro to Gmail",
+        "text": "Welcome! This lesson is an Introduction on how to use Email (Gmail).\n\nWhat You Will Learn Today:\n• What's an Email?\n• Signing up for a Gmail account\n• Logging into Gmail\n• Opening and Replying to Emails\n• Sending Emails\n• Practicing Sending Emails"
+      },
+      "gm-02-what-is-email": {
+        "title": "What's an Email?",
+        "text": "Sending an email is just like mailing someone a letter at the post office.\n\n• The letter is mailed digitally through the Internet, and the person receives the letter instantly.\n• You can include pictures, documents, videos & other computer files.\n• You can send an email to one person, or to multiple people at the same time.\n• You can access your email on any device that has the internet.\n• It's FREE!"
+      },
+      "gm-03-email-parts-labels": {
+        "title": "Parts of an Email Address",
+        "text": "Example: jeanpierreellameh@computers4people.org\n\n• Like a real address, the email address has to be typed correctly, or the other person will not receive their mail.\n\n• It will always have two main parts, which are connected by the \"@\" symbol."
+      },
+      "gm-04-email-parts-rules": {
+        "title": "Parts of an Email Address",
+        "text": "Example: jeanpierreellameh@computers4people.org\n\n• The first part of the email address is the person's username (here, jeanpierreellameh).\n\n• This is similar to the name you write on a regular mailing address."
+      },
+      "gm-05-email-username": {
+        "title": "Parts of an Email Address",
+        "text": "Example: jeanpierreellameh@computers4people.org\n\n• The second part of the email address is the location (here, computers4people).\n\n• It could be the name of an email provider, the organization the person works for, or a website that the person is associated with."
+      },
+      "gm-08-open-chrome": {
+        "title": "Signing up for a Gmail Account",
+        "text": "Let's sign up for a Gmail account!\n\nFirst, open Google Chrome on your computer.\n\nIn the address bar at the top, type: www.gmail.com and press Enter.\n\nYou will see the Gmail sign-in page."
+      },
+      "gm-09-create-account": {
+        "title": "Signing up for a Gmail Account",
+        "text": "Click \"Create account\" next to the sign-in box.\n\nA form will appear asking for your information."
+      },
+      "gm-10-enter-name": {
+        "title": "Signing up for a Gmail Account",
+        "text": "Enter your first and last name in the fields provided.\n\nThen click \"Next\" to continue."
+      },
+      "gm-11-choose-email": {
+        "title": "Signing up for a Gmail Account",
+        "text": "Choose your Gmail address. This will be your username.\n\n• Usernames are unique to each account, and it may be hard to find something that is not already taken.\n\n• Use something appropriate to share with anyone you may give your email to.\n\nThen click \"Next\" to continue."
+      },
+      "gm-12-choose-password": {
+        "title": "Signing up for a Gmail Account",
+        "text": "Create a password for your account.\n\n• Your password must be at least 8 characters. Use a mix of letters, numbers, and symbols to make it strong.\n\n• Do not use your name or other common words.\n\nType your password again to confirm it, then click \"Next\"."
+      },
+      "gm-12a-personal-info": {
+        "title": "Signing up for a Gmail Account",
+        "text": "Google will now ask for some personal information.\n\nYou may enter a phone number and recovery email address. These are optional, but help keep your account secure.\n\nEnter your birthday using the Month, Day, and Year fields.\n\nSelect your gender from the dropdown menu.\n\nWhen you are done, click \"Next\" to continue."
+      },
+      "gm-12b-verify-phone": {
+        "title": "Signing up for a Gmail Account",
+        "text": "Google will send a 6-digit verification code to your phone number as a text message.\n\nCheck your phone for the text message from Google.\n\nType the 6-digit code into the \"Enter verification code\" field.\n\nThen click \"Verify\" to continue."
+      },
+      "gm-13-logging-in": {
+        "title": "Logging into Gmail",
+        "text": "Let's log into your Gmail account!"
+      },
+      "gm-14-go-to-google": {
+        "title": "Logging into Gmail",
+        "text": "Open Google Chrome and go to www.google.com.\n\nIn the top right corner, click \"Gmail\"."
+      },
+      "gm-15-enter-email": {
+        "title": "Logging into Gmail",
+        "text": "You will see a Sign In page.\n\nType your Gmail address into the \"Email or phone\" field.\n\nThen click \"Next\"."
+      },
+      "gm-16-enter-password": {
+        "title": "Logging into Gmail",
+        "text": "Type your password into the \"Enter your password\" field.\n\nThen click \"Next\"."
+      },
+      "gm-17-inbox": {
+        "title": "Logging into Gmail",
+        "text": "You are now logged in!\n\nThis is your Gmail inbox. Here you can see your emails, compose new ones, and navigate your mail folders on the left side."
+      },
+      "gm-18-opening-replying": {
+        "title": "Opening and Replying to Email",
+        "text": "Now let's open and reply to an email!"
+      },
+      "gm-19-open-inbox": {
+        "title": "Opening and Replying to Email",
+        "text": "Click on \"Inbox\" on the left side of the screen.\n\nYou will see a list of emails you have received. Click on an email to open it."
+      },
+      "gm-20-read-email": {
+        "title": "Opening and Replying to Email",
+        "text": "The email is now open and you can read the full message.\n\nAt the bottom of the email you will see a \"Reply\" button and a \"Forward\" button."
+      },
+      "gm-21-click-reply": {
+        "title": "Opening and Replying to Email",
+        "text": "To reply, click the \"Reply\" button at the bottom of the email, or the reply arrow icon in the top right corner of the message."
+      },
+      "gm-22-type-reply": {
+        "title": "Opening and Replying to Email",
+        "text": "A text box will appear at the bottom of the screen.\n\nType your reply message in the text box.\n\nWhen you are done, click the \"Send\" button to send your reply."
+      },
+      "gm-23-reply-sent": {
+        "title": "Opening and Replying to Email",
+        "text": "Your reply has been sent!\n\nYou will see your sent message appear in the email thread, and a \"Message sent\" notification at the bottom of the screen."
+      },
+      "gm-24-sending-email": {
+        "title": "Sending Email",
+        "text": "Now let's send an email!"
+      },
+      "gm-25-click-compose": {
+        "title": "Sending Email",
+        "text": "Click the \"Compose\" button in the top left corner of your inbox."
+      },
+      "gm-26-new-message": {
+        "title": "Sending Email",
+        "text": "A \"New Message\" window will appear in the bottom right corner of your screen.\n\nClick on the \"To\" field and type the email address of the person you want to send the email to."
+      },
+      "gm-27-enter-recipient": {
+        "title": "Sending Email",
+        "text": "Type the email address of the person you are sending the email to and press Enter.\n\nTheir name will appear in the \"To\" field."
+      },
+      "gm-28-type-message": {
+        "title": "Sending Email",
+        "text": "Click on the \"Subject\" field and type a short description of your email.\n\nThen click in the large area below and type your message."
+      },
+      "gm-29-message-sent": {
+        "title": "Sending Email",
+        "text": "When you are done, click the \"Send\" button.\n\nYour email has been sent! You will see a \"Message sent\" notification appear in the bottom left corner of the screen."
+      }
+    }
   },
   "tutorial": {
     "back": "Back",
@@ -11,7 +242,12 @@
     "visualText": "Text",
     "visualScreen": "Screen",
     "visualScreenText": "Screen + text",
-    "visualBadgeHint": "Lesson format: text only, screen demo, or both"
+    "visualBadgeHint": "Lesson format: text only, screen demo, or both",
+    "highlightErrorTitle": "Could not locate target",
+    "highlightErrorHint": "Make sure Chrome is visible, then try Next again."
+    "courseTitles": {
+      "google-search": "Google Search"
+    }
   },
   "nav": {
     "home": "Home",
@@ -36,15 +272,45 @@
   },
   "chat": {
     "heading": "Chat",
-    "description": "Ask any question about your computer here.",
+    "description": "Ask any question about your computer here. The assistant can capture your screen automatically when it helps answer.",
     "inputPlaceholder": "Type your message...",
     "senderUser": "You",
     "senderAssistant": "Assistant",
-    "newMessage": "New message!"
+    "newMessage": "New message!",
+    "thinking": "Thinking…",
+    "audioModeOn": "Audio mode: On",
+    "audioModeOff": "Audio mode: Off",
+    "audioPlaying": " · Playing",
+    "capturingScreen": "Capturing your screen…",
+    "screenCaptureFailed": "I tried to view your screen but could not capture it (grant screen permission in System Settings, or use the desktop app). Describe what you see instead.",
+    "finishScreenFailed": "Sorry, I could not finish analyzing your screen.",
+    "emptyResponse": "I could not generate a response. Please try again.",
+    "unexpectedResponse": "Sorry, there was an unexpected response from the assistant.",
+    "assistantUnavailable": "Sorry, the assistant is unavailable ({{status}}).",
+    "errorWithDetail": "Sorry, there was an error: {{detail}}",
+    "unknownError": "Unknown error",
+    "streamErrors": {
+      "noResponseBody": "No response from the assistant.",
+      "invalidCapture": "Invalid response while preparing screen capture.",
+      "incomplete": "The reply stream ended unexpectedly."
+    },
+    "voiceStart": "Start voice input",
+    "voiceStop": "Stop recording",
+    "audioFailedTitle": "Could not play speech",
+    "audioFailedDescription": "Check that OPENAI_API_KEY is set for text-to-speech, or try toggling audio mode off and on after clicking the app."
   },
   "dashboard": {
     "heading": "Dashboard",
-    "description": "This is a protected route accessible only to signed-in users."
+    "description": "This is a protected route accessible only to signed-in users.",
+    "notConfigured": "Sign-in is not set up yet (Supabase URL and key are missing). Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env file to enable the dashboard.",
+    "signedInAs": "You are signed in as {{email}}."
+  },
+  "tutorials": {
+    "landingDescription": "Tutorial lessons are started from the home page. Use the lesson buttons there to begin.",
+    "backToHome": "Go to home"
+  },
+  "errors": {
+    "supabaseNotConfigured": "Sign-in is not configured. You cannot save profile changes until Supabase environment variables are set."
   },
   "settings": {
     "heading": "Settings",

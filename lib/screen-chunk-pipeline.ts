@@ -7,6 +7,10 @@ export type FullCapture = { base64: string; width: number; height: number };
 
 export type VisionBox = { x: number; y: number; width: number; height: number; confidence: number };
 
+export type VisionResult =
+  | { found: true; box: VisionBox }
+  | { found: false; explanation: string };
+
 const DEFAULT_ROWS = 3;
 const DEFAULT_COLS = 3;
 /** Slight overlap so targets on tile edges are still large in at least one crop. */
@@ -78,13 +82,14 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, index: nu
 /**
  * Run tiled vision (each tile sees a larger-on-screen fraction of the target), then merge.
  * Falls back to a single full-frame analysis if no tile reports a hit.
+ * Returns a structured result with either the bounding box or a human-friendly explanation.
  */
 export async function findTargetViaChunkedVision(
   fullCap: FullCapture,
   targetDescription: string,
-): Promise<VisionBox | null> {
+): Promise<VisionResult> {
   const api = window.electronAPI;
-  if (!api) return null;
+  if (!api) return { found: false, explanation: "Screen analysis is not available outside of the desktop app." };
 
   const tiles = buildScreenTiles(fullCap.width, fullCap.height, DEFAULT_ROWS, DEFAULT_COLS);
 
@@ -94,8 +99,11 @@ export async function findTargetViaChunkedVision(
   if (!api.analyzeScreenshotTile) {
     const forFull = await downscalePngBase64ForAnthropicVision(fullCap);
     const fullRes = await api.analyzeScreenshot(forFull.base64, targetDescription, forFull.width, forFull.height);
-    if (!fullRes.success || !fullRes.data) return null;
-    return mapAnthropicVisionBoxToCaptureSpace(fullRes.data, forFull.scaleToOriginalX, forFull.scaleToOriginalY);
+    if (!fullRes.success) return { found: false, explanation: fullRes.error ?? "Screenshot analysis failed." };
+    if (fullRes.found === false) return { found: false, explanation: fullRes.explanation ?? "The target could not be located on screen." };
+    if (!fullRes.data) return { found: false, explanation: "The target could not be located on screen." };
+    const box = mapAnthropicVisionBoxToCaptureSpace(fullRes.data, forFull.scaleToOriginalX, forFull.scaleToOriginalY);
+    return { found: true, box };
   }
 
   await mapLimit(tiles, TILE_CONCURRENCY, async (rect, tileIndex) => {
@@ -129,17 +137,24 @@ export async function findTargetViaChunkedVision(
     hits.sort((a, b) => b.confidence - a.confidence);
     const best = hits[0]!;
     return {
-      x: best.x,
-      y: best.y,
-      width: best.width,
-      height: best.height,
-      confidence: best.confidence,
+      found: true,
+      box: {
+        x: best.x,
+        y: best.y,
+        width: best.width,
+        height: best.height,
+        confidence: best.confidence,
+      },
     };
   }
 
+  // Fallback: full-frame analysis (returns structured error if not found)
   const forFull = await downscalePngBase64ForAnthropicVision(fullCap);
   const fullRes = await api.analyzeScreenshot(forFull.base64, targetDescription, forFull.width, forFull.height);
-  if (!fullRes.success || !fullRes.data) return null;
+  if (!fullRes.success) return { found: false, explanation: fullRes.error ?? "Screenshot analysis failed." };
+  if (fullRes.found === false) return { found: false, explanation: fullRes.explanation ?? "The target could not be located on screen." };
+  if (!fullRes.data) return { found: false, explanation: "The target could not be located on screen." };
 
-  return mapAnthropicVisionBoxToCaptureSpace(fullRes.data, forFull.scaleToOriginalX, forFull.scaleToOriginalY);
+  const box = mapAnthropicVisionBoxToCaptureSpace(fullRes.data, forFull.scaleToOriginalX, forFull.scaleToOriginalY);
+  return { found: true, box };
 }

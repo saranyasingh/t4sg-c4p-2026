@@ -71,6 +71,8 @@ export function TutorialController() {
     return () => window.removeEventListener("resize", syncViewport);
   }, []);
 
+  const [highlightError, setHighlightError] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -78,12 +80,14 @@ export function TutorialController() {
       if (!currentStep) {
         setHighlightPayload(null);
         setIsLoadingHighlight(false);
+        setHighlightError(null);
         return;
       }
 
       if (currentStep.highlightDescription) {
         setHighlightPayload(null);
         setIsLoadingHighlight(true);
+        setHighlightError(null);
         if (typeof window === "undefined" || !window.electronAPI) {
           setIsLoadingHighlight(false);
           return;
@@ -101,18 +105,22 @@ export function TutorialController() {
           return;
         }
 
-        if (d) {
+        if (result.found) {
+          setHighlightError(null);
           setHighlightPayload({
             coords: {
-              x: d.x,
-              y: d.y,
-              width: d.width,
-              height: d.height,
-              confidence: d.confidence,
+              x: result.box.x,
+              y: result.box.y,
+              width: result.box.width,
+              height: result.box.height,
+              confidence: result.box.confidence,
             },
             screenshotWidth: cap.width,
             screenshotHeight: cap.height,
           });
+        } else {
+          setHighlightPayload(null);
+          setHighlightError(result.explanation);
         }
         setIsLoadingHighlight(false);
         return;
@@ -120,6 +128,7 @@ export function TutorialController() {
 
       if (currentStep.highlight) {
         setIsLoadingHighlight(false);
+        setHighlightError(null);
         setHighlightPayload({
           coords: currentStep.highlight,
           screenshotWidth: typeof window !== "undefined" ? window.innerWidth : 1,
@@ -130,6 +139,7 @@ export function TutorialController() {
 
       setIsLoadingHighlight(false);
       setHighlightPayload(null);
+      setHighlightError(null);
     }
 
     void syncHighlight();
@@ -252,7 +262,16 @@ export function TutorialController() {
             </div>,
             document.body,
           )}
+        {highlightError && (
+              <div className="mt-3 rounded-lg border border-yellow-400/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-200">
+                <p className="mb-0.5 font-semibold text-yellow-300">{t("tutorial.highlightErrorTitle")}</p>
+                <p className="mb-1 leading-snug">{highlightError}</p>
+                <p className="text-xs text-yellow-200/90">{t("tutorial.highlightErrorHint")}</p>
+              </div>
 
+        )}
+
+   
       {createPortal(
         <div className="fixed bottom-4 left-4 z-[999998] flex flex-wrap items-center gap-2">
           {canGoPrevious ? (
