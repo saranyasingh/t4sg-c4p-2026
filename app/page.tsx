@@ -19,8 +19,8 @@ export default function Home() {
         <LanguageSelector />
       </div>
 
-      <div className="shrink-0 space-y-2 px-6">
-        <TypographyH2>Granson AI</TypographyH2>
+      <div className="shrink-0 space-y-3 px-6">
+        <TypographyH2>{t("home.brandTitle")}</TypographyH2>
         <TypographyP>{t("home.getStarted")}</TypographyP>
 
         <div className="flex flex-col gap-1.5 pt-1">
@@ -38,8 +38,9 @@ export default function Home() {
                 }`}
                 onClick={() => startTutorial(tutorial.id)}
               >
+                
                 <BookOpen className="h-4 w-4 shrink-0" />
-                {t(tutorial.title)}
+                {t(`tutorial.courseTitles.${tutorial.id}`, { defaultValue: tutorial.title })}
               </Button>
             );
           })}

@@ -1,7 +1,8 @@
 {
   "home": {
     "welcome": "Welcome",
-    "getStarted": "Get started with Chat or explore Tutorials to learn more."
+    "getStarted": "Get started with Chat or explore Tutorials to learn more.",
+    "brandTitle": "Granson AI"
   },
   "tutorials": {
     "googleSearch": {
@@ -244,6 +245,9 @@
     "visualBadgeHint": "Lesson format: text only, screen demo, or both",
     "highlightErrorTitle": "Could not locate target",
     "highlightErrorHint": "Make sure Chrome is visible, then try Next again."
+    "courseTitles": {
+      "google-search": "Google Search"
+    }
   },
   "nav": {
     "home": "Home",
@@ -268,15 +272,45 @@
   },
   "chat": {
     "heading": "Chat",
-    "description": "Ask any question about your computer here.",
+    "description": "Ask any question about your computer here. The assistant can capture your screen automatically when it helps answer.",
     "inputPlaceholder": "Type your message...",
     "senderUser": "You",
     "senderAssistant": "Assistant",
-    "newMessage": "New message!"
+    "newMessage": "New message!",
+    "thinking": "Thinking…",
+    "audioModeOn": "Audio mode: On",
+    "audioModeOff": "Audio mode: Off",
+    "audioPlaying": " · Playing",
+    "capturingScreen": "Capturing your screen…",
+    "screenCaptureFailed": "I tried to view your screen but could not capture it (grant screen permission in System Settings, or use the desktop app). Describe what you see instead.",
+    "finishScreenFailed": "Sorry, I could not finish analyzing your screen.",
+    "emptyResponse": "I could not generate a response. Please try again.",
+    "unexpectedResponse": "Sorry, there was an unexpected response from the assistant.",
+    "assistantUnavailable": "Sorry, the assistant is unavailable ({{status}}).",
+    "errorWithDetail": "Sorry, there was an error: {{detail}}",
+    "unknownError": "Unknown error",
+    "streamErrors": {
+      "noResponseBody": "No response from the assistant.",
+      "invalidCapture": "Invalid response while preparing screen capture.",
+      "incomplete": "The reply stream ended unexpectedly."
+    },
+    "voiceStart": "Start voice input",
+    "voiceStop": "Stop recording",
+    "audioFailedTitle": "Could not play speech",
+    "audioFailedDescription": "Check that OPENAI_API_KEY is set for text-to-speech, or try toggling audio mode off and on after clicking the app."
   },
   "dashboard": {
     "heading": "Dashboard",
-    "description": "This is a protected route accessible only to signed-in users."
+    "description": "This is a protected route accessible only to signed-in users.",
+    "notConfigured": "Sign-in is not set up yet (Supabase URL and key are missing). Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env file to enable the dashboard.",
+    "signedInAs": "You are signed in as {{email}}."
+  },
+  "tutorials": {
+    "landingDescription": "Tutorial lessons are started from the home page. Use the lesson buttons there to begin.",
+    "backToHome": "Go to home"
+  },
+  "errors": {
+    "supabaseNotConfigured": "Sign-in is not configured. You cannot save profile changes until Supabase environment variables are set."
   },
   "settings": {
     "heading": "Settings",

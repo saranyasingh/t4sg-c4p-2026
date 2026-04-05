@@ -1,94 +1,89 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+
+const BOTTOM_THRESHOLD_PX = 100;
 
 interface ScrollContainerProps {
   children: React.ReactNode;
-  newMessageSignal?: number;
 }
 
-export const ScrollContainer = ({ children, newMessageSignal = 0 }: ScrollContainerProps) => {
+export const ScrollContainer = ({ children }: ScrollContainerProps) => {
   const { t } = useTranslation();
   const outerDiv = useRef<HTMLDivElement>(null);
   const innerDiv = useRef<HTMLDivElement>(null);
 
-  const prevInnerDivHeight = useRef<number | null>(null);
+  /** When true, content growth (streaming, new messages) keeps the viewport pinned to the bottom. */
+  const stickToBottomRef = useRef(true);
 
   const [showScrollButton, setShowScrollButton] = useState(false);
 
-  const isScrolledUpTooFar = useCallback(() => {
-    if (!outerDiv.current) return false;
+  const isNearBottom = useCallback(() => {
+    if (!outerDiv.current) return true;
     const outer = outerDiv.current;
     const distanceFromBottom = outer.scrollHeight - outer.clientHeight - outer.scrollTop;
-    return distanceFromBottom > 80;
+    return distanceFromBottom <= BOTTOM_THRESHOLD_PX;
   }, []);
 
-  useEffect(() => {
-    if (!outerDiv.current || !innerDiv.current) return;
-
-    const outerDivHeight = outerDiv.current.clientHeight;
-    const innerDivHeight = innerDiv.current.clientHeight;
-    const outerDivScrollTop = outerDiv.current.scrollTop;
-
-    if (!prevInnerDivHeight.current || outerDivScrollTop === prevInnerDivHeight.current - outerDivHeight) {
-      outerDiv.current.scrollTo({
-        top: innerDivHeight - outerDivHeight,
-        left: 0,
-        behavior: prevInnerDivHeight.current ? "smooth" : "auto",
-      });
-    }
-
-    prevInnerDivHeight.current = innerDivHeight;
-  }, [children]);
-
-  useEffect(() => {
+  const scrollOuterToBottom = useCallback(() => {
     if (!outerDiv.current) return;
-
-    if (isScrolledUpTooFar()) {
-      setShowScrollButton(true);
-    } else {
-      setShowScrollButton(false);
-      outerDiv.current.scrollTo({
-        top: outerDiv.current.scrollHeight - outerDiv.current.clientHeight,
-        left: 0,
-        behavior: "smooth",
-      });
-    }
-  }, [newMessageSignal, isScrolledUpTooFar]);
-
-  const handleScrollButtonClick = useCallback(() => {
-    if (!outerDiv.current || !innerDiv.current) return;
-
-    const outerDivHeight = outerDiv.current.clientHeight;
-    const innerDivHeight = innerDiv.current.clientHeight;
-
-    outerDiv.current.scrollTo({
-      top: innerDivHeight - outerDivHeight,
-      left: 0,
-      behavior: "smooth",
-    });
-
-    setShowScrollButton(false);
+    const outer = outerDiv.current;
+    outer.scrollTop = outer.scrollHeight - outer.clientHeight;
   }, []);
 
   const handleScroll = useCallback(() => {
-    if (!showScrollButton) return;
-    if (!isScrolledUpTooFar()) {
-      setShowScrollButton(false);
+    const near = isNearBottom();
+    stickToBottomRef.current = near;
+    setShowScrollButton(!near);
+  }, [isNearBottom]);
+
+  /** After layout (new messages, hydration), stay pinned when the user was already at the bottom. */
+  useLayoutEffect(() => {
+    if (!outerDiv.current) return;
+    if (stickToBottomRef.current) {
+      scrollOuterToBottom();
     }
-  }, [isScrolledUpTooFar, showScrollButton]);
+  }, [children, scrollOuterToBottom]);
+
+  /** Streaming and async layout: follow the bottom while stuck; if the user scrolled up, show the jump button. */
+  useEffect(() => {
+    const inner = innerDiv.current;
+    if (!inner || !outerDiv.current) return;
+
+    const ro = new ResizeObserver(() => {
+      if (!outerDiv.current) return;
+      if (stickToBottomRef.current) {
+        outerDiv.current.scrollTop = outerDiv.current.scrollHeight - outerDiv.current.clientHeight;
+        setShowScrollButton(false);
+      } else if (!isNearBottom()) {
+        setShowScrollButton(true);
+      }
+    });
+
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, [isNearBottom]);
+
+  const handleScrollButtonClick = useCallback(() => {
+    stickToBottomRef.current = true;
+    scrollOuterToBottom();
+    setShowScrollButton(false);
+  }, [scrollOuterToBottom]);
 
   return (
     <div className="relative h-full">
       <div ref={outerDiv} className="relative h-full overflow-y-auto" onScroll={handleScroll}>
-        <div ref={innerDiv} className="relative min-h-full">
-          <div className="interactable h-full min-h-full space-y-4 rounded-lg border border-white/20 bg-[hsl(var(--foreground)/0.55)] p-4">{children}</div>
+        <div ref={innerDiv} className="flex min-h-full w-full flex-col justify-end">
+          <div className="interactable w-full space-y-4 rounded-lg border border-white/20 bg-[hsl(var(--foreground)/0.55)] p-4">
+            {children}
+          </div>
         </div>
       </div>
       <Button
-        className="interactable absolute bottom-4 left-1/2 -translate-x-1/2 transition-opacity"
+        type="button"
+        className="interactable absolute bottom-4 left-1/2 z-10 -translate-x-1/2 shadow-md transition-opacity"
         style={{
           opacity: showScrollButton ? 1 : 0,
           pointerEvents: showScrollButton ? "auto" : "none",

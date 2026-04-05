@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { createBrowserSupabaseClient } from "@/lib/client-utils";
 import { type Database } from "@/lib/schema";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
@@ -55,7 +56,15 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
 
   const onSubmit = async (data: ProfileFormValues) => {
     const supabase = createBrowserSupabaseClient();
-    const { error } = await supabase
+    if (!supabase) {
+      return toast({
+        title: t("profileForm.toastError"),
+        description: t("errors.supabaseNotConfigured"),
+        variant: "destructive",
+      });
+    }
+    const sb = supabase as SupabaseClient<Database>;
+    const { error } = await sb
       .from("profiles")
       .update({ biography: data.bio, display_name: data.username })
       .eq("id", profile.id);

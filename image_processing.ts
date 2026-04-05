@@ -1,12 +1,9 @@
 import { execSync } from "child_process";
 import "dotenv/config";
-import OpenAI from "openai";
-import { zodResponseFormat } from "openai/helpers/zod";
+import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514";
 
 const ChromeIconCoordinates = z.object({
   x: z.number().describe("X coordinate of the center of the Chrome icon"),
@@ -35,53 +32,50 @@ function getScreenDimensions(): { width: number; height: number } {
       const match = output.match(/(\d+)x(\d+)/);
       if (match) return { width: parseInt(match[1]), height: parseInt(match[2]) };
     }
-  } catch (e) {
+  } catch {
     console.warn("Could not detect screen size, using fallback");
   }
   return { width: 1280, height: 800 };
 }
 
 export async function getChromeIconCoordinates(imageBase64: string): Promise<ChromeIconCoordinates> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY is not set");
+  }
+
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const { width, height } = getScreenDimensions();
 
-  const response = await client.chat.completions.create({
-    model: "gpt-4o",
+  const response = await client.messages.create({
+    model: MODEL,
+    max_tokens: 1024,
     messages: [
-      {
-        role: "system",
-        content: `You are a computer vision assistant. The user will send you a screenshot of a computer screen with dimensions ${width}x${height} pixels.
-Your job is to locate the Google Chrome app icon and return its exact pixel coordinates.
-Return the center x,y of the icon plus its width and height.
-Coordinates should be absolute pixel values with origin at top-left.`,
-      },
       {
         role: "user",
         content: [
           {
-            type: "image_url",
-            image_url: {
-              url: `data:image/png;base64,${imageBase64}`,
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: "image/png",
+              data: imageBase64,
             },
           },
           {
             type: "text",
-            text: "Find the Google Chrome app icon and return its coordinates.",
+            text: `You are a computer vision assistant. The screenshot is approximately ${width}x${height} pixels.
+Locate the Google Chrome app icon and return ONLY a JSON object (no markdown) with these keys:
+x, y (center of the icon in pixels, origin top-left), width, height (icon size in pixels), confidence (0-1).`,
           },
         ],
       },
     ],
-    response_format: zodResponseFormat(ChromeIconCoordinates, "coordinates"),
   });
 
-  console.log(JSON.stringify(response.choices[0].message, null, 2));
+  const textBlock = response.content.find((b) => b.type === "text");
+  const raw = textBlock?.type === "text" ? textBlock.text.replace(/```json|```/g, "").trim() : "";
+  if (!raw) throw new Error("No coordinates in response");
 
-  const raw = response.choices[0].message.content;
-  if (!raw) throw new Error("No coordinates");
-  const result = JSON.parse(raw) as ChromeIconCoordinates;
-  return result;
+  const parsed = JSON.parse(raw) as unknown;
+  return ChromeIconCoordinates.parse(parsed);
 }
-
-// test
-import * as fs from "fs";
-const testImage = fs.readFileSync("test_screenshot.png").toString("base64");
-getChromeIconCoordinates(testImage).then(console.log).catch(console.error);

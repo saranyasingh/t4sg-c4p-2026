@@ -1,167 +1,327 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
+import type {
+  ContentBlock,
+  ContentBlockParam,
+  MessageParam,
+  RawMessageStreamEvent,
+  TextBlock,
+  Tool,
+} from "@anthropic-ai/sdk/resources/messages";
+import { C4P_KNOWLEDGE_BASE } from "./c4p-knowledge-base";
 
-const client = new OpenAI();
+export const runtime = "nodejs";
+
+const DEFAULT_MODEL = "claude-sonnet-4-20250514";
+
+const CAPTURE_SCREEN_TOOL: Tool = {
+  name: "capture_screen",
+  description:
+    "Capture a screenshot of the user's current screen. Call this when seeing their desktop, a specific window, an error message, or browser would help you answer (for example: where to click, what is on screen, or troubleshooting). Do not call for questions that are fully answered from the knowledge base without visual context. Do not ask the user to press a manual screenshot button.",
+  input_schema: {
+    type: "object",
+    properties: {},
+    required: [],
+  },
+};
+
 interface ChatHistoryItem {
   role: "user" | "assistant";
   content: string;
 }
 
-export async function POST(req: Request) {
-  const { prompt, history = [], imageBase64 } = (await req.json()) as {
-    prompt: string;
-    history?: ChatHistoryItem[];
-    imageBase64?: string;
-  };
+function historyToMessages(history: ChatHistoryItem[]): MessageParam[] {
+  return history.map((h) => ({
+    role: h.role,
+    content: h.content,
+  }));
+}
 
-  const knowledgeBase = `You are a warm, helpful assistant for Computers 4 People (C4P), a 501(c)(3) nonprofit that bridges the digital divide. You help with TWO things:
-1. Answering questions about C4P's programs and services
-2. Providing digital literacy support to help people use their computers
+/** Strip data-URL prefix if present so Anthropic gets raw base64. */
+function normalizePngBase64(raw: string | null | undefined): string | null {
+  if (!raw || typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  const dataUrl = trimmed.match(/^data:image\/png;base64,(.+)$/i);
+  if (dataUrl?.[1]) return dataUrl[1];
+  const anyImg = trimmed.match(/^data:image\/[^;]+;base64,(.+)$/i);
+  if (anyImg?.[1]) return anyImg[1];
+  return trimmed;
+}
 
-CRITICAL RULES — FOLLOW THESE IN EVERY RESPONSE:
+function extractTextFromContent(blocks: ContentBlock[]): string {
+  return blocks
+    .filter((b): b is TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("");
+}
 
-RULE 1 — C4P DOES NOT SELL COMPUTERS:
-C4P NEVER sells computers, laptops, or any devices. There is no store, no pricing, no purchase option. The ONLY way to get a computer from C4P is by applying through the free computer donation program. If someone asks to buy a computer, clarify that C4P only donates computers through the free application process: https://www.computers4people.org/apply
+function parseAssistantContent(raw: unknown): ContentBlock[] | null {
+  if (!Array.isArray(raw)) return null;
+  return raw as ContentBlock[];
+}
 
-RULE 2 — FREE COMPUTER PROGRAM VS SHIELD INTERNET ARE SEPARATE PROGRAMS:
-- FREE COMPUTER PROGRAM: Available ONLY in New Jersey, New York City, and Massachusetts. If someone is in any other state, tell them: "Unfortunately, the free computer program is only available in New Jersey, New York City, and Massachusetts." Do NOT redirect them to Shield Internet as a substitute.
-- SHIELD INTERNET: Available in 49 U.S. states (all except Alaska), Puerto Rico, and U.S. Virgin Islands. This is an affordable internet service ONLY — it does not provide devices.
+function wantsCaptureScreen(content: ContentBlock[]): boolean {
+  return content.some((b) => b.type === "tool_use" && b.name === "capture_screen");
+}
 
-RULE 3 — NEVER INVENT EMAIL ADDRESSES:
-The ONLY way to contact C4P support is through the contact form: https://www.computers4people.org/contact. Do NOT suggest any email address for support. The only valid email is info@computers4people.org, used exclusively for Zelle donations.
+function anthropicErrorPayload(err: unknown, model: string) {
+  const status =
+    err && typeof err === "object" && "status" in err && typeof (err as { status: unknown }).status === "number"
+      ? (err as { status: number }).status
+      : 502;
+  const message =
+    err && typeof err === "object" && "message" in err && typeof (err as { message: unknown }).message === "string"
+      ? (err as { message: string }).message
+      : err instanceof Error
+        ? err.message
+        : "Anthropic request failed";
+  console.error("/api/chat Anthropic error:", { model, status, message, err });
+  const clientStatus = status >= 400 && status < 600 ? status : 502;
+  const hint =
+    clientStatus === 404 || /not_found|model/i.test(message)
+      ? "Check ANTHROPIC_MODEL in .env matches a model your API key can use (see Anthropic docs)."
+      : clientStatus === 401
+        ? "Invalid or missing API key."
+        : undefined;
+  return { message, model, hint, clientStatus };
+}
 
-RULE 4 — DETERMINE INTENT (GIVE vs GET):
-Always determine whether the user wants to GIVE a computer or GET a computer before responding.
-- Wants to RECEIVE: "I need a computer", "can I get a laptop", "I applied for a computer" → Direct to https://www.computers4people.org/apply
-- Wants to DONATE: "I have old computers", "I want to donate", "can you pick up my equipment" → Direct to https://www.computers4people.org/donate
-- If someone mentions a cracked screen or broken device while asking for help, they most likely want a REPLACEMENT, not to donate.
+function anthropicErrorResponse(err: unknown, model: string) {
+  const { message, model: m, hint, clientStatus } = anthropicErrorPayload(err, model);
+  return Response.json({ error: message, model: m, hint }, { status: clientStatus });
+}
 
-KEY LINKS — Always use the exact URL for the matching intent:
-- Apply for a free computer (individual): https://www.computers4people.org/apply
-- Apply for computers (nonprofit): https://www.computers4people.org/nonprofitapplication
-- Paper application (no computer access): https://www.computers4people.org/paperapplication
-- Check eligibility: https://www.computers4people.org/eligibility
-- Donate equipment: https://www.computers4people.org/donate
-- Drop-off locations: https://www.computers4people.org/ewastedropoff
-- FedEx drop-off locator: https://local.fedex.com/en/search
-- Data destruction certificates (donor portal): https://www.computers4people.org/auth
-- Donate money: https://www.computers4people.org/give
-- Shield Internet sign-up: https://www.computers4people.org/shield
-- Shield Internet customer portal: https://www.computers4people.org/shield-auth
-- Shield coverage map: https://www.t-mobile.com/coverage/coverage-map
-- Digital Skills / PC Building classes: https://www.computers4people.org/DSClasses
-- Become a nonprofit partner: https://www.computers4people.org/partner
-- Volunteer: https://www.computers4people.org/volunteer
-- Careers: https://careers.computers4people.org
-- Contact/support: https://www.computers4people.org/contact
-
-FREE COMPUTER PROGRAM DETAILS:
-- Eligibility (individuals): Must reside in NJ, NYC, or MA; must be low income (below 200% Federal Poverty Index); must be recommended by an approved C4P partner organization; must submit a written statement; may only receive ONE computer.
-- Eligibility (nonprofits): Must operate in NJ, NYC, or MA; must be a 501(c)(3); annual budget under $250,000.
-- How to apply: Visit https://www.computers4people.org/apply, fill out the form, identify a recommender from an approved partner org. Applications are NOT reviewed until the recommendation is received.
-- No computer to apply? Paper application: https://www.computers4people.org/paperapplication — mail to 321 Newark St #32, Hoboken, NJ 07030.
-- Timeline: Most applicants receive an update within 2-4 weeks. Check spam folder for emails from info@computers4people.org.
-- Types of computers: Laptops (Windows 10), Desktops, All-In-One Desktops, Tablets. Software includes Windows 11 and free alternatives to Microsoft Office.
-- Warranty: 3-month warranty. For broken C4P devices, submit a support ticket at https://www.computers4people.org/contact with the Computer Barcode (green label, e.g. C4PNJ1234). C4P only supports C4P-donated devices.
-- Reapplying after denial: Yes, if situation has changed: https://www.computers4people.org/eligibility
-- No age requirement. Recommender must be over 18.
-- Caregivers/caseworkers may help complete the application on behalf of someone.
-
-SHIELD INTERNET DETAILS:
-- Affordable 5G internet service. 100% of profits fund free computer donations.
-- Available in 49 states (not Alaska), Puerto Rico, U.S. Virgin Islands.
-- Plans: Monthly $14.89/month (billed 1st of each month) | Yearly $156/year ($13/month equivalent).
-- Unlimited data, no contracts, no data overages. Speeds may slow during congestion; usage over 100GB/month may be deprioritized.
-- SIM works in any GSM-unlocked device supporting required LTE/5G bands.
-- SIM delivery: 7-10 business days via standard mail, no tracking. SIMs are pre-activated.
-- Customer portal: https://www.computers4people.org/shield-auth — manage payment, view billing, cancel, referral program.
-- To add another SIM: order at https://www.computers4people.org/shield (not through the portal). Use same email.
-- Referral program: Get a month free. New customers get 5% off.
-- Cancel: Via portal or contact form. No early termination fees. Service continues until end of billing term.
-- Not available internationally. Cannot be paused.
-- Troubleshooting: Remove/reinsert SIM, restart device, check signal, wait 1-2 hours if new, try in another device, move near window. If still not working: https://www.computers4people.org/contact
-- eSIM: Submit IMEI to https://www.computers4people.org/contact for compatibility check.
-
-EQUIPMENT DONATIONS:
-- C4P accepts ALL electronics (working or non-working) including laptops, desktops, tablets, monitors, phones, keyboards, cables, and all e-waste.
-- Under 50 devices: FedEx shipping label/QR code provided after form submission (if includes laptops/phones/tablets) OR drop off at a C4P location. C4P CANNOT schedule a pickup for under 50 devices.
-- 50+ devices: C4P picks up nationwide. Submit form and C4P will schedule.
-- Data security: NIST 800-88 certified data erasure. Certificates available at https://www.computers4people.org/auth.
-- Tax receipts emailed after collection. Donors determine their own Fair Market Value. C4P cannot assign value.
-
-MONETARY DONATIONS:
-- Online: https://www.computers4people.org/give
-- Check: Mail to Computers For People Inc., 321 Newark St, Suite 3, Hoboken, NJ 07030
-- Zelle: info@computers4people.org
-- Grant nominations: https://www.computers4people.org/contact
-
-DIGITAL SKILLS & PC BUILDING CLASSES:
-- Offered exclusively through nonprofit partner organizations. NO open enrollment.
-- Topics: basic computer use, email setup, internet navigation, online safety.
-- Info: https://www.computers4people.org/DSClasses
-
-VOLUNTEERING, CAREERS, PARTNERSHIPS:
-- Volunteer: https://www.computers4people.org/volunteer
-- Careers: https://careers.computers4people.org
-- Nonprofit partnerships (400+ partners): https://www.computers4people.org/partner
-- Corporate partnerships: https://www.computers4people.org/contact
-
-DIGITAL LITERACY HELP (for computer recipients and general users):
-- How to open the internet: Find Google Chrome on desktop (colorful circle icon), double-click it.
-- How to connect to Wi-Fi: Click signal icon in bottom-right, select network. Name/password usually on back of router.
-- Virus scan: Start > Settings > Update & Security > Windows Security > Virus & Threat Protection > Scan Options > Full Scan > Scan Now
-- Battery tips: Lower screen brightness, close unused apps, disable backlit keyboard.
-- Online scam safety (S.T.O.P. method): Suspicious? Telling you to click a link? Offering something too good to be true? Pushing you to act quickly? If yes, likely a scam. Never click links or share personal info.
-
-TONE: Be warm, clear, and concise. If a question falls outside your knowledge, direct users to https://www.computers4people.org/contact. Never invent policies or details.`;
-
-  const systemContent = imageBase64
-    ? knowledgeBase + "\n\nThe user has shared a screenshot of their screen. Use what you see in the screenshot to give specific, contextual answers — for example, referencing where things are on their screen. If they need help with their computer, guide them step by step using what's visible. If they are asking about C4P programs or services, answer using the knowledge base above."
-    : knowledgeBase + "\n\nIf a question about their computer would be easier to answer by seeing their screen, suggest they take a screenshot using the screenshot button.";
-
-  const userContent: OpenAI.Chat.Completions.ChatCompletionContentPart[] = imageBase64
-    ? [
-        { type: "image_url", image_url: { url: `data:image/png;base64,${imageBase64}` } },
-        { type: "text", text: prompt },
-      ]
-    : [{ type: "text", text: prompt }];
-
-  const result = await client.chat.completions.create({
-    model: "gpt-4o",
-    stream: true,
-    messages: [
-      {
-        role: "system",
-        content: systemContent,
-      },
-      ...history,
-      {
-        role: "user",
-        content: userContent,
-      },
-    ],
-  });
-
-  const stream = new ReadableStream({
+function streamTextFromMessageStream(stream: AsyncIterable<RawMessageStreamEvent>): ReadableStream<Uint8Array> {
+  return new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
-
-      for await (const chunk of result) {
-        const delta = chunk.choices[0]?.delta?.content;
-
-        if (delta) {
-          controller.enqueue(encoder.encode(delta));
+      try {
+        for await (const event of stream) {
+          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+            controller.enqueue(encoder.encode(event.delta.text));
+          }
         }
+        controller.close();
+      } catch (err) {
+        console.error("Anthropic stream error:", err);
+        controller.error(err);
       }
-
-      controller.close();
     },
   });
+}
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
+async function handleCompleteScreenshot(
+  client: Anthropic,
+  model: string,
+  body: {
+    prompt?: string;
+    history?: ChatHistoryItem[];
+    imageBase64?: string | null;
+    assistantContent?: unknown;
+  },
+) {
+  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  if (!prompt) {
+    return Response.json({ error: "Missing or empty prompt" }, { status: 400 });
+  }
+
+  const imageBase64 = normalizePngBase64(body.imageBase64 ?? undefined);
+  if (!imageBase64) {
+    return Response.json({ error: "Missing or invalid screenshot image" }, { status: 400 });
+  }
+
+  const assistantContent = parseAssistantContent(body.assistantContent);
+  if (!assistantContent?.length || !wantsCaptureScreen(assistantContent)) {
+    return Response.json({ error: "Invalid screenshot completion request" }, { status: 400 });
+  }
+
+  const systemWithScreenshot =
+    C4P_KNOWLEDGE_BASE +
+    "\n\nThe user has shared a screenshot of their screen. Use what you see to give specific answers — reference what is visible, guide step by step for computer help, and use the knowledge base for C4P questions.";
+
+  const toolResultBlocks: ContentBlockParam[] = [];
+  for (const block of assistantContent) {
+    if (block.type !== "tool_use") continue;
+    const note =
+      block.name === "capture_screen"
+        ? JSON.stringify({ ok: true, note: "Screenshot is attached in this message." })
+        : JSON.stringify({ ok: false, error: "Unsupported tool." });
+    toolResultBlocks.push({
+      type: "tool_result",
+      tool_use_id: block.id,
+      content: note,
+    });
+  }
+
+  const userFollowUp: ContentBlockParam[] = [
+    ...toolResultBlocks,
+    {
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: "image/png",
+        data: imageBase64,
+      },
     },
-  });
+    { type: "text", text: "Current screenshot of the user's screen." },
+  ];
+
+  const messages: MessageParam[] = [
+    ...historyToMessages(body.history ?? []),
+    { role: "user", content: prompt },
+    { role: "assistant", content: assistantContent as MessageParam["content"] },
+    { role: "user", content: userFollowUp },
+  ];
+
+  try {
+    const stream = await client.messages.create({
+      model,
+      max_tokens: 8192,
+      system: systemWithScreenshot,
+      messages,
+      stream: true,
+    });
+
+    return new Response(streamTextFromMessageStream(stream), {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+      },
+    });
+  } catch (err) {
+    return anthropicErrorResponse(err, model);
+  }
+}
+
+async function handleInitialTurn(
+  client: Anthropic,
+  model: string,
+  body: { prompt?: string; history?: ChatHistoryItem[]; streaming?: boolean },
+) {
+  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  if (!prompt) {
+    return Response.json({ error: "Missing or empty prompt" }, { status: 400 });
+  }
+
+  const systemBase =
+    C4P_KNOWLEDGE_BASE +
+    "\n\nWhen the user asks about something on their computer and you need to see their screen, call the capture_screen tool. After a screenshot is provided, use it to give specific, contextual answers. Do not ask the user to press a manual screenshot button.";
+
+  const messages: MessageParam[] = [
+    ...historyToMessages(body.history ?? []),
+    { role: "user", content: prompt },
+  ];
+
+  if (body.streaming) {
+    const stream = client.messages.stream({
+      model,
+      max_tokens: 8192,
+      system: systemBase,
+      messages,
+      tools: [CAPTURE_SCREEN_TOOL],
+    });
+
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      async start(controller) {
+        const write = (obj: Record<string, unknown>) => {
+          controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
+        };
+
+        stream.on("text", (delta: string) => {
+          write({ type: "token", text: delta });
+        });
+
+        try {
+          const final = await stream.finalMessage();
+          const blocks = final.content as ContentBlock[];
+          if (wantsCaptureScreen(blocks)) {
+            write({ type: "done", action: "capture_screen", assistantContent: blocks });
+          } else {
+            const text = extractTextFromContent(blocks).trim();
+            write({
+              type: "done",
+              action: null,
+              reply: text || "I could not generate a response. Please try again.",
+            });
+          }
+          controller.close();
+        } catch (err) {
+          const { message, model: m, hint } = anthropicErrorPayload(err, model);
+          write({ type: "error", error: message, model: m, hint });
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "application/x-ndjson; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+      },
+    });
+  }
+
+  try {
+    const response = await client.messages.create({
+      model,
+      max_tokens: 8192,
+      system: systemBase,
+      messages,
+      tools: [CAPTURE_SCREEN_TOOL],
+    });
+
+    const blocks = response.content;
+    if (wantsCaptureScreen(blocks)) {
+      return Response.json({
+        action: "capture_screen" as const,
+        assistantContent: blocks,
+      });
+    }
+
+    const text = extractTextFromContent(blocks).trim();
+    if (!text) {
+      return Response.json({ reply: "I could not generate a response. Please try again." });
+    }
+    return Response.json({ reply: text });
+  } catch (err) {
+    return anthropicErrorResponse(err, model);
+  }
+}
+
+export async function POST(req: Request) {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error(
+      "/api/chat: ANTHROPIC_API_KEY is missing. Put .env in t4sg-c4p-2026 (same folder as package.json), not only the parent folder.",
+    );
+    return Response.json(
+      {
+        error:
+          "ANTHROPIC_API_KEY is not configured. Add it to t4sg-c4p-2026/.env and restart the dev server.",
+      },
+      { status: 500 },
+    );
+  }
+
+  const model = process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL;
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await req.json()) as Record<string, unknown>;
+  } catch {
+    return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  if (body.phase === "complete_screenshot") {
+    return handleCompleteScreenshot(client, model, {
+      prompt: body.prompt as string | undefined,
+      history: body.history as ChatHistoryItem[] | undefined,
+      imageBase64: body.imageBase64 as string | null | undefined,
+      assistantContent: body.assistantContent,
+    });
+  }
+
+  return handleInitialTurn(client, model, body as { prompt?: string; history?: ChatHistoryItem[]; streaming?: boolean });
 }

@@ -1,9 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 import OpenAI from "openai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 export async function POST(req: NextRequest) {
+  if (!process.env.OPENAI_API_KEY) {
+    return NextResponse.json(
+      {
+        error:
+          "Voice transcription requires OPENAI_API_KEY (Anthropic does not provide speech-to-text). Add it to your .env or disable voice input.",
+      },
+      { status: 503 },
+    );
+  }
+
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
   try {
     const formData = await req.formData();
     const audioFile = formData.get("audio") as File | null;

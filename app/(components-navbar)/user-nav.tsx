@@ -26,6 +26,7 @@ export default function UserNav({ profile }: { profile: Profile }) {
   const router = useRouter();
 
   const handleSignOut = async () => {
+    if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
     router.refresh();
   };
