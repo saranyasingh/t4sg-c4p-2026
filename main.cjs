@@ -234,8 +234,6 @@ function createWindow() {
     height: bounds.height,
 
     frame: false,
-    fullscreen: true,
-    simpleFullscreen: isDarwin,
     hasShadow: false,
     alwaysOnTop: true,
     transparent: true,
