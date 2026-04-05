@@ -6,7 +6,8 @@ import { TypographyP } from "@/components/ui/typography";
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
 import { findTargetViaChunkedVision } from "@/lib/screen-chunk-pipeline";
 import type { ScreenHighlight, StepVisual } from "@/lib/tutorials";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useTutorial } from "./tutorial-provider";
 
@@ -38,6 +39,37 @@ export function TutorialController() {
     screenshotWidth: number;
     screenshotHeight: number;
   } | null>(null);
+  const [isLoadingHighlight, setIsLoadingHighlight] = useState(false);
+  const [spotlightRect, setSpotlightRect] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    centerX: number;
+    centerY: number;
+  } | null>(null);
+  const [viewport, setViewport] = useState(() => ({
+    w: typeof window !== "undefined" ? window.innerWidth : 1,
+    h: typeof window !== "undefined" ? window.innerHeight : 1,
+  }));
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    function syncViewport() {
+      setViewport({
+        w: typeof window !== "undefined" ? window.innerWidth : 1,
+        h: typeof window !== "undefined" ? window.innerHeight : 1,
+      });
+    }
+
+    syncViewport();
+    window.addEventListener("resize", syncViewport);
+    return () => window.removeEventListener("resize", syncViewport);
+  }, []);
 
   const [highlightError, setHighlightError] = useState<string | null>(null);
 
@@ -47,22 +79,31 @@ export function TutorialController() {
     async function syncHighlight() {
       if (!currentStep) {
         setHighlightPayload(null);
+        setIsLoadingHighlight(false);
         setHighlightError(null);
         return;
       }
 
       if (currentStep.highlightDescription) {
         setHighlightPayload(null);
+        setIsLoadingHighlight(true);
         setHighlightError(null);
         if (typeof window === "undefined" || !window.electronAPI) {
+          setIsLoadingHighlight(false);
           return;
         }
 
         const cap = await captureScreenToPngBase64();
-        if (cancelled || !cap) return;
+        if (cancelled || !cap) {
+          setIsLoadingHighlight(false);
+          return;
+        }
 
-        const result = await findTargetViaChunkedVision(cap, currentStep.highlightDescription);
-        if (cancelled) return;
+        const d = await findTargetViaChunkedVision(cap, currentStep.highlightDescription);
+        if (cancelled) {
+          setIsLoadingHighlight(false);
+          return;
+        }
 
         if (result.found) {
           setHighlightError(null);
@@ -81,10 +122,12 @@ export function TutorialController() {
           setHighlightPayload(null);
           setHighlightError(result.explanation);
         }
+        setIsLoadingHighlight(false);
         return;
       }
 
       if (currentStep.highlight) {
+        setIsLoadingHighlight(false);
         setHighlightError(null);
         setHighlightPayload({
           coords: currentStep.highlight,
@@ -94,6 +137,7 @@ export function TutorialController() {
         return;
       }
 
+      setIsLoadingHighlight(false);
       setHighlightPayload(null);
       setHighlightError(null);
     }
@@ -104,83 +148,163 @@ export function TutorialController() {
     };
   }, [currentStep]);
 
-  if (!tutorialId || !activeTutorial || !currentStep) {
-    return null;
-  }
-
   const fallbackW = typeof window !== "undefined" ? window.innerWidth : 1;
   const fallbackH = typeof window !== "undefined" ? window.innerHeight : 1;
 
+  const textBoxStyle = useMemo(() => {
+    const vw = viewport.w;
+    const vh = viewport.h;
+    const margin = 16;
+    const maxW = Math.min(420, vw - margin * 2);
+
+    const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
+
+    if (spotlightRect) {
+      const preferBelow = spotlightRect.top + spotlightRect.height + 220 < vh;
+      const top = preferBelow ? spotlightRect.top + spotlightRect.height + 12 : spotlightRect.top - 200;
+      const left = clamp(spotlightRect.left + spotlightRect.width / 2 - maxW / 2, margin, vw - maxW - margin);
+
+      return {
+        width: maxW,
+        left,
+        top: clamp(top, margin, vh - 180 - margin),
+        bottom: undefined as number | undefined,
+      };
+    }
+
+    // No detected spotlight: keep tutorial text anchored above bottom-left controls.
+    return {
+      width: maxW,
+      left: margin,
+      top: undefined as number | undefined,
+      bottom: 64,
+    };
+  }, [spotlightRect, viewport.h, viewport.w]);
+
+  if (!mounted || !tutorialId || !activeTutorial || !currentStep) {
+    return null;
+  }
+
+  const shouldWaitForBox = Boolean(currentStep.highlightDescription);
+  const showStepText = !shouldWaitForBox || !isLoadingHighlight;
+  const hasSpotlight = Boolean(highlightPayload?.coords);
+
   return (
     <>
+      {!hasSpotlight
+        ? createPortal(
+            <div
+              className="pointer-events-none fixed inset-0"
+              style={{
+                zIndex: 999991,
+                background: "rgba(8, 10, 16, 0.54)",
+              }}
+              aria-hidden="true"
+            />,
+            document.body,
+          )
+        : null}
+
       <BoundingBoxOverlay
         coords={highlightPayload?.coords ?? null}
         screenshotWidth={highlightPayload?.screenshotWidth ?? fallbackW}
         screenshotHeight={highlightPayload?.screenshotHeight ?? fallbackH}
+        expandFactor={2.5}
+        onSpotlightRectChange={setSpotlightRect}
       />
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col justify-end p-4">
-        <div
-          className="pointer-events-auto max-h-[45vh] overflow-y-auto rounded-xl border border-white/25 bg-[hsl(var(--foreground)/0.92)] p-4 text-white shadow-lg backdrop-blur-sm"
-          role="dialog"
-          aria-labelledby="tutorial-step-title"
-          aria-describedby="tutorial-step-body"
-        >
-          <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-            <div className="min-w-0 space-y-0.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-white/60">
-                {t(activeTutorial.title)}
-              </p>
-              <h2 id="tutorial-step-title" className="text-base font-semibold leading-snug text-white">
-                {currentStep.title ? t(currentStep.title) : t(activeTutorial.title)}
-              </h2>
-            </div>
-            <span
-              className="shrink-0 rounded-md border border-white/25 bg-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white/85"
-              title={t("tutorial.visualBadgeHint")}
+      {showStepText
+        ? createPortal(
+            <div
+              className="pointer-events-none fixed z-[999997] max-h-[42vh] overflow-y-auto rounded-xl border border-white/35 bg-[hsl(var(--foreground)/0.95)] p-4 text-white shadow-2xl backdrop-blur-sm"
+              style={{
+                left: textBoxStyle.left,
+                top: textBoxStyle.top,
+                bottom: textBoxStyle.bottom,
+                width: textBoxStyle.width,
+                maxHeight: textBoxStyle.bottom ? "calc(100vh - 96px)" : undefined,
+              }}
+              role="dialog"
+              aria-labelledby="tutorial-step-title"
+              aria-describedby="tutorial-step-body"
             >
-              {t(visualLabelKey(currentStep.visual))}
-            </span>
-          </div>
-          <TypographyP id="tutorial-step-body" className="whitespace-pre-wrap text-sm leading-relaxed">
-            {t(currentStep.text)}
-          </TypographyP>
-
-          {highlightError && (
-            <div className="mt-3 rounded-lg border border-yellow-400/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-200">
-              <p className="mb-0.5 font-semibold text-yellow-300">{t("tutorial.highlightErrorTitle")}</p>
-              <p className="mb-1 leading-snug">{highlightError}</p>
-              <p className="text-xs text-yellow-200/90">{t("tutorial.highlightErrorHint")}</p>
-            </div>
+              <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0 space-y-0.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-white/60">
+                    {activeTutorial.title}
+                  </p>
+                  <h2 id="tutorial-step-title" className="text-base font-semibold leading-snug text-white">
+                    {currentStep.title ?? activeTutorial.title}
+                  </h2>
+                </div>
+                <span
+                  className="shrink-0 rounded-md border border-white/25 bg-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white/85"
+                  title={t("tutorial.visualBadgeHint")}
+                >
+                  {t(visualLabelKey(currentStep.visual))}
+                </span>
+              </div>
+              <TypographyP id="tutorial-step-body" className="whitespace-pre-wrap text-sm leading-relaxed">
+                {currentStep.text}
+              </TypographyP>
+            </div>,
+            document.body,
+          )
+        : createPortal(
+            <div
+              className="pointer-events-none fixed inset-0 z-[999997] flex items-center justify-center px-6"
+              role="status"
+              aria-live="polite"
+            >
+              <div className="rounded-lg border border-white/30 bg-black/70 px-4 py-2 text-sm font-medium tracking-wide text-white">
+                Loading...
+              </div>
+            </div>,
+            document.body,
           )}
+        {highlightError && (
+              <div className="mt-3 rounded-lg border border-yellow-400/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-200">
+                <p className="mb-0.5 font-semibold text-yellow-300">{t("tutorial.highlightErrorTitle")}</p>
+                <p className="mb-1 leading-snug">{highlightError}</p>
+                <p className="text-xs text-yellow-200/90">{t("tutorial.highlightErrorHint")}</p>
+              </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-            {canGoPrevious ? (
-              <Button type="button" variant="outline" className="interactable border-white/40" onClick={previousStep}>
-                {t("tutorial.back")}
-              </Button>
-            ) : null}
-            {canGoNext ? (
-              <Button type="button" className="interactable" onClick={nextStep}>
-                {t("tutorial.next")}
-              </Button>
-            ) : null}
-            {isLastStep ? (
-              <Button type="button" className="interactable" onClick={exitTutorial}>
-                {t("tutorial.finish")}
-              </Button>
-            ) : null}
+        )}
+
+   
+      {createPortal(
+        <div className="fixed bottom-4 left-4 z-[999998] flex flex-wrap items-center gap-2">
+          {canGoPrevious ? (
             <Button
               type="button"
-              variant="ghost"
-              className="interactable text-white/90 hover:bg-white/10"
-              onClick={exitTutorial}
+              variant="outline"
+              className="interactable border-white/40 bg-black/60 text-white"
+              onClick={previousStep}
             >
-              {t("tutorial.exit")}
+              {t("tutorial.back")}
             </Button>
-          </div>
-        </div>
-      </div>
+          ) : null}
+          {canGoNext ? (
+            <Button type="button" className="interactable bg-white text-black hover:bg-white/90" onClick={nextStep}>
+              {t("tutorial.next")}
+            </Button>
+          ) : null}
+          {isLastStep ? (
+            <Button type="button" className="interactable bg-white text-black hover:bg-white/90" onClick={exitTutorial}>
+              {t("tutorial.finish")}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            className="interactable border border-white/25 bg-black/45 text-white/95 hover:bg-black/60"
+            onClick={exitTutorial}
+          >
+            {t("tutorial.exit")}
+          </Button>
+        </div>,
+        document.body,
+      )}
     </>
   );
 }
