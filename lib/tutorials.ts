@@ -40,14 +40,6 @@ export interface Tutorial {
 
 const googleSearchSteps: TutorialStep[] = [
   {
-    id: "gs-open-chrome",
-    title: "tutorials.googleSearch.steps.gs-open-chrome.title",
-    text: "tutorials.googleSearch.steps.gs-open-chrome.body",
-    visual: "screen",
-    highlightDescription:
-      "The Google Chrome application icon on the desktop, taskbar, Windows Start menu, or macOS Dock. Return a larger bounding box than necessary. ",
-  },
-  {
     id: "gs-intro",
     title: "tutorials.googleSearch.steps.gs-intro.title",
     text: "tutorials.googleSearch.steps.gs-intro.body",
@@ -90,20 +82,20 @@ const googleSearchSteps: TutorialStep[] = [
     visual: "text",
   },
   {
+    id: "gs-open-chrome",
+    title: "tutorials.googleSearch.steps.gs-open-chrome.title",
+    text: "tutorials.googleSearch.steps.gs-open-chrome.body",
+    visual: "screen",
+    highlightDescription:
+      "The Google Chrome application icon on the desktop, taskbar, Windows Start menu. Return a larger bounding box than necessary. ",
+  },
+  {
     id: "gs-tabs",
     title: "tutorials.googleSearch.steps.gs-tabs.title",
     text: "tutorials.googleSearch.steps.gs-tabs.body",
     visual: "screen_text",
     highlightDescription:
       "The row of browser tabs at the top of Google Chrome and the plus (+) button to open a new tab next to the tabs.",
-  },
-  {
-    id: "gs-back-forward-refresh",
-    title: "tutorials.googleSearch.steps.gs-back-forward-refresh.title",
-    text: "tutorials.googleSearch.steps.gs-back-forward-refresh.body",
-    visual: "screen_text",
-    highlightDescription:
-      "The back arrow, forward arrow, and circular refresh button immediately to the left of the address bar in Google Chrome.",
   },
   {
     id: "gs-address-bar",
@@ -114,19 +106,12 @@ const googleSearchSteps: TutorialStep[] = [
       "The address bar at the top of Google Chrome showing the current web page URL or site address.",
   },
   {
-    id: "gs-open-tabs-recent",
-    title: "tutorials.googleSearch.steps.gs-open-tabs-recent.title",
-    text: "tutorials.googleSearch.steps.gs-open-tabs-recent.body",
+    id: "gs-back-forward-refresh",
+    title: "tutorials.googleSearch.steps.gs-back-forward-refresh.title",
+    text: "tutorials.googleSearch.steps.gs-back-forward-refresh.body",
     visual: "screen_text",
     highlightDescription:
-      "The tab search icon or small downward arrow in the Chrome tab strip used to search or list open tabs and recently closed tabs.",
-  },
-  {
-    id: "gs-share-page",
-    title: "tutorials.googleSearch.steps.gs-share-page.title",
-    text: "tutorials.googleSearch.steps.gs-share-page.body",
-    visual: "screen_text",
-    highlightDescription: "The share icon in the Chrome toolbar to the right of the address bar.",
+      "The back arrow, forward arrow, and circular refresh button immediately to the left of the address bar in Google Chrome.",
   },
   {
     id: "gs-bookmarks",
@@ -150,79 +135,11 @@ const googleSearchSteps: TutorialStep[] = [
     highlightDescription: "The three vertical dots menu button at the top right corner of the Google Chrome window.",
   },
   {
-    id: "gs-search-bar",
-    title: "tutorials.googleSearch.steps.gs-search-bar.title",
-    text: "tutorials.googleSearch.steps.gs-search-bar.body",
-    visual: "screen_text",
-    highlightDescription:
-      "The large Google search box in the middle of the Google homepage, or the combined address and search bar at the top of Chrome.",
-  },
-  {
-    id: "gs-try-layout",
-    title: "tutorials.googleSearch.steps.gs-try-layout.title",
-    text: "tutorials.googleSearch.steps.gs-try-layout.body",
-    visual: "text",
-  },
-  {
-    id: "gs-navigating",
-    title: "tutorials.googleSearch.steps.gs-navigating.title",
-    text: "tutorials.googleSearch.steps.gs-navigating.body",
-    visual: "text",
-  },
-  {
-    id: "gs-08-tabs",
-    title: "Browser Layout: Tabs",
-    visual: "screen",
-    text: `A tab is a clickable area at the top of a window that shows another page or area.
-
-Try opening a new tab: use the "+" next to your tabs, or the menu option for a new tab. A new empty tab will appear so you can go to another site without closing the first one.`,
-    highlightDescription: "The new tab button near the top of the browser window. The plus sign next to the tabs.",
-  },
-  {
-    id: "gs-navigate-url",
-    title: "tutorials.googleSearch.steps.gs-navigate-url.title",
-    text: "tutorials.googleSearch.steps.gs-navigate-url.body",
-    visual: "screen_text",
-    highlightDescription: "The address bar at the top of Chrome where you type a website address.",
-  },
-  {
-    id: "gs-try-again",
-    title: "tutorials.googleSearch.steps.gs-try-again.title",
-    text: "tutorials.googleSearch.steps.gs-try-again.body",
-    visual: "text",
-  },
-  {
-    id: "gs-searching-intro",
-    title: "tutorials.googleSearch.steps.gs-searching-intro.title",
-    text: "tutorials.googleSearch.steps.gs-searching-intro.body",
-    visual: "text",
-  },
-  {
-    id: "gs-search-practice",
-    title: "tutorials.googleSearch.steps.gs-search-practice.title",
-    text: "tutorials.googleSearch.steps.gs-search-practice.body",
-    visual: "screen_text",
-    highlightDescription:
-      "The address bar omnibox at the top of Chrome or the main search input on the Google search page.",
-  },
-  {
-    id: "gs-more-options",
-    title: "tutorials.googleSearch.steps.gs-more-options.title",
-    text: "tutorials.googleSearch.steps.gs-more-options.body",
-    visual: "text",
-  },
-  {
     id: "gs-review",
     title: "tutorials.googleSearch.steps.gs-review.title",
     text: "tutorials.googleSearch.steps.gs-review.body",
     visual: "text",
-  },
-  {
-    id: "gs-next-time",
-    title: "tutorials.googleSearch.steps.gs-next-time.title",
-    text: "tutorials.googleSearch.steps.gs-next-time.body",
-    visual: "text",
-  },
+  }
 ];
 
 const gmailSteps: TutorialStep[] = [

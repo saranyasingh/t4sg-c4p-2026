@@ -73,6 +73,61 @@ function extractAssistantText(response) {
   return textBlock?.text ?? "";
 }
 
+/** Pull first `{ ... }` from text, respecting JSON string escaping (handles prose before/after the object). */
+function extractFirstJsonObject(s) {
+  const start = s.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < s.length; i++) {
+    const c = s[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (inString) {
+      if (c === "\\") {
+        escape = true;
+        continue;
+      }
+      if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      continue;
+    }
+    if (c === "{") depth++;
+    else if (c === "}") {
+      depth--;
+      if (depth === 0) return s.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+/**
+ * Parse a JSON object from vision assistant text (may include markdown fences or a short preamble).
+ */
+function parseAssistantJson(raw) {
+  const cleaned = raw.replace(/```json|```/g, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const extracted = extractFirstJsonObject(cleaned);
+    if (extracted) {
+      try {
+        return JSON.parse(extracted);
+      } catch {
+        /* fall through */
+      }
+    }
+    const preview = cleaned.length > 200 ? `${cleaned.slice(0, 200)}…` : cleaned;
+    throw new SyntaxError(`Assistant reply is not valid JSON: ${preview}`);
+  }
+}
+
 async function analyzeScreenshot(imageBase64, targetDescription, imageWidth, imageHeight) {
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   require("dotenv/config");
@@ -134,7 +189,7 @@ In the explanation, describe what you DO see on the screen and give the user pra
   });
 
   const raw = extractAssistantText(response).replace(/```json|```/g, "").trim();
-  const parsed = JSON.parse(raw);
+  const parsed = parseAssistantJson(raw);
 
   if (parsed.found === false || parsed.found === "false") {
     return { found: false, explanation: parsed.explanation || "The target could not be located on screen." };
@@ -176,7 +231,7 @@ async function analyzeScreenshotTile(imageBase64, targetDescription, imageWidth,
     typeof targetDescription === "string" && targetDescription.trim().length > 0
       ? targetDescription.trim()
       : "the Google Chrome app icon";
-  console.log(target);
+
   const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514";
   const response = await client.messages.create({
     model,
@@ -199,9 +254,12 @@ async function analyzeScreenshotTile(imageBase64, targetDescription, imageWidth,
 
 What to find: ${target}
 
-If the target is NOT visible in this crop (even partially), return ONLY this JSON: {"found":false}
+Reply with ONE JSON object only — no markdown, no text before or after the object.
 
-If the target IS visible (fully or partially), return ONLY this JSON:
+If the target is NOT visible in this crop (even partially), use this shape (explanation: brief, crop-specific reason the target is absent or not identifiable here):
+{"found":false,"explanation":"<string>"}
+
+If the target IS visible (fully or partially), use:
 {"found":true,"left":<0-1>,"top":<0-1>,"width":<0-1>,"height":<0-1>,"confidence":<0-1>}
 
 When found is true, use normalized fractions relative to THIS crop only (top-left origin): left and top are the top-left corner of the tight box; width and height are box size divided by full crop width and height respectively.`,
@@ -212,14 +270,28 @@ When found is true, use normalized fractions relative to THIS crop only (top-lef
   });
 
   const raw = extractAssistantText(response).replace(/```json|```/g, "").trim();
-  const parsed = JSON.parse(raw);
+  const parsed = parseAssistantJson(raw);
 
   if (parsed.found === false || parsed.found === "false") {
-    return { found: false };
+    return {
+      found: false,
+      explanation:
+        typeof parsed.explanation === "string" && parsed.explanation.trim().length > 0
+          ? parsed.explanation.trim()
+          : "The target is not visible in this crop.",
+    };
   }
 
   const box = normalizedBoxToPixels(parsed, w, h);
-  if (!box) return { found: false };
+  if (!box) {
+    return {
+      found: false,
+      explanation:
+        typeof parsed.explanation === "string" && parsed.explanation.trim().length > 0
+          ? parsed.explanation.trim()
+          : "Could not parse a valid bounding box from the model response.",
+    };
+  }
   return { found: true, ...box };
 }
 
@@ -234,8 +306,6 @@ function createWindow() {
     height: bounds.height,
 
     frame: false,
-    fullscreen: true,
-    simpleFullscreen: isDarwin,
     hasShadow: false,
     alwaysOnTop: true,
     transparent: true,
@@ -321,7 +391,9 @@ ipcMain.handle("analyze-screenshot", async (_event, base64, targetDescription, i
 ipcMain.handle("analyze-screenshot-tile", async (_event, base64, targetDescription, imageWidth, imageHeight) => {
   try {
     const r = await analyzeScreenshotTile(base64, targetDescription, imageWidth, imageHeight);
-    if (!r.found) return { success: true, found: false };
+    if (!r.found) {
+      return { success: true, found: false, explanation: r.explanation };
+    }
     const { found, ...data } = r;
     return { success: true, found: true, data };
   } catch (err) {

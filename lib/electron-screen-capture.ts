@@ -27,6 +27,8 @@ declare global {
         success: boolean;
         found: boolean;
         data?: { x: number; y: number; width: number; height: number; confidence: number };
+        /** When found is false and success is true, crop-specific reason from the model. */
+        explanation?: string;
         error?: string;
       }>;
     };
