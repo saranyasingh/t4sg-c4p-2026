@@ -36,7 +36,7 @@ export default function BoundingBoxOverlay({
   expandFactor = 2.2,
   onSpotlightRectChange,
 }: BoundingBoxOverlayProps) {
-  const maskId = useId();
+  const maskId = useId().replace(/:/g, "");
   const [mounted, setMounted] = useState(false);
   const [viewportCss, setViewportCss] = useState(() => ({
     w: typeof window !== "undefined" ? window.innerWidth : 1,
@@ -64,7 +64,7 @@ export default function BoundingBoxOverlay({
 
       apply(iw, ih);
 
-      window.electronAPI?.getPrimaryDisplayBounds?.().then((b) => {
+      void window.electronAPI?.getPrimaryDisplayBounds?.().then((b) => {
         if (b) apply(b.width, b.height);
       });
     }
@@ -99,13 +99,14 @@ export default function BoundingBoxOverlay({
   const minPadding = 36;
   const grownWidth = Math.max(rawWidth * expandFactor, rawWidth + minPadding * 2);
   const grownHeight = Math.max(rawHeight * expandFactor, rawHeight + minPadding * 2);
+  /** Vision box center in CSS pixels — must drive the spotlight; do not re-derive from clamped left/top. */
   const centerX = rawLeft + rawWidth / 2;
   const centerY = rawTop + rawHeight / 2;
 
   const width = Math.min(grownWidth, vw - 8);
   const height = Math.min(grownHeight, vh - 8);
-  const left = Math.max(4, Math.min(centerX - width / 2, vw - width - 4));
-  const top = Math.max(4, Math.min(centerY - height / 2, vh - height - 4));
+  const left = centerX - width / 2;
+  const top = centerY - height / 2;
 
   useEffect(() => {
     if (!hasSpotlight) return;
@@ -123,10 +124,22 @@ export default function BoundingBoxOverlay({
     return null;
   }
 
-  const ellipseCx = left + width / 2;
-  const ellipseCy = top + height / 2;
+  const ellipseCx = centerX;
+  const ellipseCy = centerY;
   const ellipseRx = width / 2;
   const ellipseRy = height / 2;
+
+  /** Long feather so dim ramps gradually (circular mask r extends well past the ellipse). */
+  const coreR = Math.max(ellipseRx, ellipseRy);
+  const maskFeatherR = coreR + Math.min(160, coreR * 0.55 + 48);
+  const vignetteR = Math.hypot(vw, vh) * 0.78;
+  /** Inner vignette inside ellipse clip (rim slightly richer, center untouched). */
+  const innerSpotR = Math.max(ellipseRx, ellipseRy);
+
+  const vignetteGradId = `${maskId}-vignette`;
+  const dimHoleMaskGradId = `${maskId}-dim-hole-grad`;
+  const innerSpotGradId = `${maskId}-inner-spot-grad`;
+  const spotClipId = `${maskId}-spot-clip`;
 
   return createPortal(
     <svg
@@ -142,24 +155,50 @@ export default function BoundingBoxOverlay({
       aria-hidden="true"
     >
       <defs>
-        <mask id={maskId}>
-          <rect x="0" y="0" width={vw} height={vh} fill="white" />
-          <ellipse cx={ellipseCx} cy={ellipseCy} rx={ellipseRx} ry={ellipseRy} fill="black" />
+        {/* Luminance mask: black at center → no dimming; smooth feather → white at edges = full dimming. */}
+        <radialGradient id={dimHoleMaskGradId} cx={ellipseCx} cy={ellipseCy} r={maskFeatherR} gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="rgb(0,0,0)" />
+          <stop offset="40%" stopColor="rgb(0,0,0)" />
+          <stop offset="62%" stopColor="rgb(55,55,55)" />
+          <stop offset="78%" stopColor="rgb(165,165,165)" />
+          <stop offset="92%" stopColor="rgb(238,238,238)" />
+          <stop offset="100%" stopColor="rgb(255,255,255)" />
+        </radialGradient>
+        <mask id={maskId} maskUnits="userSpaceOnUse">
+          <rect x="0" y="0" width={vw} height={vh} fill={`url(#${dimHoleMaskGradId})`} />
         </mask>
+        <clipPath id={spotClipId} clipPathUnits="userSpaceOnUse">
+          <ellipse cx={ellipseCx} cy={ellipseCy} rx={ellipseRx} ry={ellipseRy} />
+        </clipPath>
+        <radialGradient id={innerSpotGradId} cx={ellipseCx} cy={ellipseCy} r={innerSpotR} gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="rgb(0,0,0)" stopOpacity="0" />
+          <stop offset="50%" stopColor="rgb(0,0,0)" stopOpacity="0" />
+          <stop offset="85%" stopColor="rgb(0,4,12)" stopOpacity="0.12" />
+          <stop offset="100%" stopColor="rgb(0,6,18)" stopOpacity="0.2" />
+        </radialGradient>
+        <radialGradient
+          id={vignetteGradId}
+          cx={ellipseCx}
+          cy={ellipseCy}
+          r={vignetteR}
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0%" stopColor="rgb(0,0,0)" stopOpacity="0" />
+          <stop offset="18%" stopColor="rgb(0,0,0)" stopOpacity="0.08" />
+          <stop offset="36%" stopColor="rgb(0,0,0)" stopOpacity="0.28" />
+          <stop offset="52%" stopColor="rgb(0,0,0)" stopOpacity="0.48" />
+          <stop offset="68%" stopColor="rgb(0,0,0)" stopOpacity="0.68" />
+          <stop offset="84%" stopColor="rgb(0,0,0)" stopOpacity="0.88" />
+          <stop offset="100%" stopColor="rgb(0,0,0)" stopOpacity="1" />
+        </radialGradient>
       </defs>
 
-      <rect x={0} y={0} width={vw} height={vh} fill="rgba(8, 10, 16, 0.54)" mask={`url(#${maskId})`} />
-
-      <ellipse
-        cx={ellipseCx}
-        cy={ellipseCy}
-        rx={Math.max(ellipseRx - 1, 1)}
-        ry={Math.max(ellipseRy - 1, 1)}
-        fill="transparent"
-        stroke="rgba(255, 235, 140, 0.96)"
-        strokeWidth={3}
-        strokeDasharray="10 8"
-      />
+      {/* Outside: graded dimming through feathered hole mask. */}
+      <rect x={0} y={0} width={vw} height={vh} fill={`url(#${vignetteGradId})`} mask={`url(#${maskId})`} />
+      <rect x={0} y={0} width={vw} height={vh} fill="rgba(0, 0, 0, 0.82)" mask={`url(#${maskId})`} />
+      <rect x={0} y={0} width={vw} height={vh} fill="rgba(0, 3, 10, 0.32)" mask={`url(#${maskId})`} />
+      {/* Inside ellipse: mild radial (center normal, rim slightly tinted). */}
+      <rect x={0} y={0} width={vw} height={vh} fill={`url(#${innerSpotGradId})`} clipPath={`url(#${spotClipId})`} />
     </svg>,
     document.body,
   );
