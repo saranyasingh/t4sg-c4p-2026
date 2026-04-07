@@ -158,7 +158,7 @@ const gmailSteps: TutorialStep[] = [
     text: "tutorials.gmail.gm-08-open-chrome.text",
     visual: "screen",
     highlightDescription:
-      "The Google Chrome application icon on the desktop, taskbar, Windows Start menu, or macOS Dock.",
+      "The Google Chrome application icon on the desktop, taskbar, or Windows Start menu. If there are multiple Chromes, return the biggest one. ",
   },
   {
     id: "gm-09-create-account",
