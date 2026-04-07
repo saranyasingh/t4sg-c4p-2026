@@ -27,7 +27,7 @@ export function LanguageSelector() {
           </span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
+      <DropdownMenuContent align="start" className="z-[1000000]">
         <DropdownMenuItem onClick={() => i18n.changeLanguage("en")}>{t("languageSelector.en")}</DropdownMenuItem>
         <DropdownMenuItem onClick={() => i18n.changeLanguage("es")}>{t("languageSelector.es")}</DropdownMenuItem>
       </DropdownMenuContent>
