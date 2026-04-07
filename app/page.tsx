@@ -23,27 +23,31 @@ export default function Home() {
         <TypographyH2>{t("home.brandTitle")}</TypographyH2>
         <TypographyP>{t("home.getStarted")}</TypographyP>
 
-        <div className="flex flex-col gap-1.5 pt-1">
-          {TUTORIALS.map((tutorial) => {
-            const isActive = tutorialId === tutorial.id;
-            return (
-              <Button
-                key={tutorial.id}
-                type="button"
-                variant="ghost"
-                className={`interactable flex h-auto items-center justify-start gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-white/20 text-white"
-                    : "text-white/80 hover:bg-white/10 hover:text-white"
-                }`}
-                onClick={() => startTutorial(tutorial.id)}
-              >
-                
-                <BookOpen className="h-4 w-4 shrink-0" />
-                {t(`tutorial.courseTitles.${tutorial.id}`, { defaultValue: tutorial.title })}
-              </Button>
-            );
-          })}
+        <div className="mt-2 rounded-xl border border-white/15 bg-white/5 p-3">
+          <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-white/60">
+            <BookOpen className="h-3.5 w-3.5" />
+            {t("home.tutorialsHeading")}
+          </h3>
+          <div className="flex flex-col gap-1">
+            {TUTORIALS.map((tutorial) => {
+              const isActive = tutorialId === tutorial.id;
+              return (
+                <Button
+                  key={tutorial.id}
+                  type="button"
+                  variant="ghost"
+                  className={`interactable flex h-auto items-center justify-start gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
+                    isActive
+                      ? "bg-white/20 text-white"
+                      : "text-white/80 hover:bg-white/10 hover:text-white"
+                  }`}
+                  onClick={() => startTutorial(tutorial.id)}
+                >
+                  {t(`tutorial.courseTitles.${tutorial.id}`, { defaultValue: tutorial.title })}
+                </Button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

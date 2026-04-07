@@ -210,9 +210,18 @@ async function handleCompleteScreenshot(body: {
   }
 }
 
-export async function POST(req: Request): Promise<Response> {
-  if (!process.env.OPENAI_API_KEY) {
-    return Response.json({ error: "OPENAI_API_KEY is not configured." }, { status: 500 });
+export async function POST(req: Request) {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error(
+      "/api/chat: ANTHROPIC_API_KEY is missing. Put .env in t4sg-c4p-2026 (same folder as package.json), not only the parent folder.",
+    );
+    return Response.json(
+      {
+        error:
+          "The assistant is not set up yet. Please ask your administrator to configure the API key and restart the app.",
+      },
+      { status: 500 },
+    );
   }
 
   let body: Record<string, unknown>;

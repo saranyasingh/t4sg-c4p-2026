@@ -132,6 +132,10 @@ async function analyzeScreenshot(imageBase64, targetDescription, imageWidth, ima
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   require("dotenv/config");
 
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { found: false, explanation: "The assistant is not set up yet. Please ask your administrator to configure the API key and restart the app." };
+  }
+
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   const display = screen.getPrimaryDisplay();
@@ -215,6 +219,10 @@ async function analyzeScreenshotTile(imageBase64, targetDescription, imageWidth,
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   require("dotenv/config");
 
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { found: false, explanation: "The assistant is not set up yet. Please ask your administrator to configure the API key and restart the app." };
+  }
+
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const display = screen.getPrimaryDisplay();
   const { width: logicalW, height: logicalH } = display.size;
@@ -296,14 +304,13 @@ When found is true, use normalized fractions relative to THIS crop only (top-lef
 }
 
 function createWindow() {
-  const bounds = screen.getPrimaryDisplay().bounds;
-  const isDarwin = process.platform === "darwin";
+  const { width, height } = screen.getPrimaryDisplay().bounds;
 
   win = new BrowserWindow({
-    x: bounds.x,
-    y: bounds.y,
-    width: bounds.width,
-    height: bounds.height,
+    x: 0,
+    y: 0,
+    width,
+    height,
 
     frame: false,
     hasShadow: false,
@@ -318,9 +325,9 @@ function createWindow() {
     },
   });
 
-  // Use torn-off-menu level so the overlay appears above system UI (Dock, taskbar).
-  win.setAlwaysOnTop(true, "torn-off-menu");
+  win.setAlwaysOnTop(true, "screen-saver", 100);
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  win.moveTop();
 
   // Make the entire window click-through.
   setClickThrough(true, { forward: true });
@@ -415,6 +422,8 @@ app.whenReady().then(() => {
       win.hide();
     } else {
       win.show();
+      win.setAlwaysOnTop(true, "screen-saver", 100);
+      win.moveTop();
       win.focus();
     }
   });
