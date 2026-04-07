@@ -8,6 +8,13 @@ import {
   downscalePngBase64ForAnthropicVision,
   mapAnthropicVisionBoxToCaptureSpace,
 } from "@/lib/electron-screen-capture";
+import {
+  isVisionDebugEnabled,
+  pushVisionDebugLog,
+  resetVisionDebug,
+  setVisionDebug,
+} from "@/lib/vision-debug";
+import { applyVisionGridToPngBase64 } from "@/lib/vision-grid-overlay";
 
 /** Vision / overlay box: top-left (x,y) plus size in screenshot pixels. */
 export interface Coordinates {
@@ -45,11 +52,33 @@ export default function ScreenshotButton({ onCoordinates, onScreenshot }: Screen
         setStatus("analyzing");
 
         const forApi = await downscalePngBase64ForAnthropicVision(cap);
+        const gridded = await applyVisionGridToPngBase64(forApi, "full");
+        if (isVisionDebugEnabled()) {
+          resetVisionDebug();
+          setVisionDebug({
+            phase: "simple-full",
+            detail: "Screenshot button → full-frame",
+            lastApiImage: {
+              base64: gridded.base64,
+              w: gridded.width,
+              h: gridded.height,
+              kind: "full",
+            },
+            fullCapture: { base64: cap.base64, w: cap.width, h: cap.height },
+            activeTileRect: null,
+            tileLabel: "",
+            tileIndex: 0,
+            tileTotal: 0,
+            lastClipHint: null,
+            log: [],
+          });
+          pushVisionDebugLog("screenshot-button analyzeScreenshot");
+        }
         const result = await window.electronAPI.analyzeScreenshot(
-          forApi.base64,
+          gridded.base64,
           undefined,
-          forApi.width,
-          forApi.height,
+          gridded.width,
+          gridded.height,
         );
         if (result.success && result.data) {
           onCoordinates(

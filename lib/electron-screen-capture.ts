@@ -23,12 +23,36 @@ declare global {
         targetDescription?: string,
         imageWidth?: number,
         imageHeight?: number,
+        opts?: { precise?: boolean } | null,
       ) => Promise<{
         success: boolean;
         found: boolean;
         data?: { x: number; y: number; width: number; height: number; confidence: number };
         /** When found is false and success is true, crop-specific reason from the model. */
         explanation?: string;
+        error?: string;
+      }>;
+      /** Fast/cheap model: is target in this crop? (no box). Skips expensive bbox when false. */
+      analyzeScreenshotTilePresence?: (
+        base64: string,
+        targetDescription?: string,
+        imageWidth?: number,
+        imageHeight?: number,
+      ) => Promise<{
+        success: boolean;
+        present?: boolean;
+        error?: string;
+      }>;
+      /** Cheap: is target clipped by crop? If so, which direction to expand (or "out"). */
+      analyzeScreenshotTileClipHint?: (
+        base64: string,
+        targetDescription?: string,
+        imageWidth?: number,
+        imageHeight?: number,
+      ) => Promise<{
+        success: boolean;
+        clipped?: boolean;
+        direction?: string;
         error?: string;
       }>;
     };
