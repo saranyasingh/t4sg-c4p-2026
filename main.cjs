@@ -1,9 +1,14 @@
 const { app, BrowserWindow, desktopCapturer, dialog, ipcMain, globalShortcut, screen } = require("electron");
 
+
 // Assistant TTS runs after async chat responses; without this, Chromium often blocks HTMLAudioElement.play().
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 const fs = require("fs");
 const path = require("path");
+
+if (process.env.RESET_APP === "true") {
+  fs.rmSync(app.getPath("userData"), { recursive: true, force: true });
+}
 
 /** Load repo-root .env then app .env (same order as Next.js load-root-env.mjs). */
 function loadEnvFromFileSync(absolutePath) {
