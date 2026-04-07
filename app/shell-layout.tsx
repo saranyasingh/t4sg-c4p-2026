@@ -13,10 +13,10 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
 
   return (
-    <div className="fixed inset-0 flex h-full min-h-0 items-stretch justify-end bg-transparent">
+    <div className="fixed inset-0 flex items-center justify-end bg-transparent">
       <section
         // Remove interactable from this section if you want the background to be click-through
-        className={`interactable relative mr-6 flex h-full min-h-0 w-[420px] max-w-[92vw] transform-gpu flex-col rounded-2xl border border-white/30 bg-[hsl(var(--foreground)/0.7)] text-white shadow-xl backdrop-blur-lg transition-transform duration-300 ease-out will-change-transform ${
+        className={`interactable relative mr-6 flex h-[90vh] max-h-[90vh] w-[420px] max-w-[92vw] transform-gpu flex-col rounded-2xl border border-white/30 bg-[hsl(var(--foreground)/0.7)] text-white shadow-xl backdrop-blur-lg transition-transform duration-300 ease-out will-change-transform ${
           isCollapsed ? "translate-x-[calc(100%-3rem)]" : "translate-x-0"
         }`}
       >

@@ -298,7 +298,7 @@ export async function POST(req: Request) {
     return Response.json(
       {
         error:
-          "ANTHROPIC_API_KEY is not configured. Add it to t4sg-c4p-2026/.env and restart the dev server.",
+          "The assistant is not set up yet. Please ask your administrator to configure the API key and restart the app.",
       },
       { status: 500 },
     );

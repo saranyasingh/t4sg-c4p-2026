@@ -90,37 +90,49 @@ export function TutorialController() {
         setHighlightError(null);
         if (typeof window === "undefined" || !window.electronAPI) {
           setIsLoadingHighlight(false);
+          setHighlightError("Screen analysis is only available in the desktop app.");
           return;
         }
 
-        const cap = await captureScreenToPngBase64();
-        if (cancelled || !cap) {
-          setIsLoadingHighlight(false);
-          return;
-        }
+        try {
+          const cap = await captureScreenToPngBase64();
+          if (cancelled || !cap) {
+            setIsLoadingHighlight(false);
+            return;
+          }
 
-        const d = await findTargetViaChunkedVision(cap, currentStep.highlightDescription);
-        if (cancelled) {
-          setIsLoadingHighlight(false);
-          return;
-        }
+          const d = await findTargetViaChunkedVision(cap, currentStep.highlightDescription);
+          if (cancelled) {
+            setIsLoadingHighlight(false);
+            return;
+          }
 
-        if (d.found) {
-          setHighlightError(null);
-          setHighlightPayload({
-            coords: {
-              x: d.box.x,
-              y: d.box.y,
-              width: d.box.width,
-              height: d.box.height,
-              confidence: d.box.confidence,
-            },
-            screenshotWidth: cap.width,
-            screenshotHeight: cap.height,
-          });
-        } else {
+          if (d.found) {
+            setHighlightError(null);
+            setHighlightPayload({
+              coords: {
+                x: d.box.x,
+                y: d.box.y,
+                width: d.box.width,
+                height: d.box.height,
+                confidence: d.box.confidence,
+              },
+              screenshotWidth: cap.width,
+              screenshotHeight: cap.height,
+            });
+          } else {
+            setHighlightPayload(null);
+            setHighlightError(d.explanation);
+          }
+        } catch (err) {
+          if (cancelled) return;
+          console.error("Highlight vision failed:", err);
           setHighlightPayload(null);
-          setHighlightError(d.explanation);
+          setHighlightError(
+            err instanceof Error
+              ? `Something went wrong while locating the target: ${err.message}`
+              : "Something went wrong while locating the target on screen.",
+          );
         }
         setIsLoadingHighlight(false);
         return;
@@ -262,14 +274,20 @@ export function TutorialController() {
             </div>,
             document.body,
           )}
-        {highlightError && (
-              <div className="mt-3 rounded-lg border border-yellow-400/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-200">
-                <p className="mb-0.5 font-semibold text-yellow-300">{t("tutorial.highlightErrorTitle")}</p>
-                <p className="mb-1 leading-snug">{highlightError}</p>
-                <p className="text-xs text-yellow-200/90">{t("tutorial.highlightErrorHint")}</p>
-              </div>
-
-        )}
+        {highlightError
+          ? createPortal(
+              <div
+                className="pointer-events-none fixed left-1/2 top-6 z-[999998] w-[90vw] max-w-md -translate-x-1/2"
+              >
+                <div className="rounded-xl border border-amber-400/40 bg-gradient-to-r from-amber-600/90 via-orange-500/90 to-red-500/90 px-5 py-4 text-white shadow-2xl backdrop-blur-sm">
+                  <p className="mb-1 text-sm font-bold tracking-wide">{t("tutorial.highlightErrorTitle")}</p>
+                  <p className="mb-2 text-sm leading-snug">{highlightError}</p>
+                  <p className="text-xs font-medium text-white/80">{t("tutorial.highlightErrorHint")}</p>
+                </div>
+              </div>,
+              document.body,
+            )
+          : null}
 
    
       {createPortal(

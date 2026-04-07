@@ -390,6 +390,7 @@ export function Chat({ showHeader = true }: ChatProps) {
         id: (Date.now() + 1).toString(),
         text: reason,
         variant: "assistant",
+        isError: true,
       };
       setIncomingMessage("");
       setMessages((prev) => [...prev, errorMessage]);
@@ -583,7 +584,7 @@ export function Chat({ showHeader = true }: ChatProps) {
       <section className="min-h-0 flex-1 overflow-hidden">
         <ScrollContainer>
           {messages.map((msg) => (
-            <Message key={msg.id} text={msg.text} variant={msg.variant} />
+            <Message key={msg.id} text={msg.text} variant={msg.variant} isError={msg.isError} />
           ))}
           {incomingMessage && <Message text={incomingMessage} variant="assistant" />}
           {isLoading && !incomingMessage && <Message text={t("chat.thinking")} variant="assistant" />}

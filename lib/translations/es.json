@@ -2,7 +2,8 @@
   "home": {
     "welcome": "Bienvenido",
     "getStarted": "Comienza con el Chat o explora los Tutoriales para aprender más.",
-    "brandTitle": "Granson AI"
+    "brandTitle": "Granson AI",
+    "tutorialsHeading": "Tutoriales"
   },
   "tutorials": {
     "googleSearch": {
@@ -286,7 +287,7 @@
     "emptyResponse": "No pude generar una respuesta. Inténtalo de nuevo.",
     "unexpectedResponse": "La respuesta del asistente no era la esperada.",
     "assistantUnavailable": "El asistente no está disponible ({{status}}).",
-    "errorWithDetail": "Lo sentimos, hubo un error: {{detail}}",
+    "errorWithDetail": "¡Ups! Algo salió mal: {{detail}}",
     "unknownError": "Error desconocido",
     "streamErrors": {
       "noResponseBody": "No hubo respuesta del asistente.",

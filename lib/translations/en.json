@@ -2,7 +2,8 @@
   "home": {
     "welcome": "Welcome",
     "getStarted": "Get started with Chat or explore Tutorials to learn more.",
-    "brandTitle": "Granson AI"
+    "brandTitle": "Granson AI",
+    "tutorialsHeading": "Tutorials"
   },
   "tutorials": {
     "googleSearch": {
@@ -287,7 +288,7 @@
     "emptyResponse": "I could not generate a response. Please try again.",
     "unexpectedResponse": "Sorry, there was an unexpected response from the assistant.",
     "assistantUnavailable": "Sorry, the assistant is unavailable ({{status}}).",
-    "errorWithDetail": "Sorry, there was an error: {{detail}}",
+    "errorWithDetail": "Oops! Something went wrong: {{detail}}",
     "unknownError": "Unknown error",
     "streamErrors": {
       "noResponseBody": "No response from the assistant.",
