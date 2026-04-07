@@ -221,7 +221,7 @@ export function TutorialController() {
         coords={highlightPayload?.coords ?? null}
         screenshotWidth={highlightPayload?.screenshotWidth ?? fallbackW}
         screenshotHeight={highlightPayload?.screenshotHeight ?? fallbackH}
-        expandFactor={2.5}
+        expandFactor={3.1}
         onSpotlightRectChange={setSpotlightRect}
       />
 

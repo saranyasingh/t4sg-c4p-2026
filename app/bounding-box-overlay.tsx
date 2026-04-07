@@ -33,10 +33,10 @@ export default function BoundingBoxOverlay({
   coords,
   screenshotWidth,
   screenshotHeight,
-  expandFactor = 2.2,
+  expandFactor = 3,
   onSpotlightRectChange,
 }: BoundingBoxOverlayProps) {
-  const maskId = useId();
+  const spotlightGradientId = useId();
   const [mounted, setMounted] = useState(false);
   const [viewportCss, setViewportCss] = useState(() => ({
     w: typeof window !== "undefined" ? window.innerWidth : 1,
@@ -96,7 +96,7 @@ export default function BoundingBoxOverlay({
   const rawWidth = (coords?.width ?? 0) * scaleX;
   const rawHeight = (coords?.height ?? 0) * scaleY;
 
-  const minPadding = 36;
+  const minPadding = 52;
   const grownWidth = Math.max(rawWidth * expandFactor, rawWidth + minPadding * 2);
   const grownHeight = Math.max(rawHeight * expandFactor, rawHeight + minPadding * 2);
   const centerX = rawLeft + rawWidth / 2;
@@ -127,6 +127,8 @@ export default function BoundingBoxOverlay({
   const ellipseCy = top + height / 2;
   const ellipseRx = width / 2;
   const ellipseRy = height / 2;
+  const rBase = Math.max(ellipseRx, ellipseRy, 1);
+  const gradientTransform = `translate(${ellipseCx} ${ellipseCy}) scale(${ellipseRx / rBase} ${ellipseRy / rBase}) translate(${-ellipseCx} ${-ellipseCy})`;
 
   return createPortal(
     <svg
@@ -142,24 +144,24 @@ export default function BoundingBoxOverlay({
       aria-hidden="true"
     >
       <defs>
-        <mask id={maskId}>
-          <rect x="0" y="0" width={vw} height={vh} fill="white" />
-          <ellipse cx={ellipseCx} cy={ellipseCy} rx={ellipseRx} ry={ellipseRy} fill="black" />
-        </mask>
+        <radialGradient
+          id={spotlightGradientId}
+          gradientUnits="userSpaceOnUse"
+          cx={ellipseCx}
+          cy={ellipseCy}
+          fx={ellipseCx}
+          fy={ellipseCy}
+          r={rBase}
+          gradientTransform={gradientTransform}
+        >
+          <stop offset="0%" stopColor="rgb(18, 22, 32)" stopOpacity={0} />
+          <stop offset="38%" stopColor="rgb(18, 22, 32)" stopOpacity={0.06} />
+          <stop offset="72%" stopColor="rgb(18, 22, 32)" stopOpacity={0.22} />
+          <stop offset="100%" stopColor="rgb(18, 22, 32)" stopOpacity={0.34} />
+        </radialGradient>
       </defs>
 
-      <rect x={0} y={0} width={vw} height={vh} fill="rgba(8, 10, 16, 0.54)" mask={`url(#${maskId})`} />
-
-      <ellipse
-        cx={ellipseCx}
-        cy={ellipseCy}
-        rx={Math.max(ellipseRx - 1, 1)}
-        ry={Math.max(ellipseRy - 1, 1)}
-        fill="transparent"
-        stroke="rgba(255, 235, 140, 0.96)"
-        strokeWidth={3}
-        strokeDasharray="10 8"
-      />
+      <rect x={0} y={0} width={vw} height={vh} fill={`url(#${spotlightGradientId})`} />
     </svg>,
     document.body,
   );

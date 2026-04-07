@@ -42,6 +42,57 @@ const TILE_OVERLAP_FRAC = 0.12;
 /** Avoid hammering the API; tiles in a batch run in parallel. */
 const TILE_CONCURRENCY = 3;
 
+/** When the Anthropic API returns 429 / rate limit, wait then retry (IPC surfaces `error` from main). */
+const RATE_LIMIT_RETRY_MS = 4000;
+const RATE_LIMIT_MAX_RETRIES = 3;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isLikelyRateLimitError(message: string | undefined): boolean {
+  if (!message) return false;
+  const m = message.toLowerCase();
+  return (
+    m.includes("429") ||
+    m.includes("rate_limit") ||
+    m.includes("rate limit") ||
+    m.includes("too many requests")
+  );
+}
+
+type ElectronApi = NonNullable<Window["electronAPI"]>;
+
+async function analyzeScreenshotWithRateLimitRetry(
+  api: ElectronApi,
+  base64: string,
+  targetDescription: string,
+  width: number,
+  height: number,
+): Promise<Awaited<ReturnType<ElectronApi["analyzeScreenshot"]>>> {
+  let res = await api.analyzeScreenshot(base64, targetDescription, width, height);
+  for (let attempt = 0; attempt < RATE_LIMIT_MAX_RETRIES && !res.success && isLikelyRateLimitError(res.error); attempt++) {
+    await delay(RATE_LIMIT_RETRY_MS);
+    res = await api.analyzeScreenshot(base64, targetDescription, width, height);
+  }
+  return res;
+}
+
+async function analyzeScreenshotTileWithRateLimitRetry(
+  api: ElectronApi,
+  base64: string,
+  targetDescription: string,
+  width: number,
+  height: number,
+): Promise<Awaited<ReturnType<ElectronApi["analyzeScreenshotTile"]>>> {
+  let res = await api.analyzeScreenshotTile(base64, targetDescription, width, height);
+  for (let attempt = 0; attempt < RATE_LIMIT_MAX_RETRIES && !res.success && isLikelyRateLimitError(res.error); attempt++) {
+    await delay(RATE_LIMIT_RETRY_MS);
+    res = await api.analyzeScreenshotTile(base64, targetDescription, width, height);
+  }
+  return res;
+}
+
 type TileRect = { ox: number; oy: number; tw: number; th: number };
 
 type Hit = VisionBox & { tileIndex: number };
@@ -140,7 +191,8 @@ async function analyzeTileRect(
   try {
     const crop = await cropImageToRegion(img, rect.tw, rect.th, rect.ox, rect.oy);
     const forApi = await downscalePngBase64ForAnthropicVision(crop);
-    const res = await api.analyzeScreenshotTile(
+    const res = await analyzeScreenshotTileWithRateLimitRetry(
+      api,
       forApi.base64,
       targetDescription,
       forApi.width,
@@ -191,7 +243,13 @@ export async function findTargetViaChunkedVision(
 
   if (!api.analyzeScreenshotTile) {
     const forFull = await downscalePngBase64ForAnthropicVision(fullCap);
-    const fullRes = await api.analyzeScreenshot(forFull.base64, targetDescription, forFull.width, forFull.height);
+    const fullRes = await analyzeScreenshotWithRateLimitRetry(
+      api,
+      forFull.base64,
+      targetDescription,
+      forFull.width,
+      forFull.height,
+    );
     if (!fullRes.success) return { found: false, explanation: fullRes.error ?? "Screenshot analysis failed." };
     if (fullRes.found === false) return { found: false, explanation: fullRes.explanation ?? "The target could not be located on screen." };
     if (!fullRes.data) return { found: false, explanation: "The target could not be located on screen." };
@@ -200,7 +258,8 @@ export async function findTargetViaChunkedVision(
   }
 
   const forFullFirst = await downscalePngBase64ForAnthropicVision(fullCap);
-  const fullFirst = await api.analyzeScreenshot(
+  const fullFirst = await analyzeScreenshotWithRateLimitRetry(
+    api,
     forFullFirst.base64,
     targetDescription,
     forFullFirst.width,
@@ -277,7 +336,13 @@ export async function findTargetViaChunkedVision(
   }
 
   const forFull = await downscalePngBase64ForAnthropicVision(fullCap);
-  const fullRes = await api.analyzeScreenshot(forFull.base64, targetDescription, forFull.width, forFull.height);
+  const fullRes = await analyzeScreenshotWithRateLimitRetry(
+    api,
+    forFull.base64,
+    targetDescription,
+    forFull.width,
+    forFull.height,
+  );
   if (!fullRes.success) return { found: false, explanation: fullRes.error ?? "Screenshot analysis failed." };
   if (fullRes.found === false) return { found: false, explanation: fullRes.explanation ?? "The target could not be located on screen." };
   if (!fullRes.data) return { found: false, explanation: "The target could not be located on screen." };
