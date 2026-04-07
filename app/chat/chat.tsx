@@ -403,7 +403,11 @@ export function Chat({ showHeader = true }: ChatProps) {
       let response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, history, streaming: true }),
+        body: JSON.stringify({
+          prompt,
+          history,
+          streaming: true,
+        }),
       });
 
       const ct = response.headers.get("content-type") ?? "";
@@ -555,31 +559,33 @@ export function Chat({ showHeader = true }: ChatProps) {
         </header>
       ) : null}
 
-      <Button
-        type="button"
-        variant={audioModeEnabled ? "default" : "outline"}
-        className={
-          audioModeEnabled
-            ? "interactable shrink-0 ring-2 ring-primary/40"
-            : "interactable shrink-0 text-muted-foreground"
-        }
-        aria-pressed={audioModeEnabled}
-        aria-busy={isSpeechPlaying}
-        onClick={() => {
-          const next = !audioModeEnabled;
-          if (next) {
-            const unlock = new Audio(SILENT_WAV);
-            unlock.volume = 0.01;
-            void unlock.play().catch(() => {
-              /* ignore — Electron / no-user-gesture path may still allow later play */
-            });
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant={audioModeEnabled ? "default" : "outline"}
+          className={
+            audioModeEnabled
+              ? "interactable shrink-0 ring-2 ring-primary/40"
+              : "interactable shrink-0 text-muted-foreground"
           }
-          setAudioModeEnabled(next);
-        }}
-      >
-        {audioModeEnabled ? t("chat.audioModeOn") : t("chat.audioModeOff")}
-        {isSpeechPlaying ? t("chat.audioPlaying") : ""}
-      </Button>
+          aria-pressed={audioModeEnabled}
+          aria-busy={isSpeechPlaying}
+          onClick={() => {
+            const next = !audioModeEnabled;
+            if (next) {
+              const unlock = new Audio(SILENT_WAV);
+              unlock.volume = 0.01;
+              void unlock.play().catch(() => {
+                /* ignore — Electron / no-user-gesture path may still allow later play */
+              });
+            }
+            setAudioModeEnabled(next);
+          }}
+        >
+          {audioModeEnabled ? t("chat.audioModeOn") : t("chat.audioModeOff")}
+          {isSpeechPlaying ? t("chat.audioPlaying") : ""}
+        </Button>
+      </div>
 
       <section className="min-h-0 flex-1 overflow-hidden">
         <ScrollContainer>

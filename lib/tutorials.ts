@@ -114,27 +114,6 @@ const googleSearchSteps: TutorialStep[] = [
       "The back arrow, forward arrow, and circular refresh button immediately to the left of the address bar in Google Chrome.",
   },
   {
-    id: "gs-bookmarks",
-    title: "tutorials.googleSearch.steps.gs-bookmarks.title",
-    text: "tutorials.googleSearch.steps.gs-bookmarks.body",
-    visual: "screen_text",
-    highlightDescription: "The star-shaped bookmark icon on the right side of the address bar in Google Chrome.",
-  },
-  {
-    id: "gs-chrome-user",
-    title: "tutorials.googleSearch.steps.gs-chrome-user.title",
-    text: "tutorials.googleSearch.steps.gs-chrome-user.body",
-    visual: "screen_text",
-    highlightDescription: "The Google account profile picture or letter icon at the top right of the Chrome window.",
-  },
-  {
-    id: "gs-chrome-menu",
-    title: "tutorials.googleSearch.steps.gs-chrome-menu.title",
-    text: "tutorials.googleSearch.steps.gs-chrome-menu.body",
-    visual: "screen_text",
-    highlightDescription: "The three vertical dots menu button at the top right corner of the Google Chrome window.",
-  },
-  {
     id: "gs-review",
     title: "tutorials.googleSearch.steps.gs-review.title",
     text: "tutorials.googleSearch.steps.gs-review.body",
@@ -351,11 +330,11 @@ export const TUTORIALS: readonly Tutorial[] = [
     title: "tutorials.googleSearch.title",
     steps: googleSearchSteps,
   },
-  {
+  /* {
     id: "gmail",
     title: "Gmail",
     steps: gmailSteps,
-  },
+  }, */
 ] as const;
 
 export function getTutorialById(id: string): Tutorial | undefined {

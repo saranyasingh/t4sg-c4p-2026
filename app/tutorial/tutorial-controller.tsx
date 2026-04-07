@@ -279,10 +279,12 @@ export function TutorialController() {
               <div
                 className="pointer-events-none fixed left-1/2 top-6 z-[999998] w-[90vw] max-w-md -translate-x-1/2"
               >
-                <div className="rounded-xl border border-amber-400/40 bg-gradient-to-r from-amber-600/90 via-orange-500/90 to-red-500/90 px-5 py-4 text-white shadow-2xl backdrop-blur-sm">
-                  <p className="mb-1 text-sm font-bold tracking-wide">{t("tutorial.highlightErrorTitle")}</p>
-                  <p className="mb-2 text-sm leading-snug">{highlightError}</p>
-                  <p className="text-xs font-medium text-white/80">{t("tutorial.highlightErrorHint")}</p>
+                <div className="rounded-xl border border-white/35 border-l-4 border-l-destructive bg-[hsl(var(--foreground)/0.95)] p-4 text-white shadow-2xl backdrop-blur-sm">
+                  <p className="mb-1 text-sm font-semibold leading-snug text-white">
+                    {t("tutorial.highlightErrorTitle")}
+                  </p>
+                  <p className="mb-2 whitespace-pre-wrap text-sm leading-relaxed text-white/90">{highlightError}</p>
+                  <p className="text-xs leading-snug text-white/60">{t("tutorial.highlightErrorHint")}</p>
                 </div>
               </div>,
               document.body,

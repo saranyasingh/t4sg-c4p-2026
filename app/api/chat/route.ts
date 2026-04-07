@@ -13,18 +13,22 @@ interface ChatHistoryItem {
 
 const SYSTEM_BASE =
   C4P_KNOWLEDGE_BASE +
-  "\n\nWhen the user asks about something on their computer and you need to see their screen, call the capture_screen function. After a screenshot is provided, use it to give specific, contextual answers. Do not ask the user to press a manual screenshot button.";
+  "\n\n## Screen context\n" +
+  "You can call capture_screen to see the user's current display. Prefer capturing often: whenever the answer might depend on what is on screen (this app, a website, an error, menus, File Explorer, settings, or step-by-step computer/C4P help). If the user says things like “this”, “here”, “what do I click”, or describes something visual, call capture_screen before answering. When you are unsure whether the screen matters, call capture_screen first—then combine what you see with the knowledge base. Reserve text-only replies for questions that clearly need no visual context (pure definitions, general facts unrelated to their machine). Do not ask the user to press a manual screenshot button.";
+
+const SYSTEM_ALWAYS_CAPTURE_SUFFIX =
+  "\n\nFor this user message you MUST call capture_screen immediately. Do not write any user-visible answer until after the screenshot has been taken; call the tool first.";
 
 const SYSTEM_WITH_SCREENSHOT =
   C4P_KNOWLEDGE_BASE +
-  "\n\nThe user has shared a screenshot of their screen. Use what you see to give specific answers — reference what is visible, guide step by step for computer help, and use the knowledge base for C4P questions.";
+  "\n\nThe user has shared a screenshot of their screen. Lead with concrete observations from the image (visible text, buttons, window titles, errors). Ground step-by-step help in what is actually shown, then use the knowledge base for C4P facts. Do not guess about UI that is not visible.";
 
 const CAPTURE_SCREEN_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
   type: "function",
   function: {
     name: "capture_screen",
     description:
-      "Capture a screenshot of the user's current screen. Call this when seeing their desktop, a specific window, an error message, or browser would help you answer. Do not call for questions fully answered from the knowledge base. Do not ask the user to press a manual screenshot button.",
+      "Captures the user's current screen; you receive the image on the next turn. Call this liberally for UI, errors, browsers, or whenever seeing the display would improve accuracy—including when the knowledge base might partially answer but their screen would disambiguate. Skip only when the question is clearly unrelated to anything visible (e.g. abstract trivia with no on-screen task).",
     parameters: { type: "object", properties: {}, required: [] },
   },
 };
@@ -47,6 +51,8 @@ async function handleInitialTurn(body: {
 }): Promise<Response> {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   if (!prompt) return Response.json({ error: "Missing prompt" }, { status: 400 });
+  const systemContent = SYSTEM_BASE + SYSTEM_ALWAYS_CAPTURE_SUFFIX;
+
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     ...historyToMessages(body.history ?? []),
     { role: "user", content: prompt },
@@ -67,7 +73,7 @@ async function handleInitialTurn(body: {
           stream: true,
           tools: [CAPTURE_SCREEN_TOOL],
           tool_choice: "auto",
-          messages: [{ role: "system", content: SYSTEM_BASE }, ...messages],
+          messages: [{ role: "system", content: systemContent }, ...messages],
         });
 
         let fullText = "";
@@ -84,11 +90,11 @@ async function handleInitialTurn(body: {
             write({ type: "token", text: delta.content });
           }
 
-          // Tool call detection
+          // Tool call detection (name may stream in fragments)
           if (delta.tool_calls?.[0]) {
             const tc = delta.tool_calls[0];
             if (tc.id) toolCallId = tc.id;
-            if (tc.function?.name) toolCallName = tc.function.name;
+            if (tc.function?.name) toolCallName += tc.function.name;
           }
 
           // Check finish reason
@@ -240,5 +246,11 @@ export async function POST(req: Request) {
     });
   }
 
-  return handleInitialTurn(body as { prompt?: string; history?: ChatHistoryItem[]; streaming?: boolean });
+  return handleInitialTurn(
+    body as {
+      prompt?: string;
+      history?: ChatHistoryItem[];
+      streaming?: boolean;
+    },
+  );
 }
