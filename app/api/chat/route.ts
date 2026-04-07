@@ -1,187 +1,203 @@
-import Anthropic from "@anthropic-ai/sdk";
-import type {
-  ContentBlock,
-  ContentBlockParam,
-  MessageParam,
-  RawMessageStreamEvent,
-  TextBlock,
-  Tool,
-} from "@anthropic-ai/sdk/resources/messages";
+import OpenAI from "openai";
 import { C4P_KNOWLEDGE_BASE } from "./c4p-knowledge-base";
 
 export const runtime = "nodejs";
 
-const DEFAULT_MODEL = "claude-sonnet-4-20250514";
-
-const CAPTURE_SCREEN_TOOL: Tool = {
-  name: "capture_screen",
-  description:
-    "Capture a screenshot of the user's current screen. Call this when seeing their desktop, a specific window, an error message, or browser would help you answer (for example: where to click, what is on screen, or troubleshooting). Do not call for questions that are fully answered from the knowledge base without visual context. Do not ask the user to press a manual screenshot button.",
-  input_schema: {
-    type: "object",
-    properties: {},
-    required: [],
-  },
-};
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const MODEL = "gpt-4o";
 
 interface ChatHistoryItem {
   role: "user" | "assistant";
   content: string;
 }
 
-function historyToMessages(history: ChatHistoryItem[]): MessageParam[] {
-  return history.map((h) => ({
-    role: h.role,
-    content: h.content,
-  }));
+const SYSTEM_BASE =
+  C4P_KNOWLEDGE_BASE +
+  "\n\nWhen the user asks about something on their computer and you need to see their screen, call the capture_screen function. After a screenshot is provided, use it to give specific, contextual answers. Do not ask the user to press a manual screenshot button.";
+
+const SYSTEM_WITH_SCREENSHOT =
+  C4P_KNOWLEDGE_BASE +
+  "\n\nThe user has shared a screenshot of their screen. Use what you see to give specific answers — reference what is visible, guide step by step for computer help, and use the knowledge base for C4P questions.";
+
+const CAPTURE_SCREEN_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: "capture_screen",
+    description:
+      "Capture a screenshot of the user's current screen. Call this when seeing their desktop, a specific window, an error message, or browser would help you answer. Do not call for questions fully answered from the knowledge base. Do not ask the user to press a manual screenshot button.",
+    parameters: { type: "object", properties: {}, required: [] },
+  },
+};
+
+function historyToMessages(history: ChatHistoryItem[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+  return history.map((h) => ({ role: h.role, content: h.content }));
 }
 
-/** Strip data-URL prefix if present so Anthropic gets raw base64. */
 function normalizePngBase64(raw: string | null | undefined): string | null {
-  if (!raw || typeof raw !== "string") return null;
+  if (!raw) return null;
   const trimmed = raw.trim();
-  const dataUrl = trimmed.match(/^data:image\/png;base64,(.+)$/i);
-  if (dataUrl?.[1]) return dataUrl[1];
-  const anyImg = trimmed.match(/^data:image\/[^;]+;base64,(.+)$/i);
-  if (anyImg?.[1]) return anyImg[1];
-  return trimmed;
+  const match = trimmed.match(/^data:image\/[^;]+;base64,(.+)$/i);
+  return match?.[1] ?? trimmed;
 }
 
-function extractTextFromContent(blocks: ContentBlock[]): string {
-  return blocks
-    .filter((b): b is TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("");
-}
+async function handleInitialTurn(body: {
+  prompt?: string;
+  history?: ChatHistoryItem[];
+  streaming?: boolean;
+}): Promise<Response> {
+  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  if (!prompt) return Response.json({ error: "Missing prompt" }, { status: 400 });
+  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+    ...historyToMessages(body.history ?? []),
+    { role: "user", content: prompt },
+  ];
 
-function parseAssistantContent(raw: unknown): ContentBlock[] | null {
-  if (!Array.isArray(raw)) return null;
-  return raw as ContentBlock[];
-}
+  const encoder = new TextEncoder();
 
-function wantsCaptureScreen(content: ContentBlock[]): boolean {
-  return content.some((b) => b.type === "tool_use" && b.name === "capture_screen");
-}
-
-function anthropicErrorPayload(err: unknown, model: string) {
-  const status =
-    err && typeof err === "object" && "status" in err && typeof (err as { status: unknown }).status === "number"
-      ? (err as { status: number }).status
-      : 502;
-  const message =
-    err && typeof err === "object" && "message" in err && typeof (err as { message: unknown }).message === "string"
-      ? (err as { message: string }).message
-      : err instanceof Error
-        ? err.message
-        : "Anthropic request failed";
-  console.error("/api/chat Anthropic error:", { model, status, message, err });
-  const clientStatus = status >= 400 && status < 600 ? status : 502;
-  const hint =
-    clientStatus === 404 || /not_found|model/i.test(message)
-      ? "Check ANTHROPIC_MODEL in .env matches a model your API key can use (see Anthropic docs)."
-      : clientStatus === 401
-        ? "Invalid or missing API key."
-        : undefined;
-  return { message, model, hint, clientStatus };
-}
-
-function anthropicErrorResponse(err: unknown, model: string) {
-  const { message, model: m, hint, clientStatus } = anthropicErrorPayload(err, model);
-  return Response.json({ error: message, model: m, hint }, { status: clientStatus });
-}
-
-function streamTextFromMessageStream(stream: AsyncIterable<RawMessageStreamEvent>): ReadableStream<Uint8Array> {
-  return new ReadableStream({
+  const readable = new ReadableStream({
     async start(controller) {
-      const encoder = new TextEncoder();
+      const write = (obj: Record<string, unknown>) => {
+        controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
+      };
+
       try {
-        for await (const event of stream) {
-          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-            controller.enqueue(encoder.encode(event.delta.text));
+        const stream = await client.chat.completions.create({
+          model: MODEL,
+          max_tokens: 8192,
+          stream: true,
+          tools: [CAPTURE_SCREEN_TOOL],
+          tool_choice: "auto",
+          messages: [{ role: "system", content: SYSTEM_BASE }, ...messages],
+        });
+
+        let fullText = "";
+        let toolCallName = "";
+        let toolCallId = "";
+
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta;
+          if (!delta) continue;
+
+          // Streaming text token
+          if (delta.content) {
+            fullText += delta.content;
+            write({ type: "token", text: delta.content });
+          }
+
+          // Tool call detection
+          if (delta.tool_calls?.[0]) {
+            const tc = delta.tool_calls[0];
+            if (tc.id) toolCallId = tc.id;
+            if (tc.function?.name) toolCallName = tc.function.name;
+          }
+
+          // Check finish reason
+          const finish = chunk.choices[0]?.finish_reason;
+          if (finish === "tool_calls" && toolCallName === "capture_screen") {
+            write({
+              type: "done",
+              action: "capture_screen",
+              assistantContent: [{ type: "tool_call", id: toolCallId, name: toolCallName }],
+            });
+            controller.close();
+            return;
+          }
+
+          if (finish === "stop") {
+            write({ type: "done", action: null, reply: fullText.trim() });
+            controller.close();
+            return;
           }
         }
+
+        // Fallback if stream ends without explicit stop
+        write({
+          type: "done",
+          action: null,
+          reply: fullText.trim() || "I could not generate a response. Please try again.",
+        });
         controller.close();
       } catch (err) {
-        console.error("Anthropic stream error:", err);
-        controller.error(err);
+        const message = err instanceof Error ? err.message : "Request failed";
+        write({ type: "error", error: message });
+        controller.close();
       }
+    },
+  });
+
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
     },
   });
 }
 
-async function handleCompleteScreenshot(
-  client: Anthropic,
-  model: string,
-  body: {
-    prompt?: string;
-    history?: ChatHistoryItem[];
-    imageBase64?: string | null;
-    assistantContent?: unknown;
-  },
-) {
+async function handleCompleteScreenshot(body: {
+  prompt?: string;
+  history?: ChatHistoryItem[];
+  imageBase64?: string | null;
+  assistantContent?: unknown;
+}): Promise<Response> {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
-  if (!prompt) {
-    return Response.json({ error: "Missing or empty prompt" }, { status: 400 });
-  }
+  if (!prompt) return Response.json({ error: "Missing prompt" }, { status: 400 });
 
-  const imageBase64 = normalizePngBase64(body.imageBase64 ?? undefined);
-  if (!imageBase64) {
-    return Response.json({ error: "Missing or invalid screenshot image" }, { status: 400 });
-  }
+  const imageBase64 = normalizePngBase64(body.imageBase64);
+  if (!imageBase64) return Response.json({ error: "Missing screenshot" }, { status: 400 });
 
-  const assistantContent = parseAssistantContent(body.assistantContent);
-  if (!assistantContent?.length || !wantsCaptureScreen(assistantContent)) {
-    return Response.json({ error: "Invalid screenshot completion request" }, { status: 400 });
-  }
+  // Extract tool call id from assistantContent passed back by frontend
+  const assistantContent = body.assistantContent as { id?: string }[] | undefined;
+  const toolCallId = assistantContent?.[0]?.id ?? "call_capture";
 
-  const systemWithScreenshot =
-    C4P_KNOWLEDGE_BASE +
-    "\n\nThe user has shared a screenshot of their screen. Use what you see to give specific answers — reference what is visible, guide step by step for computer help, and use the knowledge base for C4P questions.";
-
-  const toolResultBlocks: ContentBlockParam[] = [];
-  for (const block of assistantContent) {
-    if (block.type !== "tool_use") continue;
-    const note =
-      block.name === "capture_screen"
-        ? JSON.stringify({ ok: true, note: "Screenshot is attached in this message." })
-        : JSON.stringify({ ok: false, error: "Unsupported tool." });
-    toolResultBlocks.push({
-      type: "tool_result",
-      tool_use_id: block.id,
-      content: note,
-    });
-  }
-
-  const userFollowUp: ContentBlockParam[] = [
-    ...toolResultBlocks,
-    {
-      type: "image",
-      source: {
-        type: "base64",
-        media_type: "image/png",
-        data: imageBase64,
-      },
-    },
-    { type: "text", text: "Current screenshot of the user's screen." },
-  ];
-
-  const messages: MessageParam[] = [
+  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     ...historyToMessages(body.history ?? []),
     { role: "user", content: prompt },
-    { role: "assistant", content: assistantContent as MessageParam["content"] },
-    { role: "user", content: userFollowUp },
+    {
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        {
+          id: toolCallId,
+          type: "function",
+          function: { name: "capture_screen", arguments: "{}" },
+        },
+      ],
+    },
+    {
+      role: "tool",
+      tool_call_id: toolCallId,
+      content: "Screenshot captured successfully.",
+    },
+    {
+      role: "user",
+      content: [
+        { type: "image_url", image_url: { url: `data:image/png;base64,${imageBase64}` } },
+        { type: "text", text: "Current screenshot of the user's screen." },
+      ],
+    },
   ];
 
   try {
-    const stream = await client.messages.create({
-      model,
+    const stream = await client.chat.completions.create({
+      model: MODEL,
       max_tokens: 8192,
-      system: systemWithScreenshot,
-      messages,
       stream: true,
+      messages: [{ role: "system", content: SYSTEM_WITH_SCREENSHOT }, ...messages],
     });
 
-    return new Response(streamTextFromMessageStream(stream), {
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      async start(controller) {
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta?.content;
+          if (delta) controller.enqueue(encoder.encode(delta));
+        }
+        controller.close();
+      },
+    });
+
+    return new Response(readable, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-cache, no-transform",
@@ -189,104 +205,8 @@ async function handleCompleteScreenshot(
       },
     });
   } catch (err) {
-    return anthropicErrorResponse(err, model);
-  }
-}
-
-async function handleInitialTurn(
-  client: Anthropic,
-  model: string,
-  body: { prompt?: string; history?: ChatHistoryItem[]; streaming?: boolean },
-) {
-  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
-  if (!prompt) {
-    return Response.json({ error: "Missing or empty prompt" }, { status: 400 });
-  }
-
-  const systemBase =
-    C4P_KNOWLEDGE_BASE +
-    "\n\nWhen the user asks about something on their computer and you need to see their screen, call the capture_screen tool. After a screenshot is provided, use it to give specific, contextual answers. Do not ask the user to press a manual screenshot button.";
-
-  const messages: MessageParam[] = [
-    ...historyToMessages(body.history ?? []),
-    { role: "user", content: prompt },
-  ];
-
-  if (body.streaming) {
-    const stream = client.messages.stream({
-      model,
-      max_tokens: 8192,
-      system: systemBase,
-      messages,
-      tools: [CAPTURE_SCREEN_TOOL],
-    });
-
-    const encoder = new TextEncoder();
-    const readable = new ReadableStream({
-      async start(controller) {
-        const write = (obj: Record<string, unknown>) => {
-          controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
-        };
-
-        stream.on("text", (delta: string) => {
-          write({ type: "token", text: delta });
-        });
-
-        try {
-          const final = await stream.finalMessage();
-          const blocks = final.content as ContentBlock[];
-          if (wantsCaptureScreen(blocks)) {
-            write({ type: "done", action: "capture_screen", assistantContent: blocks });
-          } else {
-            const text = extractTextFromContent(blocks).trim();
-            write({
-              type: "done",
-              action: null,
-              reply: text || "I could not generate a response. Please try again.",
-            });
-          }
-          controller.close();
-        } catch (err) {
-          const { message, model: m, hint } = anthropicErrorPayload(err, model);
-          write({ type: "error", error: message, model: m, hint });
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(readable, {
-      headers: {
-        "Content-Type": "application/x-ndjson; charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive",
-      },
-    });
-  }
-
-  try {
-    const response = await client.messages.create({
-      model,
-      max_tokens: 8192,
-      system: systemBase,
-      messages,
-      tools: [CAPTURE_SCREEN_TOOL],
-    });
-
-    const blocks = response.content;
-    if (wantsCaptureScreen(blocks)) {
-      return Response.json({
-        action: "capture_screen" as const,
-        assistantContent: blocks,
-      });
-    }
-
-    const text = extractTextFromContent(blocks).trim();
-    if (!text) {
-      return Response.json({ reply: "I could not generate a response. Please try again." });
-    }
-    return Response.json({ reply: text });
-  } catch (err) {
-    return anthropicErrorResponse(err, model);
+    const message = err instanceof Error ? err.message : "Request failed";
+    return Response.json({ error: message }, { status: 502 });
   }
 }
 
@@ -304,9 +224,6 @@ export async function POST(req: Request) {
     );
   }
 
-  const model = process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL;
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
   let body: Record<string, unknown>;
   try {
     body = (await req.json()) as Record<string, unknown>;
@@ -315,7 +232,7 @@ export async function POST(req: Request) {
   }
 
   if (body.phase === "complete_screenshot") {
-    return handleCompleteScreenshot(client, model, {
+    return handleCompleteScreenshot({
       prompt: body.prompt as string | undefined,
       history: body.history as ChatHistoryItem[] | undefined,
       imageBase64: body.imageBase64 as string | null | undefined,
@@ -323,5 +240,5 @@ export async function POST(req: Request) {
     });
   }
 
-  return handleInitialTurn(client, model, body as { prompt?: string; history?: ChatHistoryItem[]; streaming?: boolean });
+  return handleInitialTurn(body as { prompt?: string; history?: ChatHistoryItem[]; streaming?: boolean });
 }
