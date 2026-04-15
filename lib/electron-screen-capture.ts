@@ -55,6 +55,25 @@ declare global {
         direction?: string;
         error?: string;
       }>;
+      /**
+       * Computer Use API: returns the exact center pixel of a UI element.
+       * Much simpler and faster than the tiled grid pipeline.
+       */
+      locateElementComputerUse?: (
+        base64: string,
+        targetDescription?: string,
+        imageWidth?: number,
+        imageHeight?: number,
+      ) => Promise<{
+        success: boolean;
+        found?: boolean;
+        /** Center x in original screenshot pixel space */
+        x?: number;
+        /** Center y in original screenshot pixel space */
+        y?: number;
+        explanation?: string;
+        error?: string;
+      }>;
     };
   }
 }

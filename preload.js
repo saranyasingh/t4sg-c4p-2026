@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("analyze-screenshot-tile-presence", base64, targetDescription, imageWidth, imageHeight),
   analyzeScreenshotTileClipHint: (base64, targetDescription, imageWidth, imageHeight) =>
     ipcRenderer.invoke("analyze-screenshot-tile-clip-hint", base64, targetDescription, imageWidth, imageHeight),
+  locateElementComputerUse: (base64, targetDescription, imageWidth, imageHeight) =>
+    ipcRenderer.invoke("locate-element-computer-use", base64, targetDescription, imageWidth, imageHeight),
 });
 
 window.addEventListener("DOMContentLoaded", () => {
