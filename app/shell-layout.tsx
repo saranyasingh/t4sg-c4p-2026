@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -27,16 +26,12 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
       <Button
         type="button"
         variant="outline"
-        className="interactable absolute left-1 top-1 z-20 h-8 w-8 min-w-0 rounded-full border-white/30 bg-[hsl(var(--foreground)/0.8)] p-0 text-white"
+        className="interactable absolute left-1 top-1 z-20 h-8 w-auto min-w-0 rounded-full border-white/30 bg-[hsl(var(--foreground)/0.8)] px-2 py-0 text-xs font-semibold text-white"
         onClick={() => setIsCollapsed((prev) => !prev)}
         aria-label={isCollapsed ? "Expand panel" : "Collapse panel"}
         title={isCollapsed ? "Expand" : "Collapse"}
       >
-        {isCollapsed ? (
-          <PanelRightOpen className="h-4 w-4 text-white" />
-        ) : (
-          <PanelRightClose className="h-4 w-4 text-white" />
-        )}
+        {isCollapsed ? t("shell.open") : t("shell.close")}
       </Button>
       <Image
         src={c4pLogo}

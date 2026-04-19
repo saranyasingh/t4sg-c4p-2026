@@ -341,7 +341,9 @@
     "es": "Español"
   },
   "shell": {
-    "rights": "Computers 4 People. Todos los derechos reservados."
+    "rights": "Computers 4 People. Todos los derechos reservados.",
+    "open": "ABRIR",
+    "close": "CERRAR"
   },
   "misc": {
     "loading": "Cargando...",
