@@ -63,3 +63,29 @@
     text-shadow: 0 1px 3px rgba(0, 20, 7, 0.12);
   }
 }
+
+@layer utilities {
+  .text-scale-xs {
+    font-size: var(--font-size-xs);
+  }
+
+  .text-scale-sm {
+    font-size: var(--font-size-sm);
+  }
+
+  .text-scale-base {
+    font-size: var(--font-size-base);
+  }
+
+  .text-scale-lg {
+    font-size: var(--font-size-lg);
+  }
+
+  .text-scale-xl {
+    font-size: var(--font-size-xl);
+  }
+
+  .text-scale-2xl {
+    font-size: var(--font-size-2xl);
+  }
+}
