@@ -73,9 +73,9 @@ export const ScrollContainer = ({ children }: ScrollContainerProps) => {
   }, [scrollOuterToBottom]);
 
   return (
-    <div className="relative h-full">
-      <div ref={outerDiv} className="relative h-full overflow-y-auto" onScroll={handleScroll}>
-        <div ref={innerDiv} className="flex min-h-full w-full flex-col justify-end">
+    <div className="interactable relative h-full">
+      <div ref={outerDiv} className="interactable relative h-full overflow-y-auto" onScroll={handleScroll}>
+        <div ref={innerDiv} className="interactable flex min-h-full w-full flex-col justify-end">
           <div className="interactable w-full space-y-4 rounded-lg border border-white/20 bg-[hsl(var(--foreground)/0.55)] p-4">
             {children}
           </div>

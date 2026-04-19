@@ -19,7 +19,7 @@ export function LanguageSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="interactable gap-2 overflow-hidden">
+        <Button variant="outline" size="sm" className="interactable gap-2 overflow-hidden" data-intro="language">
           <Languages className="h-4 w-4 shrink-0" />
           <span className="sr-only">{t("languageSelector.label")}</span>
           <span key={currentLng} className="min-w-[4.5rem] truncate text-left" aria-hidden>
@@ -27,9 +27,22 @@ export function LanguageSelector() {
           </span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
-        <DropdownMenuItem onClick={() => i18n.changeLanguage("en")}>{t("languageSelector.en")}</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => i18n.changeLanguage("es")}>{t("languageSelector.es")}</DropdownMenuItem>
+      <DropdownMenuContent
+        align="start"
+        className="interactable z-[1000006] border-white/30 bg-[hsl(var(--foreground))] text-white backdrop-blur-none"
+      >
+        <DropdownMenuItem
+          className="interactable focus:bg-white/20 focus:text-white"
+          onClick={() => i18n.changeLanguage("en")}
+        >
+          {t("languageSelector.en")}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="interactable focus:bg-white/20 focus:text-white"
+          onClick={() => i18n.changeLanguage("es")}
+        >
+          {t("languageSelector.es")}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

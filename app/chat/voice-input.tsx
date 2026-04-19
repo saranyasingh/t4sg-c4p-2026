@@ -157,6 +157,7 @@ export function VoiceInput({ onTranscript, onInterimTranscript, disabled, onReco
       variant={isRecording ? "default" : "outline"}
       disabled={disabled}
       onClick={handleClick}
+      data-intro="voice"
       aria-label={isRecording ? t("chat.voiceStop") : t("chat.voiceStart")}
       className={`interactable relative h-10 w-10 shrink-0 p-0 ${isRecording ? "ring-2 ring-red-400/60" : ""}`}
     >

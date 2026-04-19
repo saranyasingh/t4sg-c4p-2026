@@ -22,7 +22,7 @@ interface ChatHistoryItem {
   content: string;
 }
 
-const CHAT_STORAGE_KEY = "t4sg-c4p-chat-messages-v1";
+const CHAT_STORAGE_KEY = "t4sg-c4p-chat-messages-v2";
 
 function parseStoredMessages(raw: unknown): MessageWithId[] {
   if (!Array.isArray(raw)) return [];
@@ -547,7 +547,7 @@ export function Chat({ showHeader = true }: ChatProps) {
   };
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
+    <div className="interactable flex h-full flex-col gap-6 p-6">
       {showHeader ? (
         <header className="space-y-1">
           <TypographyH2>{t("chat.heading")}</TypographyH2>
@@ -558,6 +558,7 @@ export function Chat({ showHeader = true }: ChatProps) {
       <Button
         type="button"
         variant={audioModeEnabled ? "default" : "outline"}
+        data-intro="audio-mode"
         className={
           audioModeEnabled
             ? "interactable shrink-0 ring-2 ring-primary/40"
@@ -581,49 +582,52 @@ export function Chat({ showHeader = true }: ChatProps) {
         {isSpeechPlaying ? t("chat.audioPlaying") : ""}
       </Button>
 
-      <section className="min-h-0 flex-1 overflow-hidden">
-        <ScrollContainer>
-          {messages.map((msg) => (
-            <Message key={msg.id} text={msg.text} variant={msg.variant} isError={msg.isError} />
-          ))}
-          {incomingMessage && <Message text={incomingMessage} variant="assistant" />}
-          {isLoading && !incomingMessage && <Message text={t("chat.thinking")} variant="assistant" />}
-        </ScrollContainer>
-      </section>
+      <div className="interactable flex min-h-0 flex-1 flex-col gap-3" data-intro="chat-box">
+        <section className="interactable min-h-0 flex-1 overflow-hidden">
+          <ScrollContainer>
+            {messages.map((msg) => (
+              <Message key={msg.id} text={msg.text} variant={msg.variant} isError={msg.isError} />
+            ))}
+            {incomingMessage && <Message text={incomingMessage} variant="assistant" />}
+            {isLoading && !incomingMessage && <Message text={t("chat.thinking")} variant="assistant" />}
+          </ScrollContainer>
+        </section>
 
-      <form
-        className="interactable flex items-end gap-3"
-        onSubmit={(e) => {
-          void handleSubmit(e);
-        }}
-      >
-        <VoiceInput
-          onTranscript={handleTranscript}
-          onInterimTranscript={handleInterimTranscript}
-          disabled={isLoading}
-        />
-
-        <Textarea
-          ref={textareaRef}
-          placeholder={t("chat.inputPlaceholder")}
-          rows={1}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          disabled={isLoading}
-          className="interactable min-h-10 flex-1 resize-none py-2 leading-snug"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              if (!isLoading && message.trim()) {
-                e.currentTarget.form?.requestSubmit();
-              }
-            }
+        <form
+          className="interactable flex items-end gap-3"
+          onSubmit={(e) => {
+            void handleSubmit(e);
           }}
-        />
-        <Button type="submit" disabled={isLoading || !message.trim()} className="interactable shrink-0">
-          <Send className="h-4 w-4" />
-        </Button>
-      </form>
+        >
+          <VoiceInput
+            onTranscript={handleTranscript}
+            onInterimTranscript={handleInterimTranscript}
+            disabled={isLoading}
+          />
+
+          <Textarea
+            ref={textareaRef}
+            placeholder={t("chat.inputPlaceholder")}
+            rows={1}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            disabled={isLoading}
+            data-intro="chat-input"
+            className="interactable min-h-10 flex-1 resize-none py-2 leading-snug"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (!isLoading && message.trim()) {
+                  e.currentTarget.form?.requestSubmit();
+                }
+              }
+            }}
+          />
+          <Button type="submit" disabled={isLoading || !message.trim()} className="interactable shrink-0">
+            <Send className="h-4 w-4" />
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }
