@@ -6,6 +6,20 @@
     "tutorialsHeading": "Tutoriales"
   },
   "tutorials": {
+    "landingDescription": "Elige una lección guiada en la página de inicio, o prueba un tutorial guiado por IA abajo.",
+    "backToHome": "Volver al inicio",
+    "backToTutorials": "Volver a tutoriales",
+    "interactiveAiButton": "Tutorial guiado por IA (pregunta lo que quieras)",
+    "interactiveAiHint": "Pregunta cómo hacer algo en tu computadora: el asistente te guía paso a paso y puede resaltar la pantalla en la app de escritorio.",
+    "interactiveAi": {
+      "heading": "Pregunta lo que quieras",
+      "subheading": "Describe lo que quieres hacer. El tutor responde de a un paso y puede capturar o resaltar tu pantalla cuando usas la app de escritorio.",
+      "emptyHint": "Prueba: «¿Cómo abro Google Chrome?» o «¿Dónde está el menú de Wi‑Fi?»",
+      "inputPlaceholder": "¿Qué te gustaría aprender?",
+      "findingHighlight": "Buscando eso en tu pantalla…",
+      "unexpectedContentType": "Respuesta inesperada del tutor. Inténtalo de nuevo.",
+      "toolLoopLimit": "Demasiados pasos automáticos seguidos. Envía otro mensaje para continuar."
+    },
     "googleSearch": {
       "title": "Búsqueda básica en Google",
       "steps": {

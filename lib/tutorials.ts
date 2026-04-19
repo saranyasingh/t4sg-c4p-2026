@@ -1,3 +1,10 @@
+import { INTERACTIVE_AI_TUTORIAL_ID } from "@/lib/interactive-tutorial";
+
+export { INTERACTIVE_AI_TUTORIAL_ID };
+
+/** In-app route for the AI-led tutorial (no scripted `steps`). */
+export const INTERACTIVE_AI_TUTORIAL_ROUTE = "/tutorials/interactive";
+
 /**
  * Screen region for step highlights (same shape as `Coordinates` from screenshot analysis).
  * x,y are the top-left corner of the rectangle in screenshot / overlay pixel space.
