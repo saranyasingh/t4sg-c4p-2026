@@ -1,10 +1,10 @@
 "use client";
 
 import BoundingBoxOverlay from "@/app/bounding-box-overlay";
+import { PointerOverlay } from "@/components/pointer-overlay";
 import { Button } from "@/components/ui/button";
 import { TypographyP } from "@/components/ui/typography";
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
-import { findTargetViaChunkedVision } from "@/lib/screen-chunk-pipeline";
 import type { ScreenHighlight, StepVisual } from "@/lib/tutorials";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -48,6 +48,8 @@ export function TutorialController() {
     centerX: number;
     centerY: number;
   } | null>(null);
+  // Pointer animation target in CSS viewport pixels
+  const [pointerTarget, setPointerTarget] = useState<{ x: number; y: number } | null>(null);
   const [viewport, setViewport] = useState(() => ({
     w: typeof window !== "undefined" ? window.innerWidth : 1,
     h: typeof window !== "undefined" ? window.innerHeight : 1,
@@ -79,6 +81,7 @@ export function TutorialController() {
     async function syncHighlight() {
       if (!currentStep) {
         setHighlightPayload(null);
+        setPointerTarget(null);
         setIsLoadingHighlight(false);
         setHighlightError(null);
         return;
@@ -86,9 +89,10 @@ export function TutorialController() {
 
       if (currentStep.highlightDescription) {
         setHighlightPayload(null);
+        setPointerTarget(null);
         setIsLoadingHighlight(true);
         setHighlightError(null);
-        if (typeof window === "undefined" || !window.electronAPI) {
+        if (typeof window === "undefined" || !window.electronAPI?.locateElementComputerUse) {
           setIsLoadingHighlight(false);
           setHighlightError("Screen analysis is only available in the desktop app.");
           return;
@@ -101,33 +105,50 @@ export function TutorialController() {
             return;
           }
 
-          const d = await findTargetViaChunkedVision(cap, currentStep.highlightDescription);
+          const result = await window.electronAPI.locateElementComputerUse(
+            cap.base64,
+            currentStep.highlightDescription,
+            cap.width,
+            cap.height,
+          );
           if (cancelled) {
             setIsLoadingHighlight(false);
             return;
           }
 
-          if (d.found) {
+          if (result.success && result.found && result.x != null && result.y != null) {
             setHighlightError(null);
+
+            const boxW = 100;
+            const boxH = 50;
             setHighlightPayload({
               coords: {
-                x: d.box.x,
-                y: d.box.y,
-                width: d.box.width,
-                height: d.box.height,
-                confidence: d.box.confidence,
+                x: result.x - boxW / 2,
+                y: result.y - boxH / 2,
+                width: boxW,
+                height: boxH,
+                confidence: 1,
               },
               screenshotWidth: cap.width,
               screenshotHeight: cap.height,
             });
+
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            setPointerTarget({
+              x: result.x * (vw / cap.width),
+              y: result.y * (vh / cap.height),
+            });
           } else {
             setHighlightPayload(null);
-            setHighlightError(d.explanation);
+            setPointerTarget(null);
+            setHighlightError(result.explanation ?? result.error ?? "Element not found on screen.");
           }
         } catch (err) {
           if (cancelled) return;
           console.error("Highlight vision failed:", err);
           setHighlightPayload(null);
+          setPointerTarget(null);
           setHighlightError(
             err instanceof Error
               ? `Something went wrong while locating the target: ${err.message}`
@@ -141,6 +162,7 @@ export function TutorialController() {
       if (currentStep.highlight) {
         setIsLoadingHighlight(false);
         setHighlightError(null);
+        setPointerTarget(null);
         setHighlightPayload({
           coords: currentStep.highlight,
           screenshotWidth: typeof window !== "undefined" ? window.innerWidth : 1,
@@ -151,6 +173,7 @@ export function TutorialController() {
 
       setIsLoadingHighlight(false);
       setHighlightPayload(null);
+      setPointerTarget(null);
       setHighlightError(null);
     }
 
@@ -223,6 +246,20 @@ export function TutorialController() {
         screenshotHeight={highlightPayload?.screenshotHeight ?? fallbackH}
         expandFactor={2.5}
         onSpotlightRectChange={setSpotlightRect}
+      />
+
+      <PointerOverlay
+        targetX={pointerTarget?.x ?? null}
+        targetY={pointerTarget?.y ?? null}
+        label="right here!"
+        startX={textBoxStyle.left + (typeof textBoxStyle.width === "number" ? textBoxStyle.width / 2 : 100)}
+        startY={
+          typeof textBoxStyle.bottom === "number"
+            ? viewport.h - textBoxStyle.bottom - 30
+            : typeof textBoxStyle.top === "number"
+              ? textBoxStyle.top + 30
+              : viewport.h - 130
+        }
       />
 
       {showStepText

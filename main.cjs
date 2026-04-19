@@ -638,6 +638,139 @@ ipcMain.handle("analyze-screenshot-tile", async (_event, base64, targetDescripti
   }
 });
 
+/**
+ * Computer Use API: find the exact center pixel of a UI element.
+ * Uses Claude's Computer Use beta (pixel-accurate coordinate training).
+ * Returns { found: true, x, y } in original screenshot pixel space,
+ * or { found: false, explanation }.
+ */
+const CU_RESOLUTIONS = [
+  { w: 1024, h: 768 },
+  { w: 1280, h: 800 },
+  { w: 1366, h: 768 },
+  { w: 1280, h: 1024 },
+];
+
+function pickComputerUseResolution(origW, origH) {
+  const targetAR = origW / origH;
+  let best = CU_RESOLUTIONS[0];
+  let bestScore = Infinity;
+  for (const res of CU_RESOLUTIONS) {
+    const score = Math.abs(res.w / res.h - targetAR);
+    if (score < bestScore) {
+      bestScore = score;
+      best = res;
+    }
+  }
+  return best;
+}
+
+async function locateElementComputerUse(imageBase64, targetDescription, imageWidth, imageHeight) {
+  const { default: Anthropic } = await import("@anthropic-ai/sdk");
+  require("dotenv/config");
+
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const display = screen.getPrimaryDisplay();
+  const { width: logicalW, height: logicalH } = display.size;
+
+  const origW =
+    typeof imageWidth === "number" && imageWidth > 0 ? Math.round(imageWidth) : logicalW;
+  const origH =
+    typeof imageHeight === "number" && imageHeight > 0 ? Math.round(imageHeight) : logicalH;
+  const target =
+    typeof targetDescription === "string" && targetDescription.trim()
+      ? targetDescription.trim()
+      : "the main interactive element";
+
+  // Resize to Computer Use optimized resolution for better coordinate accuracy
+  const cuRes = pickComputerUseResolution(origW, origH);
+  const { nativeImage } = require("electron");
+  const img = nativeImage.createFromBuffer(Buffer.from(imageBase64, "base64"));
+  const resized = img.resize({ width: cuRes.w, height: cuRes.h });
+  const resizedBase64 = resized.toPNG().toString("base64");
+
+  const model =
+    process.env.ANTHROPIC_MODEL_COMPUTER_USE ||
+    process.env.ANTHROPIC_MODEL ||
+    "claude-haiku-4-5-20251001";
+
+  const response = await client.messages.create(
+    {
+      model,
+      max_tokens: 1024,
+      system: `You are a screen annotation assistant. A screenshot (${cuRes.w}x${cuRes.h} px) is already provided in the user message — you MUST NOT call screenshot. Your ONLY task: call the computer tool with action "mouse_move" and the coordinate of the exact center pixel of the target element. One tool call only. No text. No screenshot. No click.`,
+      tools: [
+        {
+          type: "computer_20250124",
+          name: "computer",
+          display_width_px: cuRes.w,
+          display_height_px: cuRes.h,
+        },
+      ],
+      tool_choice: { type: "tool", name: "computer" },
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: { type: "base64", media_type: "image/png", data: resizedBase64 },
+            },
+            {
+              type: "text",
+              text: `Move the mouse to the center of: ${target}`,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      headers: { "anthropic-beta": "computer-use-2025-01-24" },
+    },
+  );
+
+  // Extract mouse_move coordinate from response — skip screenshot/click actions
+  for (const block of response.content) {
+    if (block.type === "tool_use" && block.name === "computer") {
+      const input = block.input;
+      if (input && input.action === "mouse_move" && Array.isArray(input.coordinate)) {
+        const [cx, cy] = input.coordinate;
+        const scaleX = origW / cuRes.w;
+        const scaleY = origH / cuRes.h;
+        return {
+          found: true,
+          x: Math.round(cx * scaleX),
+          y: Math.round(cy * scaleY),
+        };
+      }
+    }
+  }
+
+  const textBlock = response.content.find((b) => b.type === "text");
+  return {
+    found: false,
+    explanation: textBlock?.text || "Element not found on screen.",
+  };
+}
+
+ipcMain.handle(
+  "locate-element-computer-use",
+  async (_event, base64, targetDescription, imageWidth, imageHeight) => {
+    try {
+      const result = await locateElementComputerUse(
+        base64,
+        targetDescription,
+        imageWidth,
+        imageHeight,
+      );
+      return { success: true, ...result };
+    } catch (err) {
+      console.error("locate-element-computer-use error:", err);
+      return { success: false, found: false, error: errMessage(err) };
+    }
+  },
+);
+
 app.whenReady().then(() => {
   createWindow();
 
