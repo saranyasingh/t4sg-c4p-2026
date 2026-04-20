@@ -5,6 +5,7 @@ import { INTRO_TUTORIAL_ID, TUTORIALS } from "@/lib/tutorials";
 import { BookOpen, HelpCircle, Languages, MessageSquare, Mic, Monitor } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import { Chat } from "./chat/chat";
 
 export default function Home() {
@@ -61,7 +62,6 @@ export default function Home() {
             <TypographyH2>{t("home.brandTitle")}</TypographyH2>
             <TypographyP className="text-sm text-white/80">{t("home.tagline")}</TypographyP>
 
-  return (
     <div className="flex h-full flex-col">
       <div className="shrink-0 space-y-3 px-6">
         <TypographyH2>{t("home.brandTitle")}</TypographyH2>
