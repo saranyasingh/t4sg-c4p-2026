@@ -2,19 +2,16 @@
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { TypographyH2, TypographyP } from "@/components/ui/typography";
+import { TypographyH2, TypographyP, TypographySmall } from "@/components/ui/typography";
+import { toast } from "@/components/ui/use-toast";
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
 import { Send } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "@/components/ui/use-toast";
+import { useAudioMode } from "../audio-mode-context";
 import { Message, type MessageProps } from "./message";
 import { ScrollContainer } from "./scroll-container";
 import { VoiceInput } from "./voice-input"; // ← NEW
-
-/** Tiny silent WAV — played once when enabling audio mode to satisfy browser autoplay rules. */
-const SILENT_WAV =
-  "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAAAAAA==";
 
 type MessageWithId = MessageProps & { id: string; variant: "user" | "assistant" };
 interface ChatHistoryItem {
@@ -22,7 +19,7 @@ interface ChatHistoryItem {
   content: string;
 }
 
-const CHAT_STORAGE_KEY = "t4sg-c4p-chat-messages-v1";
+const CHAT_STORAGE_KEY = "t4sg-c4p-chat-messages-v2";
 
 function parseStoredMessages(raw: unknown): MessageWithId[] {
   if (!Array.isArray(raw)) return [];
@@ -46,8 +43,8 @@ export function Chat({ showHeader = true }: ChatProps) {
   const [messages, setMessages] = useState<MessageWithId[]>([]);
   const [messagesHydrated, setMessagesHydrated] = useState(false);
   const [incomingMessage, setIncomingMessage] = useState("");
-  const [audioModeEnabled, setAudioModeEnabled] = useState(false);
-  const [isSpeechPlaying, setIsSpeechPlaying] = useState(false);
+  const [, setIsSpeechPlaying] = useState(false);
+  const { audioModeEnabled } = useAudioMode();
   const audioModeEnabledRef = useRef(audioModeEnabled);
   const speechObjectUrlRef = useRef<string | null>(null);
   const speechAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -80,7 +77,7 @@ export function Chat({ showHeader = true }: ChatProps) {
     try {
       const raw = localStorage.getItem(CHAT_STORAGE_KEY);
       if (raw) {
-        const parsed = parseStoredMessages(JSON.parse(raw) as unknown);
+        const parsed = parseStoredMessages(JSON.parse(raw));
         if (parsed.length) setMessages(parsed);
       }
     } catch {
@@ -284,7 +281,7 @@ export function Chat({ showHeader = true }: ChatProps) {
         if (!trimmed) continue;
         let evt: unknown;
         try {
-          evt = JSON.parse(trimmed) as unknown;
+          evt = JSON.parse(trimmed);
         } catch {
           continue;
         }
@@ -547,39 +544,13 @@ export function Chat({ showHeader = true }: ChatProps) {
   };
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
+    <div className="interactable flex h-full flex-col gap-6 p-6">
       {showHeader ? (
         <header className="space-y-1">
           <TypographyH2>{t("chat.heading")}</TypographyH2>
           <TypographyP className="text-sm text-muted-foreground">{t("chat.description")}</TypographyP>
         </header>
       ) : null}
-
-      <Button
-        type="button"
-        variant={audioModeEnabled ? "default" : "outline"}
-        className={
-          audioModeEnabled
-            ? "interactable shrink-0 ring-2 ring-primary/40"
-            : "interactable shrink-0 text-muted-foreground"
-        }
-        aria-pressed={audioModeEnabled}
-        aria-busy={isSpeechPlaying}
-        onClick={() => {
-          const next = !audioModeEnabled;
-          if (next) {
-            const unlock = new Audio(SILENT_WAV);
-            unlock.volume = 0.01;
-            void unlock.play().catch(() => {
-              /* ignore — Electron / no-user-gesture path may still allow later play */
-            });
-          }
-          setAudioModeEnabled(next);
-        }}
-      >
-        {audioModeEnabled ? t("chat.audioModeOn") : t("chat.audioModeOff")}
-        {isSpeechPlaying ? t("chat.audioPlaying") : ""}
-      </Button>
 
       <section className="min-h-0 flex-1 overflow-hidden">
         <ScrollContainer>
@@ -603,25 +574,37 @@ export function Chat({ showHeader = true }: ChatProps) {
           disabled={isLoading}
         />
 
-        <Textarea
-          ref={textareaRef}
-          placeholder={t("chat.inputPlaceholder")}
-          rows={1}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          disabled={isLoading}
-          className="interactable min-h-10 flex-1 resize-none py-2 leading-snug"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              if (!isLoading && message.trim()) {
-                e.currentTarget.form?.requestSubmit();
+        <div className="relative flex-1">
+          {!message ? (
+            <TypographySmall className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--placeholder-foreground))]">
+              {t("chat.inputPlaceholder")}
+            </TypographySmall>
+          ) : null}
+          <Textarea
+            ref={textareaRef}
+            placeholder=""
+            rows={1}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            disabled={isLoading}
+            aria-label={t("chat.inputPlaceholder")}
+            className="interactable !min-h-[calc(2.5rem*var(--text-scale))] flex-1 resize-none py-2 !text-[calc(1rem*var(--text-scale))] leading-snug text-white"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (!isLoading && message.trim()) {
+                  e.currentTarget.form?.requestSubmit();
+                }
               }
-            }
-          }}
-        />
-        <Button type="submit" disabled={isLoading || !message.trim()} className="interactable shrink-0">
-          <Send className="h-4 w-4" />
+            }}
+          />
+        </div>
+        <Button
+          type="submit"
+          disabled={isLoading || !message.trim()}
+          className="interactable !h-[calc(2.5rem*var(--text-scale))] !w-[calc(2.5rem*var(--text-scale))] shrink-0 p-0"
+        >
+          <Send className="h-[calc(1rem*var(--text-scale))] w-[calc(1rem*var(--text-scale))]" />
         </Button>
       </form>
     </div>

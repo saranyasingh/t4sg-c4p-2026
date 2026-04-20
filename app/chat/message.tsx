@@ -26,10 +26,8 @@ export const Message = ({ text, variant = "user", isError = false }: MessageProp
             : "bg-[hsl(var(--primary)/0.45)]",
       )}
     >
-      <TypographyP className={cn("text-sm font-semibold", isError ? "text-red-200" : "text-white/90")}>
-        {sender}
-      </TypographyP>
-      <div className="text-sm text-white whitespace-pre-wrap break-words">
+      <TypographyP className={cn("font-semibold", isError ? "text-red-200" : "text-white/90")}>{sender}</TypographyP>
+      <div className="whitespace-pre-wrap break-words text-[calc(0.875rem*var(--text-scale))] text-white">
         <ReactMarkdown>{text}</ReactMarkdown>
       </div>
     </div>

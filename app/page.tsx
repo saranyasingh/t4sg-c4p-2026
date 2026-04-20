@@ -1,25 +1,17 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
 import { INTERACTIVE_AI_TUTORIAL_ROUTE, TUTORIALS } from "@/lib/tutorials";
 import { BookOpen } from "lucide-react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { Chat } from "./chat/chat";
-import { LanguageSelector } from "./language-selector";
-import { useTutorial } from "./tutorial/tutorial-provider";
 
 export default function Home() {
   const { t } = useTranslation();
-  const { tutorialId, startTutorial } = useTutorial();
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-4 flex shrink-0 items-center justify-end px-6 pt-6">
-        <LanguageSelector />
-      </div>
-
       <div className="shrink-0 space-y-3 px-6">
         <TypographyH2>{t("home.brandTitle")}</TypographyH2>
         <TypographyP>{t("home.getStarted")}</TypographyP>

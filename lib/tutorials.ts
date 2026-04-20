@@ -33,6 +33,25 @@ export interface TutorialStep {
   /** Natural-language target for vision (English). */
   highlightDescription?: string;
   highlight?: ScreenHighlight | null;
+  /**
+   * CSS selector for in-app elements to spotlight (resolved at runtime via
+   * getBoundingClientRect). Preferred over `highlight` for tutorials that
+   * target elements inside the Granson panel, since it follows resizes.
+   */
+  highlightSelector?: string;
+  /** Optional per-step spotlight growth factor; lower values create tighter highlights. */
+  highlightExpandFactor?: number;
+  /** Optional per-step minimum spotlight padding in CSS pixels. */
+  highlightMinPadding?: number;
+  /** Optional per-step selector highlight offset in CSS pixels. */
+  highlightOffsetX?: number;
+  highlightOffsetY?: number;
+  /**
+   * When true, render the spotlight with a bright, glowing treatment instead of
+   * dimming the rest of the screen. Useful when the surrounding UI should stay
+   * visible (e.g. exit/finish steps where we want the chat to remain readable).
+   */
+  highlightBright?: boolean;
 }
 
 /** Scripted lessons use i18n-backed steps; AI-guided lessons use empty steps and `/tutorials/interactive`. */
@@ -364,7 +383,108 @@ const gmailSteps: TutorialStep[] = [
   },
 ];
 
+/**
+ * Introductory tour of the Granson AI app itself. Targets elements inside the
+ * panel using CSS selectors (`data-intro="…"`) so the spotlight tracks layout
+ * changes. Each step should be short and welcoming — this is the first thing a
+ * new user sees via the HELP button.
+ */
+const introSteps: TutorialStep[] = [
+  {
+    id: "intro-welcome",
+    title: "tutorials.intro.intro-welcome.title",
+    text: "tutorials.intro.intro-welcome.text",
+    visual: "text",
+  },
+  {
+    id: "intro-chat",
+    title: "tutorials.intro.intro-chat.title",
+    text: "tutorials.intro.intro-chat.text",
+    visual: "screen_text",
+    highlightSelector: "[data-intro='chat-input']",
+  },
+  {
+    id: "intro-screen",
+    title: "tutorials.intro.intro-screen.title",
+    text: "tutorials.intro.intro-screen.text",
+    visual: "screen_text",
+    highlightSelector: "[data-intro='chat-box']",
+  },
+  {
+    id: "intro-voice",
+    title: "tutorials.intro.intro-voice.title",
+    text: "tutorials.intro.intro-voice.text",
+    visual: "screen_text",
+    highlightSelector: "[data-intro='voice']",
+    highlightExpandFactor: 1.25,
+    highlightMinPadding: 10,
+  },
+  {
+    id: "intro-audio-mode",
+    title: "tutorials.intro.intro-audio-mode.title",
+    text: "tutorials.intro.intro-audio-mode.text",
+    visual: "screen_text",
+    highlightSelector: "[data-intro='audio-mode']",
+    highlightExpandFactor: 1.0,
+    highlightMinPadding: 2,
+  },
+  {
+    id: "intro-language",
+    title: "tutorials.intro.intro-language.title",
+    text: "tutorials.intro.intro-language.text",
+    visual: "screen_text",
+    highlightSelector: "[data-intro='language']",
+    highlightExpandFactor: 1.0,
+    highlightMinPadding: 2,
+  },
+  {
+    id: "intro-tutorials",
+    title: "tutorials.intro.intro-tutorials.title",
+    text: "tutorials.intro.intro-tutorials.text",
+    visual: "screen_text",
+    highlightSelector: "[data-intro='tutorials']",
+    highlightExpandFactor: 1.0,
+    highlightMinPadding: 4,
+  },
+  {
+    id: "intro-exit",
+    title: "tutorials.intro.intro-exit.title",
+    text: "tutorials.intro.intro-exit.text",
+    visual: "screen_text",
+    highlightSelector: "#tutorial-exit-button",
+    highlightExpandFactor: 1.08,
+    highlightMinPadding: 10,
+    highlightBright: true,
+  },
+  {
+    id: "intro-help",
+    title: "tutorials.intro.intro-help.title",
+    text: "tutorials.intro.intro-help.text",
+    visual: "screen_text",
+    highlightSelector: "[data-intro='help']",
+    highlightExpandFactor: 1.0,
+    highlightMinPadding: 4,
+  },
+  {
+    id: "intro-finish",
+    title: "tutorials.intro.intro-finish.title",
+    text: "tutorials.intro.intro-finish.text",
+    visual: "screen_text",
+    highlightSelector: "#tutorial-finish-button",
+    highlightExpandFactor: 1.0,
+    highlightMinPadding: 6,
+    highlightBright: true,
+  },
+];
+
+export const INTRO_TUTORIAL_ID = "intro";
+
 export const TUTORIALS: readonly Tutorial[] = [
+  {
+    id: INTRO_TUTORIAL_ID,
+    title: "tutorials.intro.title",
+    steps: introSteps,
+  },
   {
     id: "google-search",
     title: "tutorials.googleSearch.title",
