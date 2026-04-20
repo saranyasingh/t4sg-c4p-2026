@@ -19,10 +19,7 @@ function loadEnvFromFileSync(absolutePath) {
       const key = rest.slice(0, eq).trim();
       if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue;
       let value = rest.slice(eq + 1).trim();
-      if (
-        (value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))
-      ) {
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
         value = value.slice(1, -1);
       }
       process.env[key] = value;
@@ -174,7 +171,11 @@ async function analyzeScreenshot(imageBase64, targetDescription, imageWidth, ima
   require("dotenv/config");
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    return { found: false, explanation: "The assistant is not set up yet. Please ask your administrator to configure the API key and restart the app." };
+    return {
+      found: false,
+      explanation:
+        "The assistant is not set up yet. Please ask your administrator to configure the API key and restart the app.",
+    };
   }
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -182,9 +183,7 @@ async function analyzeScreenshot(imageBase64, targetDescription, imageWidth, ima
   const display = screen.getPrimaryDisplay();
   const { width: logicalW, height: logicalH } = display.size;
   const w =
-    typeof imageWidth === "number" && Number.isFinite(imageWidth) && imageWidth > 0
-      ? Math.round(imageWidth)
-      : logicalW;
+    typeof imageWidth === "number" && Number.isFinite(imageWidth) && imageWidth > 0 ? Math.round(imageWidth) : logicalW;
   const h =
     typeof imageHeight === "number" && Number.isFinite(imageHeight) && imageHeight > 0
       ? Math.round(imageHeight)
@@ -235,7 +234,9 @@ In the explanation, describe what you DO see on the screen and give the user pra
     ],
   });
 
-  const raw = extractAssistantText(response).replace(/```json|```/g, "").trim();
+  const raw = extractAssistantText(response)
+    .replace(/```json|```/g, "")
+    .trim();
   const parsed = parseAssistantJson(raw);
 
   if (parsed.found === false || parsed.found === "false") {
@@ -264,16 +265,18 @@ async function analyzeScreenshotTilePresence(imageBase64, targetDescription, ima
   require("dotenv/config");
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    return { found: false, explanation: "The assistant is not set up yet. Please ask your administrator to configure the API key and restart the app." };
+    return {
+      found: false,
+      explanation:
+        "The assistant is not set up yet. Please ask your administrator to configure the API key and restart the app.",
+    };
   }
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const display = screen.getPrimaryDisplay();
   const { width: logicalW, height: logicalH } = display.size;
   const w =
-    typeof imageWidth === "number" && Number.isFinite(imageWidth) && imageWidth > 0
-      ? Math.round(imageWidth)
-      : logicalW;
+    typeof imageWidth === "number" && Number.isFinite(imageWidth) && imageWidth > 0 ? Math.round(imageWidth) : logicalW;
   const h =
     typeof imageHeight === "number" && Number.isFinite(imageHeight) && imageHeight > 0
       ? Math.round(imageHeight)
@@ -284,8 +287,7 @@ async function analyzeScreenshotTilePresence(imageBase64, targetDescription, ima
       ? targetDescription.trim()
       : "the Google Chrome app icon";
 
-  const model =
-    process.env.ANTHROPIC_MODEL_TILE_FAST || process.env.ANTHROPIC_MODEL || DEFAULT_VISION_MODEL;
+  const model = process.env.ANTHROPIC_MODEL_TILE_FAST || process.env.ANTHROPIC_MODEL || DEFAULT_VISION_MODEL;
   const response = await anthropicCreateWithRetry(client, {
     model,
     max_tokens: 128,
@@ -315,7 +317,9 @@ Reply with ONE JSON object only, no markdown:
     ],
   });
 
-  const raw = extractAssistantText(response).replace(/```json|```/g, "").trim();
+  const raw = extractAssistantText(response)
+    .replace(/```json|```/g, "")
+    .trim();
   const parsed = parseAssistantJson(raw);
   if (parsed.present === true || parsed.present === "true") return { present: true };
   if (parsed.present === false || parsed.present === "false") return { present: false };
@@ -336,9 +340,7 @@ async function analyzeScreenshotTileClipHint(imageBase64, targetDescription, ima
   const display = screen.getPrimaryDisplay();
   const { width: logicalW, height: logicalH } = display.size;
   const w =
-    typeof imageWidth === "number" && Number.isFinite(imageWidth) && imageWidth > 0
-      ? Math.round(imageWidth)
-      : logicalW;
+    typeof imageWidth === "number" && Number.isFinite(imageWidth) && imageWidth > 0 ? Math.round(imageWidth) : logicalW;
   const h =
     typeof imageHeight === "number" && Number.isFinite(imageHeight) && imageHeight > 0
       ? Math.round(imageHeight)
@@ -349,8 +351,7 @@ async function analyzeScreenshotTileClipHint(imageBase64, targetDescription, ima
       ? targetDescription.trim()
       : "the Google Chrome app icon";
 
-  const model =
-    process.env.ANTHROPIC_MODEL_TILE_FAST || process.env.ANTHROPIC_MODEL || DEFAULT_VISION_MODEL;
+  const model = process.env.ANTHROPIC_MODEL_TILE_FAST || process.env.ANTHROPIC_MODEL || DEFAULT_VISION_MODEL;
   const response = await anthropicCreateWithRetry(client, {
     model,
     max_tokens: 256,
@@ -386,7 +387,9 @@ For direction use EXACTLY one of: "none", "left", "right", "top", "bottom", "out
     ],
   });
 
-  const raw = extractAssistantText(response).replace(/```json|```/g, "").trim();
+  const raw = extractAssistantText(response)
+    .replace(/```json|```/g, "")
+    .trim();
   const parsed = parseAssistantJson(raw);
   const clipped =
     parsed.clipped === true || parsed.clipped === "true" || parsed.is_clipped === true || parsed.is_clipped === "true";
@@ -414,9 +417,7 @@ async function analyzeScreenshotTile(imageBase64, targetDescription, imageWidth,
   const display = screen.getPrimaryDisplay();
   const { width: logicalW, height: logicalH } = display.size;
   const w =
-    typeof imageWidth === "number" && Number.isFinite(imageWidth) && imageWidth > 0
-      ? Math.round(imageWidth)
-      : logicalW;
+    typeof imageWidth === "number" && Number.isFinite(imageWidth) && imageWidth > 0 ? Math.round(imageWidth) : logicalW;
   const h =
     typeof imageHeight === "number" && Number.isFinite(imageHeight) && imageHeight > 0
       ? Math.round(imageHeight)
@@ -427,9 +428,8 @@ async function analyzeScreenshotTile(imageBase64, targetDescription, imageWidth,
       ? targetDescription.trim()
       : "the Google Chrome app icon";
 
-  const precise = Boolean(callOpts && callOpts.precise);
-  const fastModel =
-    process.env.ANTHROPIC_MODEL_TILE_REFINE || process.env.ANTHROPIC_MODEL || DEFAULT_VISION_MODEL;
+  const precise = Boolean(callOpts?.precise);
+  const fastModel = process.env.ANTHROPIC_MODEL_TILE_REFINE || process.env.ANTHROPIC_MODEL || DEFAULT_VISION_MODEL;
   const model = precise
     ? process.env.ANTHROPIC_MODEL_TILE_PRECISE || process.env.ANTHROPIC_MODEL || DEFAULT_TILE_PRECISE_MODEL
     : fastModel;
@@ -482,7 +482,9 @@ When found is true, use normalized fractions relative to THIS crop only (top-lef
     ],
   });
 
-  const raw = extractAssistantText(response).replace(/```json|```/g, "").trim();
+  const raw = extractAssistantText(response)
+    .replace(/```json|```/g, "")
+    .trim();
   const parsed = parseAssistantJson(raw);
 
   if (parsed.found === false || parsed.found === "false") {
@@ -526,6 +528,7 @@ function createWindow() {
     alwaysOnTop: true,
     transparent: true,
     skipTaskbar: true,
+    hiddenInMissionControl: process.platform === "darwin",
 
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -536,6 +539,9 @@ function createWindow() {
 
   win.setAlwaysOnTop(true, "screen-saver", 100);
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  if (process.platform === "darwin") {
+    win.setHiddenInMissionControl(true);
+  }
   win.moveTop();
 
   // Make the entire window click-through.
@@ -614,25 +620,31 @@ ipcMain.handle("analyze-screenshot", async (_event, base64, targetDescription, i
   }
 });
 
-ipcMain.handle("analyze-screenshot-tile-presence", async (_event, base64, targetDescription, imageWidth, imageHeight) => {
-  try {
-    const r = await analyzeScreenshotTilePresence(base64, targetDescription, imageWidth, imageHeight);
-    return { success: true, present: r.present };
-  } catch (err) {
-    console.error("analyze-screenshot-tile-presence error:", err);
-    return { success: false, error: errMessage(err) };
-  }
-});
+ipcMain.handle(
+  "analyze-screenshot-tile-presence",
+  async (_event, base64, targetDescription, imageWidth, imageHeight) => {
+    try {
+      const r = await analyzeScreenshotTilePresence(base64, targetDescription, imageWidth, imageHeight);
+      return { success: true, present: r.present };
+    } catch (err) {
+      console.error("analyze-screenshot-tile-presence error:", err);
+      return { success: false, error: errMessage(err) };
+    }
+  },
+);
 
-ipcMain.handle("analyze-screenshot-tile-clip-hint", async (_event, base64, targetDescription, imageWidth, imageHeight) => {
-  try {
-    const r = await analyzeScreenshotTileClipHint(base64, targetDescription, imageWidth, imageHeight);
-    return { success: true, clipped: r.clipped, direction: r.direction };
-  } catch (err) {
-    console.error("analyze-screenshot-tile-clip-hint error:", err);
-    return { success: false, error: errMessage(err) };
-  }
-});
+ipcMain.handle(
+  "analyze-screenshot-tile-clip-hint",
+  async (_event, base64, targetDescription, imageWidth, imageHeight) => {
+    try {
+      const r = await analyzeScreenshotTileClipHint(base64, targetDescription, imageWidth, imageHeight);
+      return { success: true, clipped: r.clipped, direction: r.direction };
+    } catch (err) {
+      console.error("analyze-screenshot-tile-clip-hint error:", err);
+      return { success: false, error: errMessage(err) };
+    }
+  },
+);
 
 ipcMain.handle("analyze-screenshot-tile", async (_event, base64, targetDescription, imageWidth, imageHeight, opts) => {
   try {
