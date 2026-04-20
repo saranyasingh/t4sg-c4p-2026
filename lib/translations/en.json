@@ -12,10 +12,19 @@
     "interactiveAiButton": "AI-guided tutorial (ask anything)",
     "interactiveAiHint": "Ask how to do something on your computer — the assistant walks you through it and can highlight your screen.",
     "interactiveAi": {
+      "courseTitle": "AI-guided tutorial",
       "heading": "Ask anything",
       "subheading": "Describe what you want to do. The tutor answers one step at a time and can capture or highlight your screen when you use the desktop app.",
+      "landingTitle": "What do you want to learn?",
+      "landingSubtitle": "Ask in your own words. You’ll get one clear step at a time—like other tutorials—with optional screen highlights on the desktop app.",
+      "landingPlaceholder": "Example: How do I open Google Chrome? Or: Help me find the Wi‑Fi settings.",
+      "startLearning": "Start",
       "emptyHint": "Try: “How do I open Google Chrome?” or “Where is the Wi‑Fi menu?”",
-      "inputPlaceholder": "What would you like to learn?",
+      "inputPlaceholder": "Ask a follow-up or say what’s on your screen…",
+      "nextStep": "Next step",
+      "stepPlaceholderTitle": "Your step will appear here",
+      "stepPlaceholderBody": "Send a message or press Next step to continue.",
+      "chatHint": "Type to ask something new or clarify. Use Next step when you’re ready to move on without typing.",
       "findingHighlight": "Finding that on your screen…",
       "unexpectedContentType": "Unexpected response from the tutor. Please try again.",
       "toolLoopLimit": "Too many automatic steps in a row. Please send another message to continue."
@@ -261,7 +270,8 @@
     "highlightErrorTitle": "Could not locate target",
     "highlightErrorHint": "Make sure Chrome is visible, then try Next again.",
     "courseTitles": {
-      "google-search": "Google Search"
+      "google-search": "Google Search",
+      "interactive-ai": "AI-guided tutorial"
     }
   },
   "nav": {

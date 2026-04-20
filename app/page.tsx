@@ -2,8 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import { TypographyH2, TypographyP } from "@/components/ui/typography";
-import { TUTORIALS } from "@/lib/tutorials";
+import { INTERACTIVE_AI_TUTORIAL_ROUTE, TUTORIALS } from "@/lib/tutorials";
 import { BookOpen } from "lucide-react";
+import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { Chat } from "./chat/chat";
 import { LanguageSelector } from "./language-selector";
@@ -47,6 +48,15 @@ export default function Home() {
                 </Button>
               );
             })}
+            <Button
+              asChild
+              className="interactable mt-1 w-full justify-center bg-white text-black hover:bg-white/90"
+            >
+              <Link href={INTERACTIVE_AI_TUTORIAL_ROUTE}>{t("tutorials.interactiveAiButton")}</Link>
+            </Button>
+            <TypographyP className="text-[11px] leading-snug text-white/55">
+              {t("tutorials.interactiveAiHint")}
+            </TypographyP>
           </div>
         </div>
       </div>

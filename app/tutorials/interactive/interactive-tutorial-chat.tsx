@@ -8,8 +8,10 @@ import { Message, type MessageProps } from "@/app/chat/message";
 import { ScrollContainer } from "@/app/chat/scroll-container";
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
 import { findTargetViaChunkedVision } from "@/lib/screen-chunk-pipeline";
-import type { HighlightToolResultPayload } from "@/lib/interactive-tutorial";
-import { Send } from "lucide-react";
+import type { AiTutorialStepPayload, HighlightToolResultPayload } from "@/lib/interactive-tutorial";
+import { AI_GUIDED_TUTORIAL } from "@/lib/tutorials";
+import type { StepVisual } from "@/lib/tutorials";
+import { ChevronRight, Send } from "lucide-react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
@@ -24,9 +26,20 @@ interface ChatHistoryItem {
 type NdjsonDone =
   | { action: "capture_screen"; assistantContent: unknown }
   | { action: "show_screen_highlight"; assistantContent: unknown; targetDescription: string }
+  | { action: "tutorial_step"; step: AiTutorialStepPayload; reply: string }
   | { action: null; reply: string };
 
 const MAX_TOOL_CHAIN = 10;
+
+function visualLabelKey(v: StepVisual): string {
+  if (v === "text") return "tutorial.visualText";
+  if (v === "screen") return "tutorial.visualScreen";
+  return "tutorial.visualScreenText";
+}
+
+function formatAssistantStepForHistory(step: AiTutorialStepPayload): string {
+  return `## ${step.title}\n\n${step.body}`;
+}
 
 async function readNdjsonResponse(response: Response, onToken: (t: string) => void): Promise<NdjsonDone | { error: string }> {
   if (!response.body) return { error: "No response body" };
@@ -73,6 +86,25 @@ async function readNdjsonResponse(response: Response, onToken: (t: string) => vo
             targetDescription: td.trim(),
           };
         }
+        if (action === "tutorial_step" && row.step && typeof row.step === "object") {
+          const s = row.step as Record<string, unknown>;
+          const title = typeof s.title === "string" ? s.title : "";
+          const body = typeof s.body === "string" ? s.body : "";
+          const visual = s.visual;
+          if (
+            !title.trim() ||
+            !body.trim() ||
+            (visual !== "text" && visual !== "screen" && visual !== "screen_text")
+          ) {
+            return { action: null, reply: fullText.trim() || "Invalid tutorial step." };
+          }
+          const reply = typeof row.reply === "string" ? row.reply : fullText;
+          return {
+            action: "tutorial_step",
+            step: { title: title.trim(), body: body.trim(), visual: visual as StepVisual },
+            reply: reply.trim(),
+          };
+        }
         const reply = typeof row.reply === "string" ? row.reply : fullText;
         return { action: null, reply: reply.trim() || fullText.trim() };
       }
@@ -101,6 +133,24 @@ async function readNdjsonResponse(response: Response, onToken: (t: string) => vo
             };
           }
         }
+        if (row.action === "tutorial_step" && row.step && typeof row.step === "object") {
+          const s = row.step as Record<string, unknown>;
+          const title = typeof s.title === "string" ? s.title : "";
+          const body = typeof s.body === "string" ? s.body : "";
+          const visual = s.visual;
+          if (
+            title.trim() &&
+            body.trim() &&
+            (visual === "text" || visual === "screen" || visual === "screen_text")
+          ) {
+            const reply = typeof row.reply === "string" ? row.reply : fullText;
+            return {
+              action: "tutorial_step",
+              step: { title: title.trim(), body: body.trim(), visual: visual as StepVisual },
+              reply: reply.trim(),
+            };
+          }
+        }
         const reply = typeof row.reply === "string" ? row.reply : fullText;
         return { action: null, reply: reply.trim() || fullText.trim() };
       }
@@ -112,12 +162,17 @@ async function readNdjsonResponse(response: Response, onToken: (t: string) => vo
   return { action: null, reply: fullText.trim() || "Incomplete response." };
 }
 
+type TurnIntent = "user_message" | "continue_step";
+
 export function InteractiveTutorialChat() {
   const { t } = useTranslation();
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<MessageWithId[]>([]);
   const [incomingMessage, setIncomingMessage] = useState("");
+  const [sessionGoal, setSessionGoal] = useState("");
+  const [currentStep, setCurrentStep] = useState<AiTutorialStepPayload | null>(null);
+  const [tutorialStarted, setTutorialStarted] = useState(false);
   const [highlight, setHighlight] = useState<{
     coords: { x: number; y: number; width: number; height: number; confidence: number };
     screenshotWidth: number;
@@ -125,6 +180,7 @@ export function InteractiveTutorialChat() {
   } | null>(null);
   const [mounted, setMounted] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const stepAnnouncerRef = useRef<HTMLDivElement>(null);
 
   const TEXTAREA_MAX_PX = 200;
 
@@ -162,12 +218,43 @@ export function InteractiveTutorialChat() {
     return `HTTP ${response.status}`;
   };
 
+  const buildRequestBody = useCallback(
+    (opts: {
+      sessionGoalForApi: string;
+      phase?: string;
+      prompt: string;
+      history: ChatHistoryItem[];
+      intent: TurnIntent;
+      imageBase64?: string;
+      assistantContent?: unknown;
+      highlightResult?: HighlightToolResultPayload;
+    }) => {
+      const base: Record<string, unknown> = {
+        prompt: opts.prompt,
+        history: opts.history,
+        sessionGoal: opts.sessionGoalForApi || undefined,
+        intent: opts.intent === "continue_step" ? "continue_step" : undefined,
+      };
+      if (opts.phase) base.phase = opts.phase;
+      if (opts.imageBase64) base.imageBase64 = opts.imageBase64;
+      if (opts.assistantContent !== undefined) base.assistantContent = opts.assistantContent;
+      if (opts.highlightResult) base.highlightResult = opts.highlightResult;
+      return base;
+    },
+    [],
+  );
+
   const runToolChain = useCallback(
     async (
+      sessionGoalForApi: string,
       prompt: string,
       history: ChatHistoryItem[],
       initialResponse: Response,
-    ): Promise<{ ok: true; reply: string } | { ok: false; error: string }> => {
+      intent: TurnIntent,
+    ): Promise<
+      | { ok: true; reply: string; step: AiTutorialStepPayload | null }
+      | { ok: false; error: string }
+    > => {
       let response = initialResponse;
       let guard = 0;
 
@@ -195,7 +282,11 @@ export function InteractiveTutorialChat() {
         }
 
         if (result.action === null) {
-          return { ok: true, reply: result.reply || streamed.text };
+          return { ok: true, reply: result.reply || streamed.text, step: null };
+        }
+
+        if (result.action === "tutorial_step") {
+          return { ok: true, reply: result.reply, step: result.step };
         }
 
         if (result.action === "capture_screen") {
@@ -207,13 +298,17 @@ export function InteractiveTutorialChat() {
           response = await fetch("/api/interactive-tutorial/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              phase: "complete_screenshot",
-              prompt,
-              history,
-              imageBase64: cap.base64,
-              assistantContent: result.assistantContent,
-            }),
+            body: JSON.stringify(
+              buildRequestBody({
+                sessionGoalForApi,
+                phase: "complete_screenshot",
+                prompt,
+                history,
+                intent,
+                imageBase64: cap.base64,
+                assistantContent: result.assistantContent,
+              }),
+            ),
           });
           continue;
         }
@@ -228,13 +323,17 @@ export function InteractiveTutorialChat() {
             response = await fetch("/api/interactive-tutorial/chat", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                phase: "complete_screen_highlight",
-                prompt,
-                history,
-                assistantContent: result.assistantContent,
-                highlightResult: payload,
-              }),
+              body: JSON.stringify(
+                buildRequestBody({
+                  sessionGoalForApi,
+                  phase: "complete_screen_highlight",
+                  prompt,
+                  history,
+                  intent,
+                  assistantContent: result.assistantContent,
+                  highlightResult: payload,
+                }),
+              ),
             });
             setHighlight(null);
             continue;
@@ -250,13 +349,17 @@ export function InteractiveTutorialChat() {
               response = await fetch("/api/interactive-tutorial/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  phase: "complete_screen_highlight",
-                  prompt,
-                  history,
-                  assistantContent: result.assistantContent,
-                  highlightResult: payload,
-                }),
+                body: JSON.stringify(
+                  buildRequestBody({
+                    sessionGoalForApi,
+                    phase: "complete_screen_highlight",
+                    prompt,
+                    history,
+                    intent,
+                    assistantContent: result.assistantContent,
+                    highlightResult: payload,
+                  }),
+                ),
               });
               setHighlight(null);
               continue;
@@ -290,26 +393,34 @@ export function InteractiveTutorialChat() {
             response = await fetch("/api/interactive-tutorial/chat", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                phase: "complete_screen_highlight",
-                prompt,
-                history,
-                assistantContent: result.assistantContent,
-                highlightResult: payload,
-              }),
+              body: JSON.stringify(
+                buildRequestBody({
+                  sessionGoalForApi,
+                  phase: "complete_screen_highlight",
+                  prompt,
+                  history,
+                  intent,
+                  assistantContent: result.assistantContent,
+                  highlightResult: payload,
+                }),
+              ),
             });
           } catch (e) {
             const msg = e instanceof Error ? e.message : "Highlight failed";
             response = await fetch("/api/interactive-tutorial/chat", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                phase: "complete_screen_highlight",
-                prompt,
-                history,
-                assistantContent: result.assistantContent,
-                highlightResult: { found: false, explanation: msg },
-              }),
+              body: JSON.stringify(
+                buildRequestBody({
+                  sessionGoalForApi,
+                  phase: "complete_screen_highlight",
+                  prompt,
+                  history,
+                  intent,
+                  assistantContent: result.assistantContent,
+                  highlightResult: { found: false, explanation: msg },
+                }),
+              ),
             });
             setHighlight(null);
           }
@@ -319,13 +430,14 @@ export function InteractiveTutorialChat() {
 
       return { ok: false, error: t("tutorials.interactiveAi.toolLoopLimit") };
     },
-    [t],
+    [buildRequestBody, t],
   );
 
-  const runSubmit = async () => {
-    if (!message.trim() || isLoading) return;
+  const runTurn = async (prompt: string, intent: TurnIntent) => {
+    if (isLoading) return;
+    if (intent === "user_message" && !prompt.trim()) return;
+    if (intent === "continue_step" && !sessionGoal.trim()) return;
 
-    const prompt = message.trim();
     const history: ChatHistoryItem[] = messages
       .map((m) => ({
         role: m.variant,
@@ -333,26 +445,44 @@ export function InteractiveTutorialChat() {
       }))
       .slice(-30);
 
-    const userMessage: MessageWithId = {
-      id: Date.now().toString(),
-      text: prompt,
-      variant: "user",
-    };
+    const priorGoal = sessionGoal.trim();
+    const goalForApi =
+      intent === "user_message" ? priorGoal || prompt.trim() : priorGoal;
 
-    setMessages((prev) => [...prev, userMessage]);
+    if (intent === "user_message") {
+      const userMessage: MessageWithId = {
+        id: Date.now().toString(),
+        text: prompt.trim(),
+        variant: "user",
+      };
+      setMessages((prev) => [...prev, userMessage]);
+      if (!priorGoal) {
+        setSessionGoal(prompt.trim());
+      }
+    }
+
     setMessage("");
     setHighlight(null);
     setIsLoading(true);
     setIncomingMessage("");
 
+    const effectivePrompt = intent === "continue_step" ? "" : prompt.trim();
+
     try {
       const initial = await fetch("/api/interactive-tutorial/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, history }),
+        body: JSON.stringify(
+          buildRequestBody({
+            sessionGoalForApi: goalForApi,
+            prompt: effectivePrompt,
+            history,
+            intent,
+          }),
+        ),
       });
 
-      const final = await runToolChain(prompt, history, initial);
+      const final = await runToolChain(goalForApi, effectivePrompt, history, initial, intent);
       setIncomingMessage("");
 
       if (!final.ok) {
@@ -368,14 +498,30 @@ export function InteractiveTutorialChat() {
         return;
       }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          text: final.reply || t("chat.emptyResponse"),
-          variant: "assistant",
-        },
-      ]);
+      setTutorialStarted(true);
+
+      if (final.step) {
+        setCurrentStep(final.step);
+        const assistantText = formatAssistantStepForHistory(final.step);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            text: assistantText,
+            variant: "assistant",
+          },
+        ]);
+      } else {
+        const text = final.reply || t("chat.emptyResponse");
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            text,
+            variant: "assistant",
+          },
+        ]);
+      }
     } catch (err) {
       const reason = err instanceof Error ? err.message : t("chat.unknownError");
       setMessages((prev) => [
@@ -394,13 +540,22 @@ export function InteractiveTutorialChat() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    void runSubmit();
+    void runTurn(message, "user_message");
+  };
+
+  const handleNextStep = () => {
+    void runTurn("", "continue_step");
   };
 
   const hasSpotlight = Boolean(highlight?.coords);
+  const showLanding = !tutorialStarted && messages.length === 0;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      <div ref={stepAnnouncerRef} className="sr-only" aria-live="polite" aria-atomic>
+        {currentStep ? `${currentStep.title}. ${currentStep.body}` : ""}
+      </div>
+
       {mounted && hasSpotlight
         ? createPortal(
             <div
@@ -420,58 +575,129 @@ export function InteractiveTutorialChat() {
         />
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 py-6">
-        <div className="w-full max-w-xl space-y-2 text-center">
-          <TypographyH2 className="text-xl sm:text-2xl">{t("tutorials.interactiveAi.heading")}</TypographyH2>
-          <TypographyP className="text-sm text-white/80">{t("tutorials.interactiveAi.subheading")}</TypographyP>
-        </div>
-
-        <div className="flex min-h-0 w-full max-w-2xl flex-1 flex-col rounded-2xl border border-white/20 bg-black/35 shadow-xl backdrop-blur-md">
-          <div className="min-h-[200px] flex-1">
-            <ScrollContainer>
-              {messages.length === 0 && !isLoading ? (
-                <TypographyP className="py-8 text-center text-sm text-white/60">
-                  {t("tutorials.interactiveAi.emptyHint")}
-                </TypographyP>
-              ) : null}
-              {messages.map((m) => (
-                <Message key={m.id} text={m.text} variant={m.variant} isError={m.isError} />
-              ))}
-              {isLoading ? (
-                <Message text={incomingMessage || t("chat.thinking")} variant="assistant" />
-              ) : null}
-            </ScrollContainer>
+      {showLanding ? (
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-8 px-4 py-8">
+          <div className="w-full max-w-2xl space-y-3 text-center">
+            <TypographyH2 className="text-2xl sm:text-3xl">{t("tutorials.interactiveAi.landingTitle")}</TypographyH2>
+            <TypographyP className="text-sm text-white/80">{t("tutorials.interactiveAi.landingSubtitle")}</TypographyP>
           </div>
-
-          <form onSubmit={handleSubmit} className="shrink-0 border-t border-white/10 p-3">
-            <div className="flex items-end gap-2">
-              <Textarea
-                ref={textareaRef}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder={t("tutorials.interactiveAi.inputPlaceholder")}
-                className="interactable min-h-[52px] flex-1 resize-none border-white/20 bg-black/40 text-white placeholder:text-white/40"
-                rows={2}
-                disabled={isLoading}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    e.currentTarget.form?.requestSubmit();
-                  }
-                }}
-              />
-              <Button
-                type="submit"
-                className="interactable h-11 w-11 shrink-0 p-0"
-                disabled={isLoading || !message.trim()}
-                aria-label={t("chat.senderUser")}
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
+          <form onSubmit={handleSubmit} className="flex w-full max-w-2xl flex-col gap-3">
+            <Textarea
+              ref={textareaRef}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder={t("tutorials.interactiveAi.landingPlaceholder")}
+              className="interactable min-h-[180px] resize-none border-white/20 bg-black/50 text-base text-white placeholder:text-white/40"
+              rows={6}
+              disabled={isLoading}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  e.currentTarget.form?.requestSubmit();
+                }
+              }}
+            />
+            <Button
+              type="submit"
+              className="interactable h-12 w-full bg-white text-black hover:bg-white/90 sm:mx-auto sm:w-auto sm:min-w-[200px]"
+              disabled={isLoading || !message.trim()}
+            >
+              {t("tutorials.interactiveAi.startLearning")}
+            </Button>
           </form>
         </div>
-      </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:gap-6">
+          <section
+            className="flex min-h-[200px] min-w-0 flex-1 flex-col gap-3 lg:max-w-[min(100%,480px)]"
+            aria-labelledby="ai-tutorial-step-title"
+          >
+            <div className="rounded-2xl border border-white/20 bg-black/40 p-4 shadow-xl backdrop-blur-md">
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0 space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-white/60">
+                    {t(AI_GUIDED_TUTORIAL.title)}
+                  </p>
+                  {currentStep ? (
+                    <h2 id="ai-tutorial-step-title" className="text-lg font-semibold leading-snug text-white">
+                      {currentStep.title}
+                    </h2>
+                  ) : (
+                    <h2 id="ai-tutorial-step-title" className="text-lg font-semibold text-white/80">
+                      {t("tutorials.interactiveAi.stepPlaceholderTitle")}
+                    </h2>
+                  )}
+                </div>
+                {currentStep ? (
+                  <span
+                    className="shrink-0 rounded-md border border-white/25 bg-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white/85"
+                    title={t("tutorial.visualBadgeHint")}
+                  >
+                    {t(visualLabelKey(currentStep.visual))}
+                  </span>
+                ) : null}
+              </div>
+              <TypographyP className="whitespace-pre-wrap text-sm leading-relaxed text-white/95">
+                {currentStep?.body ?? t("tutorials.interactiveAi.stepPlaceholderBody")}
+              </TypographyP>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                className="interactable gap-1 bg-white/15 text-white hover:bg-white/25"
+                disabled={isLoading || !sessionGoal.trim()}
+                onClick={handleNextStep}
+              >
+                <ChevronRight className="h-4 w-4" />
+                {t("tutorials.interactiveAi.nextStep")}
+              </Button>
+            </div>
+          </section>
+
+          <div className="flex min-h-0 min-w-0 flex-[1.2] flex-col rounded-2xl border border-white/20 bg-black/35 shadow-xl backdrop-blur-md">
+            <div className="min-h-[200px] flex-1">
+              <ScrollContainer>
+                {messages.map((m) => (
+                  <Message key={m.id} text={m.text} variant={m.variant} isError={m.isError} />
+                ))}
+                {isLoading ? (
+                  <Message text={incomingMessage || t("chat.thinking")} variant="assistant" />
+                ) : null}
+              </ScrollContainer>
+            </div>
+
+            <form onSubmit={handleSubmit} className="shrink-0 border-t border-white/10 p-3">
+              <TypographyP className="mb-2 text-[11px] text-white/50">{t("tutorials.interactiveAi.chatHint")}</TypographyP>
+              <div className="flex items-end gap-2">
+                <Textarea
+                  ref={textareaRef}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder={t("tutorials.interactiveAi.inputPlaceholder")}
+                  className="interactable min-h-[52px] flex-1 resize-none border-white/20 bg-black/40 text-white placeholder:text-white/40"
+                  rows={2}
+                  disabled={isLoading}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      e.currentTarget.form?.requestSubmit();
+                    }
+                  }}
+                />
+                <Button
+                  type="submit"
+                  className="interactable h-11 w-11 shrink-0 p-0"
+                  disabled={isLoading || !message.trim()}
+                  aria-label={t("chat.senderUser")}
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

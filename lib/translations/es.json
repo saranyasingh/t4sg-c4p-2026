@@ -12,10 +12,19 @@
     "interactiveAiButton": "Tutorial guiado por IA (pregunta lo que quieras)",
     "interactiveAiHint": "Pregunta cómo hacer algo en tu computadora: el asistente te guía paso a paso y puede resaltar la pantalla en la app de escritorio.",
     "interactiveAi": {
+      "courseTitle": "Tutorial guiado por IA",
       "heading": "Pregunta lo que quieras",
       "subheading": "Describe lo que quieres hacer. El tutor responde de a un paso y puede capturar o resaltar tu pantalla cuando usas la app de escritorio.",
+      "landingTitle": "¿Qué quieres aprender?",
+      "landingSubtitle": "Pregunta con tus palabras. Recibirás un paso claro cada vez—como en otros tutoriales—con resaltados opcionales en la app de escritorio.",
+      "landingPlaceholder": "Ejemplo: ¿Cómo abro Google Chrome? O: Ayúdame a encontrar la configuración de Wi‑Fi.",
+      "startLearning": "Empezar",
       "emptyHint": "Prueba: «¿Cómo abro Google Chrome?» o «¿Dónde está el menú de Wi‑Fi?»",
-      "inputPlaceholder": "¿Qué te gustaría aprender?",
+      "inputPlaceholder": "Haz una pregunta de seguimiento o describe lo que ves…",
+      "nextStep": "Siguiente paso",
+      "stepPlaceholderTitle": "Tu paso aparecerá aquí",
+      "stepPlaceholderBody": "Envía un mensaje o pulsa Siguiente paso para continuar sin escribir.",
+      "chatHint": "Escribe para preguntar algo nuevo o aclarar. Usa Siguiente paso cuando quieras avanzar sin escribir.",
       "findingHighlight": "Buscando eso en tu pantalla…",
       "unexpectedContentType": "Respuesta inesperada del tutor. Inténtalo de nuevo.",
       "toolLoopLimit": "Demasiados pasos automáticos seguidos. Envía otro mensaje para continuar."
@@ -260,7 +269,8 @@
     "highlightErrorTitle": "No se encontró el elemento",
     "highlightErrorHint": "Asegúrate de que Chrome esté visible y vuelve a intentar con Siguiente.",
     "courseTitles": {
-      "google-search": "Búsqueda de Google"
+      "google-search": "Búsqueda de Google",
+      "interactive-ai": "Tutorial guiado por IA"
     }
   },
   "nav": {

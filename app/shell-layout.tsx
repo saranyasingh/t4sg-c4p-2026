@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import c4pLogo from "../public/images/c4p.png";
+import NavLinks from "./(components-navbar)/nav-links";
 import { TutorialController } from "./tutorial/tutorial-controller";
 
 export function ShellLayout({ children }: { children: React.ReactNode }) {
@@ -46,6 +47,9 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
         className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2"
         priority
       />
+      <div className="shrink-0 border-b border-white/10 px-3 pb-2 pt-12">
+        <NavLinks className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs" />
+      </div>
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
         <TutorialController />
