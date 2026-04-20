@@ -158,15 +158,15 @@ export function VoiceInput({ onTranscript, onInterimTranscript, disabled, onReco
       disabled={disabled}
       onClick={handleClick}
       aria-label={isRecording ? t("chat.voiceStop") : t("chat.voiceStart")}
-      className={`interactable relative h-10 w-10 shrink-0 p-0 ${isRecording ? "ring-2 ring-red-400/60" : ""}`}
+      className={`interactable relative !h-[calc(2.5rem*var(--text-scale))] !w-[calc(2.5rem*var(--text-scale))] shrink-0 p-0 ${isRecording ? "ring-2 ring-red-400/60" : ""}`}
     >
       {isRecording ? (
         <>
           <span className="absolute inset-0 animate-ping rounded-md bg-red-400/30" />
-          <MicOff className="relative h-4 w-4" />
+          <MicOff className="relative h-[calc(1rem*var(--text-scale))] w-[calc(1rem*var(--text-scale))]" />
         </>
       ) : (
-        <Mic className="h-4 w-4" />
+        <Mic className="h-[calc(1rem*var(--text-scale))] w-[calc(1rem*var(--text-scale))]" />
       )}
     </Button>
   );

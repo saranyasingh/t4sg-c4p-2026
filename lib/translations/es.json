@@ -6,6 +6,9 @@
     "tutorialsHeading": "Tutoriales"
   },
   "tutorials": {
+    "cardLabel": "Tutorial",
+    "startTutorial": "Iniciar tutorial",
+    "description": "Haz clic en un tutorial para acceder a una lección interactiva paso a paso sobre un tema.",
     "googleSearch": {
       "title": "Búsqueda básica en Google",
       "steps": {
@@ -246,7 +249,8 @@
     "highlightErrorTitle": "No se encontró el elemento",
     "highlightErrorHint": "Asegúrate de que Chrome esté visible y vuelve a intentar con Siguiente.",
     "courseTitles": {
-      "google-search": "Búsqueda de Google"
+      "google-search": "Búsqueda de Google",
+      "gmail": "Gmail"
     }
   },
   "nav": {
@@ -315,6 +319,21 @@
     "navProfile": "Perfil",
     "editGeneral": "Editar configuración general"
   },
+  "options": {
+    "heading": "Opciones",
+    "description": "Cambia el aspecto y el funcionamiento de la aplicación.",
+    "textSizeHeading": "Tamaño de texto",
+    "textSizeSliderAria": "Preajuste de tamaño de texto",
+    "textSizeCurrent": "Tamaño actual: {{size}}",
+    "textSizeSmall": "Pequeño",
+    "textSizeMedium": "Mediano",
+    "textSizeLarge": "Grande",
+    "textSizeExtraLarge": "Extra grande",
+    "assistantSpeaksHeading": "El asistente habla en voz alta",
+    "backgroundOpacityHeading": "Opacidad de fondo",
+    "backgroundOpacityCurrent": "Opacidad actual: {{percent}}%",
+    "backgroundOpacitySliderAria": "Opacidad del fondo"
+  },
   "profileForm": {
     "heading": "Perfil",
     "errorHeading": "Error",
@@ -341,7 +360,14 @@
     "es": "Español"
   },
   "shell": {
-    "rights": "Computers 4 People. Todos los derechos reservados."
+    "tabs": {
+      "home": "Inicio",
+      "tutorials": "Tutoriales",
+      "options": "Opciones"
+    },
+    "rights": "Computers 4 People. Todos los derechos reservados.",
+    "open": "ABRIR",
+    "close": "CERRAR"
   },
   "misc": {
     "loading": "Cargando...",
