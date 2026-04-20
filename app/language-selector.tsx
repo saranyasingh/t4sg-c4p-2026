@@ -28,8 +28,8 @@ export function LanguageSelector() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        <DropdownMenuItem onClick={() => i18n.changeLanguage("en")}>{t("languageSelector.en")}</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => i18n.changeLanguage("es")}>{t("languageSelector.es")}</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => void i18n.changeLanguage("en")}>{t("languageSelector.en")}</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => void i18n.changeLanguage("es")}>{t("languageSelector.es")}</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

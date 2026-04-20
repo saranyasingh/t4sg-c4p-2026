@@ -29,7 +29,7 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
 
   const panel = (
     <section
-      className={`interactable fixed right-6 top-0 z-[999999] flex h-full min-h-0 w-[420px] max-w-[92vw] transform-gpu flex-col rounded-2xl border border-white/45 bg-[hsl(var(--foreground)/0.88)] text-white shadow-xl backdrop-blur-lg transition-transform duration-300 ease-out will-change-transform ${
+      className={`interactable fixed right-6 top-0 z-[999999] flex h-full min-h-0 w-[420px] max-w-[92vw] transform-gpu flex-col rounded-2xl border border-white/45 bg-[hsl(var(--foreground)/var(--shell-bg-opacity))] text-white shadow-xl backdrop-blur-lg transition-transform duration-300 ease-out will-change-transform ${
         isCollapsed ? "translate-x-[calc(100%-3rem)]" : "translate-x-0"
       }`}
     >

@@ -46,6 +46,7 @@
     --destructive-foreground: 144 29.4% 96.7%;
 
     --ring: 142 100% 32%; /* green-2 */
+    --shell-bg-opacity: 1;
 
     --radius: 0.5rem;
   }

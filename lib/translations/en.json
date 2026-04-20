@@ -329,7 +329,11 @@
     "textSizeSmall": "Small",
     "textSizeMedium": "Medium",
     "textSizeLarge": "Large",
-    "textSizeExtraLarge": "Extra large"
+    "textSizeExtraLarge": "Extra large",
+    "assistantSpeaksHeading": "Assistant Speaks Out Loud",
+    "backgroundOpacityHeading": "Background Opacity",
+    "backgroundOpacityCurrent": "Current opacity: {{percent}}%",
+    "backgroundOpacitySliderAria": "Background opacity"
   },
   "profileForm": {
     "heading": "Profile",

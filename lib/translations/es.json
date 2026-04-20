@@ -328,7 +328,11 @@
     "textSizeSmall": "Pequeño",
     "textSizeMedium": "Mediano",
     "textSizeLarge": "Grande",
-    "textSizeExtraLarge": "Extra grande"
+    "textSizeExtraLarge": "Extra grande",
+    "assistantSpeaksHeading": "El asistente habla en voz alta",
+    "backgroundOpacityHeading": "Opacidad de fondo",
+    "backgroundOpacityCurrent": "Opacidad actual: {{percent}}%",
+    "backgroundOpacitySliderAria": "Opacidad del fondo"
   },
   "profileForm": {
     "heading": "Perfil",

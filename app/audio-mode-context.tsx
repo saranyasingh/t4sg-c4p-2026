@@ -10,7 +10,7 @@ interface AudioModeContextType {
 const AudioModeContext = createContext<AudioModeContextType | undefined>(undefined);
 
 export function AudioModeProvider({ children }: { children: React.ReactNode }) {
-  const [audioModeEnabled, setAudioModeEnabled] = useState(false);
+  const [audioModeEnabled, setAudioModeEnabled] = useState(true);
 
   return (
     <AudioModeContext.Provider value={{ audioModeEnabled, setAudioModeEnabled }}>
