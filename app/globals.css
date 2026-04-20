@@ -31,6 +31,7 @@
 
     --border: 144 7.5% 86.9%; /* white-4 */
     --input: 144 13.5% 92.7%; /* white-3 */
+    --placeholder-foreground: 145 6% 68%; /* neutral gray for form hints */
 
     --primary: 142 100% 32%; /* green-2 */
     --primary-foreground: 144 29.4% 96.7%; /* white-1 */

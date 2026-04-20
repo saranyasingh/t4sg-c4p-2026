@@ -41,7 +41,9 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
         aria-label={isCollapsed ? "Expand panel" : "Collapse panel"}
         title={isCollapsed ? "Expand" : "Collapse"}
       >
-        {isCollapsed ? t("shell.open") : t("shell.close")}
+        <TypographySmall className="m-0 font-semibold leading-none text-inherit">
+          {isCollapsed ? t("shell.open") : t("shell.close")}
+        </TypographySmall>
       </Button>
       <Image
         src={c4pLogo}

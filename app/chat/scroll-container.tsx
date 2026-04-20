@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { TypographySmall } from "@/components/ui/typography";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -90,7 +91,7 @@ export const ScrollContainer = ({ children }: ScrollContainerProps) => {
         }}
         onClick={handleScrollButtonClick}
       >
-        {t("chat.newMessage")}
+        <TypographySmall className="m-0 font-semibold leading-none text-inherit">{t("chat.newMessage")}</TypographySmall>
       </Button>
     </div>
   );
