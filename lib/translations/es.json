@@ -62,6 +62,12 @@
       "chatHint": "Escribe para preguntar algo nuevo o aclarar. Usa Siguiente paso cuando quieras avanzar sin escribir.",
       "findingHighlight": "Buscando eso en tu pantalla…",
       "unexpectedContentType": "Respuesta inesperada del tutor. Inténtalo de nuevo.",
+<<<<<<< HEAD
+      "toolLoopLimit": "Demasiados pasos automáticos seguidos. Envía otro mensaje para continuar.",
+      "tutorialCompleteTitle": "Tutorial terminado",
+      "tutorialCompleteBody": "No hay más pasos para este tema. Puedes escribir una nueva pregunta abajo o volver a Tutoriales para elegir otra lección.",
+      "finishTutorial": "Volver a tutoriales"
+=======
       "toolLoopLimit": "Demasiados pasos automáticos seguidos. Envía otro mensaje para continuar."
     "intro": {
       "title": "Recorrido de la app",
@@ -105,6 +111,7 @@
         "title": "Ya estás listo",
         "text": "¡Eso es todo! Pulsa Terminar para empezar a usar Granson AI.\n\nRecuerda: el botón de Ayuda siempre está ahí si necesitas un recordatorio."
       }
+>>>>>>> b6c9f0d055ba88d275d8fad98517905a0883d80b
     },
     "googleSearch": {
       "title": "Búsqueda básica en Google",

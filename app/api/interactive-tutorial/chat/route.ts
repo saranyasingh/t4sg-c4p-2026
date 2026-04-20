@@ -81,6 +81,11 @@ const EMIT_TUTORIAL_STEP_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
           description:
             "text = concepts only; screen = mostly pointing on screen (usually highlight); screen_text = explain while pointing (usually highlight).",
         },
+        done: {
+          type: "boolean",
+          description:
+            "Set true when the goal is complete and there are no further steps. When done is true, do not ask the user to press Next again.",
+        },
       },
       required: ["title", "body", "visual"],
     },
@@ -135,13 +140,29 @@ function buildSystem(kind: "base" | "screenshot", sessionGoal: string): string {
 }
 
 /** Resolves client `prompt` + `intent` into the user message stored in the thread. */
-function getEffectiveUserMessage(body: { prompt?: unknown; intent?: unknown; sessionGoal?: unknown }): string | null {
+function getEffectiveUserMessage(body: {
+  prompt?: unknown;
+  intent?: unknown;
+  sessionGoal?: unknown;
+  lastStep?: unknown;
+}): string | null {
   const intent = body.intent === "continue_step" ? "continue_step" : "user_message";
   const sessionGoal = typeof body.sessionGoal === "string" ? body.sessionGoal.trim() : "";
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   if (intent === "continue_step") {
     if (!sessionGoal) return null;
-    return `[Continue] The user pressed "Next step" without a new message. Provide exactly one new step toward this goal: ${sessionGoal}`;
+    let lastStepTitle = "";
+    let lastStepBody = "";
+    if (body.lastStep && typeof body.lastStep === "object") {
+      const ls = body.lastStep as Record<string, unknown>;
+      lastStepTitle = typeof ls.title === "string" ? ls.title.trim() : "";
+      lastStepBody = typeof ls.body === "string" ? ls.body.trim() : "";
+    }
+    const lastBlock =
+      lastStepTitle || lastStepBody
+        ? `\n\nPREVIOUS STEP (do not repeat; continue forward):\nTitle: ${lastStepTitle || "(none)"}\nBody: ${lastStepBody || "(none)"}`
+        : "";
+    return `[Continue] The user pressed "Next step" without a new message. Provide exactly one NEW step toward this goal (do not repeat prior steps). If the goal is complete, call emit_tutorial_step with done=true: ${sessionGoal}${lastBlock}`;
   }
   if (!prompt) return null;
   return prompt;
@@ -202,11 +223,18 @@ function tryCloseToolStream(
       let title = "";
       let body = "";
       let visual = "";
+      let done = false;
       try {
-        const parsed = JSON.parse(toolState.arguments || "{}") as { title?: string; body?: string; visual?: string };
+        const parsed = JSON.parse(toolState.arguments || "{}") as {
+          title?: string;
+          body?: string;
+          visual?: string;
+          done?: boolean;
+        };
         title = typeof parsed.title === "string" ? parsed.title.trim() : "";
         body = typeof parsed.body === "string" ? parsed.body.trim() : "";
         visual = typeof parsed.visual === "string" ? parsed.visual.trim() : "";
+        done = Boolean(parsed.done);
       } catch {
         /* ignore */
       }
@@ -224,7 +252,7 @@ function tryCloseToolStream(
       write({
         type: "done",
         action: "tutorial_step",
-        step: { title, body, visual },
+        step: done ? { title, body, visual, done: true } : { title, body, visual },
         reply: fullText.trim(),
       });
       controller.close();
@@ -240,6 +268,7 @@ interface SharedRequestBody {
   history?: ChatHistoryItem[];
   sessionGoal?: string;
   intent?: string;
+  lastStep?: { title?: string; body?: string };
 }
 
 function handleInitialTurn(body: SharedRequestBody): Response {
@@ -576,6 +605,7 @@ export async function POST(req: Request) {
     history: body.history as ChatHistoryItem[] | undefined,
     sessionGoal: body.sessionGoal as string | undefined,
     intent: body.intent as string | undefined,
+    lastStep: body.lastStep as { title?: string; body?: string } | undefined,
   };
 
   const phase = body.phase;

@@ -23,6 +23,8 @@ export interface AiTutorialStepPayload {
   title: string;
   body: string;
   visual: StepVisual;
+  /** If true, the tutorial should be considered complete (no further steps). */
+  done?: boolean;
 }
 
 export const EMIT_TUTORIAL_STEP_TOOL_NAME = "emit_tutorial_step" as const;
@@ -37,17 +39,20 @@ YOUR JOB
 - The user states what they want to do (e.g. "How do I open Google Chrome?").
 - Teach in **one small step per assistant turn**. Each turn must end by calling **emit_tutorial_step** with a clear step title, body, and visual mode — this drives the on-screen "step card" UI (same idea as scripted lessons: title + body + whether this step is text-only, screen-focused, or both).
 - If the user sends a normal message, answer that need: clarify, adjust, or change the plan — still one step card for that turn unless they explicitly ask for a full outline.
-- If the user message is a **continue** request (the app sends a line starting with "[Continue]"), assume they finished the previous step and want the **next** step toward the same session goal. Do not repeat the previous step title; advance the task.
+- If the user message is a **continue** request (the app sends a line starting with "[Continue]"), assume they finished the previous step and want the **next** step toward the same session goal. Do not repeat the previous step title or body; advance the task.
+- **Ending the tutorial:** If the session goal is already fully covered, or there is **no genuinely new** step left (nothing more to teach without repeating yourself), you must **not** invent extra steps. Instead, call **emit_tutorial_step** with **done: true**, **visual: "text"**, a short congratulatory **title** (e.g. "You're all set"), and a brief **body** that confirms they can ask a new question in chat if they need something else. Never loop by re-emitting the same step content when the user presses Continue.
 
 STRUCTURED STEP (required every turn)
 - You **must** call **emit_tutorial_step** once per assistant turn after any screen tools you need.
 - Parameters:
   - **title**: Short, specific heading for this step (like a lesson slide title).
   - **body**: 1–3 short paragraphs or bullet-style lines; concrete actions; plain language.
+  - **done** (optional boolean): Set **true** only when this is the **final** card and the tutorial for this goal should end (no further "Next step" should follow).
   - **visual**: One of "text", "screen", "screen_text":
     - "text" — concepts only, no need to point at the screen.
     - "screen" — mostly showing where something is; you should usually highlight.
     - "screen_text" — explain while pointing — **definitely** highlight the control you mention.
+  - On a **[Continue]** turn, if you would only repeat the prior step, use **done: true** instead and wrap up as above.
 
 TOOLS — USE THEM LIBERALLY (before emit_tutorial_step when relevant)
 1) **capture_screen** — Call when you need to see the user's desktop or a window to give accurate guidance. Call whenever visual context would improve the answer.

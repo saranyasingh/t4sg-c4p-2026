@@ -12,6 +12,7 @@ import type { AiTutorialStepPayload, HighlightToolResultPayload } from "@/lib/in
 import { AI_GUIDED_TUTORIAL } from "@/lib/tutorials";
 import type { StepVisual } from "@/lib/tutorials";
 import { ChevronRight, Send } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
@@ -39,6 +40,22 @@ function visualLabelKey(v: StepVisual): string {
 
 function formatAssistantStepForHistory(step: AiTutorialStepPayload): string {
   return `## ${step.title}\n\n${step.body}`;
+}
+
+function normalizeTutorialText(s: string): string {
+  return s.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/** Same step card again on "Next step" — model failed to set done:true; treat as finished. */
+function isDuplicateContinueStep(
+  previous: AiTutorialStepPayload | null,
+  next: AiTutorialStepPayload,
+): boolean {
+  if (!previous || next.done) return false;
+  return (
+    normalizeTutorialText(previous.title) === normalizeTutorialText(next.title) &&
+    normalizeTutorialText(previous.body) === normalizeTutorialText(next.body)
+  );
 }
 
 async function readNdjsonResponse(response: Response, onToken: (t: string) => void): Promise<NdjsonDone | { error: string }> {
@@ -91,6 +108,7 @@ async function readNdjsonResponse(response: Response, onToken: (t: string) => vo
           const title = typeof s.title === "string" ? s.title : "";
           const body = typeof s.body === "string" ? s.body : "";
           const visual = s.visual;
+          const done = s.done === true;
           if (
             !title.trim() ||
             !body.trim() ||
@@ -101,7 +119,12 @@ async function readNdjsonResponse(response: Response, onToken: (t: string) => vo
           const reply = typeof row.reply === "string" ? row.reply : fullText;
           return {
             action: "tutorial_step",
-            step: { title: title.trim(), body: body.trim(), visual: visual as StepVisual },
+            step: {
+              title: title.trim(),
+              body: body.trim(),
+              visual: visual as StepVisual,
+              ...(done ? { done: true } : {}),
+            },
             reply: reply.trim(),
           };
         }
@@ -138,6 +161,7 @@ async function readNdjsonResponse(response: Response, onToken: (t: string) => vo
           const title = typeof s.title === "string" ? s.title : "";
           const body = typeof s.body === "string" ? s.body : "";
           const visual = s.visual;
+          const done = s.done === true;
           if (
             title.trim() &&
             body.trim() &&
@@ -146,7 +170,12 @@ async function readNdjsonResponse(response: Response, onToken: (t: string) => vo
             const reply = typeof row.reply === "string" ? row.reply : fullText;
             return {
               action: "tutorial_step",
-              step: { title: title.trim(), body: body.trim(), visual: visual as StepVisual },
+              step: {
+                title: title.trim(),
+                body: body.trim(),
+                visual: visual as StepVisual,
+                ...(done ? { done: true } : {}),
+              },
               reply: reply.trim(),
             };
           }
@@ -173,6 +202,7 @@ export function InteractiveTutorialChat() {
   const [sessionGoal, setSessionGoal] = useState("");
   const [currentStep, setCurrentStep] = useState<AiTutorialStepPayload | null>(null);
   const [tutorialStarted, setTutorialStarted] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
   const [highlight, setHighlight] = useState<{
     coords: { x: number; y: number; width: number; height: number; confidence: number };
     screenshotWidth: number;
@@ -210,12 +240,18 @@ export function InteractiveTutorialChat() {
     if (ct.includes("application/json")) {
       try {
         const data = (await response.json()) as { error?: string };
-        if (data.error) return data.error;
+        if (data.error) return `${data.error} (HTTP ${response.status})`;
       } catch {
         /* ignore */
       }
     }
-    return `HTTP ${response.status}`;
+    try {
+      const text = (await response.text()).trim();
+      if (text) return `${text} (HTTP ${response.status})`;
+    } catch {
+      /* ignore */
+    }
+    return `Request failed (HTTP ${response.status})`;
   };
 
   const buildRequestBody = useCallback(
@@ -228,6 +264,7 @@ export function InteractiveTutorialChat() {
       imageBase64?: string;
       assistantContent?: unknown;
       highlightResult?: HighlightToolResultPayload;
+      lastStep?: { title?: string; body?: string };
     }) => {
       const base: Record<string, unknown> = {
         prompt: opts.prompt,
@@ -239,6 +276,7 @@ export function InteractiveTutorialChat() {
       if (opts.imageBase64) base.imageBase64 = opts.imageBase64;
       if (opts.assistantContent !== undefined) base.assistantContent = opts.assistantContent;
       if (opts.highlightResult) base.highlightResult = opts.highlightResult;
+      if (opts.lastStep) base.lastStep = opts.lastStep;
       return base;
     },
     [],
@@ -251,12 +289,15 @@ export function InteractiveTutorialChat() {
       history: ChatHistoryItem[],
       initialResponse: Response,
       intent: TurnIntent,
+      lastStepForContinue?: { title?: string; body?: string },
     ): Promise<
       | { ok: true; reply: string; step: AiTutorialStepPayload | null }
       | { ok: false; error: string }
     > => {
       let response = initialResponse;
       let guard = 0;
+      const lastStepPayload =
+        intent === "continue_step" && lastStepForContinue ? lastStepForContinue : undefined;
 
       while (guard < MAX_TOOL_CHAIN) {
         guard += 1;
@@ -307,6 +348,7 @@ export function InteractiveTutorialChat() {
                 intent,
                 imageBase64: cap.base64,
                 assistantContent: result.assistantContent,
+                lastStep: lastStepPayload,
               }),
             ),
           });
@@ -332,6 +374,7 @@ export function InteractiveTutorialChat() {
                   intent,
                   assistantContent: result.assistantContent,
                   highlightResult: payload,
+                  lastStep: lastStepPayload,
                 }),
               ),
             });
@@ -358,6 +401,7 @@ export function InteractiveTutorialChat() {
                     intent,
                     assistantContent: result.assistantContent,
                     highlightResult: payload,
+                    lastStep: lastStepPayload,
                   }),
                 ),
               });
@@ -402,6 +446,7 @@ export function InteractiveTutorialChat() {
                   intent,
                   assistantContent: result.assistantContent,
                   highlightResult: payload,
+                  lastStep: lastStepPayload,
                 }),
               ),
             });
@@ -419,6 +464,7 @@ export function InteractiveTutorialChat() {
                   intent,
                   assistantContent: result.assistantContent,
                   highlightResult: { found: false, explanation: msg },
+                  lastStep: lastStepPayload,
                 }),
               ),
             });
@@ -437,6 +483,7 @@ export function InteractiveTutorialChat() {
     if (isLoading) return;
     if (intent === "user_message" && !prompt.trim()) return;
     if (intent === "continue_step" && !sessionGoal.trim()) return;
+    if (intent === "continue_step" && isComplete) return;
 
     const history: ChatHistoryItem[] = messages
       .map((m) => ({
@@ -446,8 +493,13 @@ export function InteractiveTutorialChat() {
       .slice(-30);
 
     const priorGoal = sessionGoal.trim();
+    const nextAsk = prompt.trim();
     const goalForApi =
-      intent === "user_message" ? priorGoal || prompt.trim() : priorGoal;
+      intent === "user_message"
+        ? priorGoal
+          ? `${priorGoal}\n\nAlso help with: ${nextAsk}`
+          : nextAsk
+        : priorGoal;
 
     if (intent === "user_message") {
       const userMessage: MessageWithId = {
@@ -456,9 +508,10 @@ export function InteractiveTutorialChat() {
         variant: "user",
       };
       setMessages((prev) => [...prev, userMessage]);
-      if (!priorGoal) {
-        setSessionGoal(prompt.trim());
-      }
+      // Keep the session goal aligned with the user's evolving requests so "Next step"
+      // continues forward instead of snapping back to the first question.
+      setSessionGoal(goalForApi);
+      setIsComplete(false);
     }
 
     setMessage("");
@@ -478,11 +531,19 @@ export function InteractiveTutorialChat() {
             prompt: effectivePrompt,
             history,
             intent,
+            lastStep: intent === "continue_step" ? { title: currentStep?.title, body: currentStep?.body } : undefined,
           }),
         ),
       });
 
-      const final = await runToolChain(goalForApi, effectivePrompt, history, initial, intent);
+      const final = await runToolChain(
+        goalForApi,
+        effectivePrompt,
+        history,
+        initial,
+        intent,
+        intent === "continue_step" ? { title: currentStep?.title, body: currentStep?.body } : undefined,
+      );
       setIncomingMessage("");
 
       if (!final.ok) {
@@ -501,8 +562,22 @@ export function InteractiveTutorialChat() {
       setTutorialStarted(true);
 
       if (final.step) {
-        setCurrentStep(final.step);
-        const assistantText = formatAssistantStepForHistory(final.step);
+        let stepForUi = final.step;
+        if (
+          intent === "continue_step" &&
+          !final.step.done &&
+          isDuplicateContinueStep(currentStep, final.step)
+        ) {
+          stepForUi = {
+            title: t("tutorials.interactiveAi.tutorialCompleteTitle"),
+            body: t("tutorials.interactiveAi.tutorialCompleteBody"),
+            visual: "text",
+            done: true,
+          };
+        }
+        setCurrentStep(stepForUi);
+        setIsComplete(Boolean(stepForUi.done));
+        const assistantText = formatAssistantStepForHistory(stepForUi);
         setMessages((prev) => [
           ...prev,
           {
@@ -646,12 +721,17 @@ export function InteractiveTutorialChat() {
                 type="button"
                 variant="secondary"
                 className="interactable gap-1 bg-white/15 text-white hover:bg-white/25"
-                disabled={isLoading || !sessionGoal.trim()}
+                disabled={isLoading || !sessionGoal.trim() || isComplete}
                 onClick={handleNextStep}
               >
                 <ChevronRight className="h-4 w-4" />
                 {t("tutorials.interactiveAi.nextStep")}
               </Button>
+              {isComplete ? (
+                <Button asChild className="interactable bg-white text-black hover:bg-white/90">
+                  <Link href="/tutorials">{t("tutorials.interactiveAi.finishTutorial")}</Link>
+                </Button>
+              ) : null}
             </div>
           </section>
 
