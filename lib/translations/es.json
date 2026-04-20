@@ -341,6 +341,11 @@
     "es": "Español"
   },
   "shell": {
+    "tabs": {
+      "home": "Inicio",
+      "tutorials": "Tutoriales",
+      "options": "Opciones"
+    },
     "rights": "Computers 4 People. Todos los derechos reservados.",
     "open": "ABRIR",
     "close": "CERRAR"
