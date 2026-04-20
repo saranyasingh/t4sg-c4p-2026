@@ -562,21 +562,31 @@ ipcMain.handle("request-screenshot-permission", async () => {
 });
 
 ipcMain.handle("get-screen-sources", async () => {
-  const sources = await desktopCapturer.getSources({ types: ["screen"] });
-  return sources.map((source) => ({ id: source.id, name: source.name }));
+  try {
+    const sources = await desktopCapturer.getSources({ types: ["screen"] });
+    return sources.map((source) => ({ id: source.id, name: source.name }));
+  } catch (err) {
+    console.error("get-screen-sources: Failed to get sources:", err);
+    return [];
+  }
 });
 
 /** Prefer the display the app window is on (usually primary) — avoids wrong resolution vs viewport. */
 ipcMain.handle("get-primary-screen-media-source-id", async () => {
-  const primary = screen.getPrimaryDisplay();
-  const sources = await desktopCapturer.getSources({ types: ["screen"] });
-  if (!sources.length) return null;
-  const pid = primary.id;
-  const match =
-    sources.find((s) => s.display_id === String(pid)) ??
-    sources.find((s) => Number(s.display_id) === pid) ??
-    sources[0];
-  return match.id;
+  try {
+    const primary = screen.getPrimaryDisplay();
+    const sources = await desktopCapturer.getSources({ types: ["screen"] });
+    if (!sources.length) return null;
+    const pid = primary.id;
+    const match =
+      sources.find((s) => s.display_id === String(pid)) ??
+      sources.find((s) => Number(s.display_id) === pid) ??
+      sources[0];
+    return match.id;
+  } catch (err) {
+    console.error("get-primary-screen-media-source-id: Failed to get sources:", err);
+    return null;
+  }
 });
 
 ipcMain.handle("get-window-content-bounds", () => {

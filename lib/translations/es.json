@@ -27,7 +27,10 @@
       "chatHint": "Escribe para preguntar algo nuevo o aclarar. Usa Siguiente paso cuando quieras avanzar sin escribir.",
       "findingHighlight": "Buscando eso en tu pantalla…",
       "unexpectedContentType": "Respuesta inesperada del tutor. Inténtalo de nuevo.",
-      "toolLoopLimit": "Demasiados pasos automáticos seguidos. Envía otro mensaje para continuar."
+      "toolLoopLimit": "Demasiados pasos automáticos seguidos. Envía otro mensaje para continuar.",
+      "tutorialCompleteTitle": "Tutorial terminado",
+      "tutorialCompleteBody": "No hay más pasos para este tema. Puedes escribir una nueva pregunta abajo o volver a Tutoriales para elegir otra lección.",
+      "finishTutorial": "Volver a tutoriales"
     },
     "googleSearch": {
       "title": "Búsqueda básica en Google",

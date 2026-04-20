@@ -27,7 +27,10 @@
       "chatHint": "Type to ask something new or clarify. Use Next step when you’re ready to move on without typing.",
       "findingHighlight": "Finding that on your screen…",
       "unexpectedContentType": "Unexpected response from the tutor. Please try again.",
-      "toolLoopLimit": "Too many automatic steps in a row. Please send another message to continue."
+      "toolLoopLimit": "Too many automatic steps in a row. Please send another message to continue.",
+      "tutorialCompleteTitle": "Tutorial complete",
+      "tutorialCompleteBody": "There are no more steps for this topic. You can type a new question below, or go back to Tutorials to pick another lesson.",
+      "finishTutorial": "Back to tutorials"
     },
     "googleSearch": {
       "title": "Basic Google Search",
