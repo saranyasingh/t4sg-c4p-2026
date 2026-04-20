@@ -3,12 +3,87 @@
     "welcome": "Welcome",
     "getStarted": "Get started with Chat or explore Tutorials to learn more.",
     "brandTitle": "Granson AI",
-    "tutorialsHeading": "Tutorials"
+    "tagline": "Your friendly computer helper. Ask questions, show your screen, and learn at your own pace.",
+    "letsGetStarted": "Let's get started!",
+    "startIntroCta": "Start the app tour",
+    "featuresHeading": "What you can do",
+    "tutorialsHeading": "Tutorials",
+    "features": {
+      "chat": {
+        "title": "Chat with the assistant",
+        "body": "Type a question in the box at the bottom and press Send. The assistant answers in plain language."
+      },
+      "screen": {
+        "title": "Ask about your screen",
+        "body": "Tell the assistant what you see. It can capture your screen to help answer — just ask about something you're looking at."
+      },
+      "voice": {
+        "title": "Talk with your voice",
+        "body": "Press the microphone button to speak instead of typing. Press it again to stop."
+      },
+      "language": {
+        "title": "English or Spanish",
+        "body": "Use the language button in the top right to switch between English and Spanish at any time."
+      },
+      "tutorials": {
+        "title": "Step-by-step tutorials",
+        "body": "Open a tutorial to learn things like using Google Search or sending Gmail. Each step guides you on the screen."
+      },
+      "help": {
+        "title": "Help is always close",
+        "body": "Press the Help button in the top right to replay this tour whenever you need a reminder."
+      }
+    }
+  },
+  "help": {
+    "buttonLabel": "Help",
+    "buttonTitle": "Show the app tour",
+    "buttonAriaLabel": "Show the app tour"
   },
   "tutorials": {
-    "cardLabel": "Tutorial",
-    "startTutorial": "Start tutorial",
-    "description": "Click on a tutorial for a step-by-step interactive lesson on a topic.",
+    "intro": {
+      "title": "App Tour",
+      "intro-welcome": {
+        "title": "Welcome to Granson AI",
+        "text": "This quick tour shows you everything the app can do.\n\nUse the Next button at the bottom to move forward, Back to go to the previous step, or Exit tutorial to stop at any time."
+      },
+      "intro-chat": {
+        "title": "Chat with the assistant",
+        "text": "This is the chat box. Type any question — in plain words — and press Send or Enter.\n\nYou can ask about the computer, the internet, or anything you're curious about."
+      },
+      "intro-screen": {
+        "title": "Ask about your screen",
+        "text": "You can ask the assistant about what you're looking at. For example, try typing:\n\n• \"What is on my screen?\"\n• \"What does this button do?\"\n\nThe assistant will capture a picture of your screen to help answer."
+      },
+      "intro-voice": {
+        "title": "Talk with your voice",
+        "text": "Press this microphone button to speak instead of typing.\n\nPress it once to start recording. Press it again when you're done. The assistant will read what you said and reply."
+      },
+      "intro-audio-mode": {
+        "title": "Listen to the replies",
+        "text": "Turn on Audio mode so the assistant reads its answers out loud.\n\nPress this button once to turn it on. Press it again to turn it off."
+      },
+      "intro-language": {
+        "title": "English or Spanish",
+        "text": "Use this button to switch between English and Spanish.\n\nThe whole app — including tutorials and the assistant — changes language right away."
+      },
+      "intro-tutorials": {
+        "title": "Step-by-step tutorials",
+        "text": "Tap any tutorial to start it. Each lesson walks you through a task one step at a time, with highlights on the screen to show you where to click.\n\nCurrent lessons include Basic Google Search and Gmail."
+      },
+      "intro-exit": {
+        "title": "Leaving a tutorial",
+        "text": "You can leave any tutorial at any time.\n\nLook for the Exit tutorial button at the bottom-left of the screen while a tutorial is running. Press it and you'll come right back here."
+      },
+      "intro-help": {
+        "title": "The Help button",
+        "text": "This Help button in the top right of the panel is always here.\n\nPress it whenever you want to see this tour again — you won't lose your place in the app."
+      },
+      "intro-finish": {
+        "title": "You're ready to go",
+        "text": "That's it! Press Finish to start using Granson AI.\n\nRemember: the Help button is always there if you need a reminder."
+      }
+    },
     "googleSearch": {
       "title": "Basic Google Search",
       "steps": {
@@ -250,8 +325,8 @@
     "highlightErrorTitle": "Could not locate target",
     "highlightErrorHint": "Make sure Chrome is visible, then try Next again.",
     "courseTitles": {
-      "google-search": "Google Search",
-      "gmail": "Gmail"
+      "intro": "App Tour",
+      "google-search": "Google Search"
     }
   },
   "nav": {

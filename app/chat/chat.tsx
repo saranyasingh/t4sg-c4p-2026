@@ -19,7 +19,7 @@ interface ChatHistoryItem {
   content: string;
 }
 
-const CHAT_STORAGE_KEY = "t4sg-c4p-chat-messages-v1";
+const CHAT_STORAGE_KEY = "t4sg-c4p-chat-messages-v2";
 
 function parseStoredMessages(raw: unknown): MessageWithId[] {
   if (!Array.isArray(raw)) return [];
@@ -544,7 +544,7 @@ export function Chat({ showHeader = true }: ChatProps) {
   };
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
+    <div className="interactable flex h-full flex-col gap-6 p-6">
       {showHeader ? (
         <header className="space-y-1">
           <TypographyH2>{t("chat.heading")}</TypographyH2>
