@@ -20,7 +20,7 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
   const tabs = [
     { href: "/", label: t("shell.tabs.home") },
     { href: "/tutorials", label: t("shell.tabs.tutorials") },
-    { href: "/settings", label: t("shell.tabs.options") },
+    { href: "/options", label: t("shell.tabs.options") },
   ];
 
   useEffect(() => {

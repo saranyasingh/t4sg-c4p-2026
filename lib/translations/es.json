@@ -6,6 +6,9 @@
     "tutorialsHeading": "Tutoriales"
   },
   "tutorials": {
+    "cardLabel": "Tutorial",
+    "startTutorial": "Iniciar tutorial",
+    "description": "Haz clic en un tutorial para acceder a una lección interactiva paso a paso sobre un tema.",
     "googleSearch": {
       "title": "Búsqueda básica en Google",
       "steps": {
@@ -246,7 +249,8 @@
     "highlightErrorTitle": "No se encontró el elemento",
     "highlightErrorHint": "Asegúrate de que Chrome esté visible y vuelve a intentar con Siguiente.",
     "courseTitles": {
-      "google-search": "Búsqueda de Google"
+      "google-search": "Búsqueda de Google",
+      "gmail": "Gmail"
     }
   },
   "nav": {
@@ -314,6 +318,10 @@
     "navGeneral": "General",
     "navProfile": "Perfil",
     "editGeneral": "Editar configuración general"
+  },
+  "options": {
+    "heading": "Opciones",
+    "description": "Cambia el aspecto y el funcionamiento de la aplicación."
   },
   "profileForm": {
     "heading": "Perfil",

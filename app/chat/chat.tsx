@@ -8,13 +8,10 @@ import { Send } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/components/ui/use-toast";
+import { useAudioMode } from "../audio-mode-context";
 import { Message, type MessageProps } from "./message";
 import { ScrollContainer } from "./scroll-container";
 import { VoiceInput } from "./voice-input"; // ← NEW
-
-/** Tiny silent WAV — played once when enabling audio mode to satisfy browser autoplay rules. */
-const SILENT_WAV =
-  "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAAAAAA==";
 
 type MessageWithId = MessageProps & { id: string; variant: "user" | "assistant" };
 interface ChatHistoryItem {
@@ -46,8 +43,8 @@ export function Chat({ showHeader = true }: ChatProps) {
   const [messages, setMessages] = useState<MessageWithId[]>([]);
   const [messagesHydrated, setMessagesHydrated] = useState(false);
   const [incomingMessage, setIncomingMessage] = useState("");
-  const [audioModeEnabled, setAudioModeEnabled] = useState(false);
-  const [isSpeechPlaying, setIsSpeechPlaying] = useState(false);
+  const [, setIsSpeechPlaying] = useState(false);
+  const { audioModeEnabled } = useAudioMode();
   const audioModeEnabledRef = useRef(audioModeEnabled);
   const speechObjectUrlRef = useRef<string | null>(null);
   const speechAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -80,7 +77,7 @@ export function Chat({ showHeader = true }: ChatProps) {
     try {
       const raw = localStorage.getItem(CHAT_STORAGE_KEY);
       if (raw) {
-        const parsed = parseStoredMessages(JSON.parse(raw) as unknown);
+        const parsed = parseStoredMessages(JSON.parse(raw));
         if (parsed.length) setMessages(parsed);
       }
     } catch {
@@ -284,7 +281,7 @@ export function Chat({ showHeader = true }: ChatProps) {
         if (!trimmed) continue;
         let evt: unknown;
         try {
-          evt = JSON.parse(trimmed) as unknown;
+          evt = JSON.parse(trimmed);
         } catch {
           continue;
         }
@@ -554,32 +551,6 @@ export function Chat({ showHeader = true }: ChatProps) {
           <TypographyP className="text-sm text-muted-foreground">{t("chat.description")}</TypographyP>
         </header>
       ) : null}
-
-      <Button
-        type="button"
-        variant={audioModeEnabled ? "default" : "outline"}
-        className={
-          audioModeEnabled
-            ? "interactable shrink-0 ring-2 ring-primary/40"
-            : "interactable shrink-0 text-muted-foreground"
-        }
-        aria-pressed={audioModeEnabled}
-        aria-busy={isSpeechPlaying}
-        onClick={() => {
-          const next = !audioModeEnabled;
-          if (next) {
-            const unlock = new Audio(SILENT_WAV);
-            unlock.volume = 0.01;
-            void unlock.play().catch(() => {
-              /* ignore — Electron / no-user-gesture path may still allow later play */
-            });
-          }
-          setAudioModeEnabled(next);
-        }}
-      >
-        {audioModeEnabled ? t("chat.audioModeOn") : t("chat.audioModeOff")}
-        {isSpeechPlaying ? t("chat.audioPlaying") : ""}
-      </Button>
 
       <section className="min-h-0 flex-1 overflow-hidden">
         <ScrollContainer>

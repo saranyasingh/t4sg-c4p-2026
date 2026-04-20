@@ -6,6 +6,8 @@
     "tutorialsHeading": "Tutorials"
   },
   "tutorials": {
+    "cardLabel": "Tutorial",
+    "startTutorial": "Start tutorial",
     "googleSearch": {
       "title": "Basic Google Search",
       "steps": {
@@ -247,7 +249,8 @@
     "highlightErrorTitle": "Could not locate target",
     "highlightErrorHint": "Make sure Chrome is visible, then try Next again.",
     "courseTitles": {
-      "google-search": "Google Search"
+      "google-search": "Google Search",
+      "gmail": "Gmail"
     }
   },
   "nav": {
@@ -315,6 +318,10 @@
     "navGeneral": "General",
     "navProfile": "Profile",
     "editGeneral": "Edit general settings"
+  },
+  "options": {
+    "heading": "Options",
+    "description": "Change how the app looks and runs."
   },
   "profileForm": {
     "heading": "Profile",
