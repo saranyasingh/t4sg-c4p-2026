@@ -351,9 +351,8 @@
     "highlightErrorHint": "Make sure Chrome is visible, then try Next again.",
     "courseTitles": {
       "google-search": "Google Search",
-      "interactive-ai": "AI-guided tutorial"
-      "intro": "App Tour",
-      "google-search": "Google Search"
+      "interactive-ai": "AI-guided tutorial",
+      "intro": "App Tour"
     }
   },
   "nav": {
@@ -477,4 +476,4 @@
     "notFound": "404 - Page not found",
     "takePicture": "Take Picture"
   }
-}
+}}
