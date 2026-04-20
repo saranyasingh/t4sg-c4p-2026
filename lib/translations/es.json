@@ -394,6 +394,21 @@
     "navProfile": "Perfil",
     "editGeneral": "Editar configuración general"
   },
+  "options": {
+    "heading": "Opciones",
+    "description": "Cambia el aspecto y el funcionamiento de la aplicación.",
+    "textSizeHeading": "Tamaño de texto",
+    "textSizeSliderAria": "Preajuste de tamaño de texto",
+    "textSizeCurrent": "Tamaño actual: {{size}}",
+    "textSizeSmall": "Pequeño",
+    "textSizeMedium": "Mediano",
+    "textSizeLarge": "Grande",
+    "textSizeExtraLarge": "Extra grande",
+    "assistantSpeaksHeading": "El asistente habla en voz alta",
+    "backgroundOpacityHeading": "Opacidad de fondo",
+    "backgroundOpacityCurrent": "Opacidad actual: {{percent}}%",
+    "backgroundOpacitySliderAria": "Opacidad del fondo"
+  },
   "profileForm": {
     "heading": "Perfil",
     "errorHeading": "Error",
@@ -420,7 +435,14 @@
     "es": "Español"
   },
   "shell": {
-    "rights": "Computers 4 People. Todos los derechos reservados."
+    "tabs": {
+      "home": "Inicio",
+      "tutorials": "Tutoriales",
+      "options": "Opciones"
+    },
+    "rights": "Computers 4 People. Todos los derechos reservados.",
+    "open": "ABRIR",
+    "close": "CERRAR"
   },
   "misc": {
     "loading": "Cargando...",
