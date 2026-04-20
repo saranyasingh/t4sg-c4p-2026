@@ -41,6 +41,9 @@
     "buttonAriaLabel": "Show the app tour"
   },
   "tutorials": {
+    "cardLabel": "Tutorial",
+    "startTutorial": "Start tutorial",
+    "description": "Click on a tutorial for a step-by-step interactive lesson on a topic.",
     "intro": {
       "title": "App Tour",
       "intro-welcome": {
