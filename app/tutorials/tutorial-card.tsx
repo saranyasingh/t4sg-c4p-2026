@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { TypographyLarge, TypographySmall } from "@/components/ui/typography";
 
 interface TutorialCardProps {
   title: string;
@@ -17,9 +18,9 @@ export function TutorialCard({ title, ctaLabel, onClick }: TutorialCardProps) {
       onClick={onClick}
     >
       <div className="space-y-2">
-        <div className="text-xl font-semibold leading-tight">{title}</div>
+        <TypographyLarge className="leading-tight text-white">{title}</TypographyLarge>
       </div>
-      <div className="mt-6 text-sm text-white/75">{ctaLabel}</div>
+      <TypographySmall className="mt-6 text-white/75">{ctaLabel}</TypographySmall>
     </Button>
   );
 }
