@@ -181,15 +181,16 @@ export function PointerOverlay({
 
   if (!mounted || phase === "idle") return null;
 
-  // Arrow: tip at (24,8), base on left. Placed so tip lands at pos.x, pos.y.
-  const arrowLeft = pos.x - 24;
-  const arrowTop = pos.y - 8;
-  const glowSize = 4 + scale * 3;
+  // Arrow: tip at (30,9), base on left. Placed so tip lands at pos.x, pos.y.
+  const arrowLeft = pos.x - 30;
+  const arrowTop = pos.y - 9;
+  const glowSize = 6 + scale * 5;
+  const arrived = phase === "arrived";
 
   // Speech bubble: appears to the right-above the tip. Flip left if near right edge.
   const vw = typeof window !== "undefined" ? window.innerWidth : 800;
-  const bubbleRight = pos.x + 24 + 180 > vw;
-  const bubbleLeft = bubbleRight ? pos.x - 24 - 180 : pos.x + 24;
+  const bubbleRight = pos.x + 30 + 180 > vw;
+  const bubbleLeft = bubbleRight ? pos.x - 30 - 180 : pos.x + 30;
 
   return createPortal(
     <div
@@ -202,33 +203,64 @@ export function PointerOverlay({
       }}
       aria-hidden="true"
     >
+      {/* Pulse halo under the tip (only after arrival) */}
+      {arrived ? (
+        <span
+          style={{
+            position: "absolute",
+            left: pos.x - 18,
+            top: pos.y - 18,
+            width: 36,
+            height: 36,
+            borderRadius: "50%",
+            background:
+              "radial-gradient(circle, rgba(255,215,0,0.55) 0%, rgba(255,165,0,0.25) 55%, rgba(255,140,0,0) 75%)",
+            animation: "tutorial-pointer-pulse 1.4s ease-out infinite",
+          }}
+        />
+      ) : null}
+      <style>{`
+        @keyframes tutorial-pointer-pulse {
+          0% { transform: scale(0.7); opacity: 0.9; }
+          70% { transform: scale(1.6); opacity: 0; }
+          100% { transform: scale(1.6); opacity: 0; }
+        }
+      `}</style>
+
       {/* Arrow cursor */}
       <svg
-        width="28"
-        height="16"
-        viewBox="0 0 28 16"
+        width="34"
+        height="20"
+        viewBox="0 0 34 20"
         style={{
           position: "absolute",
           left: arrowLeft,
           top: arrowTop,
-          transformOrigin: "24px 8px",
+          transformOrigin: "30px 9px",
           transform: `rotate(${angle}deg) scale(${scale})`,
           overflow: "visible",
-          filter: `drop-shadow(0 0 ${glowSize}px rgba(255,215,0,0.9))`,
+          filter: `drop-shadow(0 0 ${glowSize}px rgba(255,180,0,0.95)) drop-shadow(0 2px 4px rgba(0,0,0,0.45))`,
         }}
       >
-        {/* Outer glow shape */}
+        <defs>
+          <linearGradient id="tutorial-arrow-fill" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgb(255,240,150)" />
+            <stop offset="55%" stopColor="rgb(255,205,0)" />
+            <stop offset="100%" stopColor="rgb(255,140,0)" />
+          </linearGradient>
+        </defs>
+        {/* Outer soft halo */}
         <polygon
-          points="0,2 0,14 26,8"
-          fill="rgba(255,235,100,0.25)"
-          transform="scale(1.35) translate(-2,-1.2)"
+          points="0,2 0,18 32,10"
+          fill="rgba(255,220,90,0.28)"
+          transform="scale(1.4) translate(-2.5,-1.8)"
         />
-        {/* Main arrow */}
+        {/* Main arrow with gradient */}
         <polygon
-          points="0,1 0,15 24,8"
-          fill="rgb(255,215,0)"
-          stroke="rgba(255,255,255,0.92)"
-          strokeWidth="1.5"
+          points="0,1 0,19 30,10"
+          fill="url(#tutorial-arrow-fill)"
+          stroke="rgba(255,255,255,0.95)"
+          strokeWidth="1.75"
           strokeLinejoin="round"
         />
       </svg>
@@ -239,18 +271,18 @@ export function PointerOverlay({
           style={{
             position: "absolute",
             left: bubbleLeft,
-            top: pos.y - 34,
-            background: "rgba(10,10,18,0.92)",
-            border: "1.5px solid rgba(255,215,0,0.75)",
+            top: pos.y - 38,
+            background: "linear-gradient(135deg, rgba(18,14,6,0.95), rgba(10,10,18,0.95))",
+            border: "1.5px solid rgba(255,200,40,0.85)",
             borderRadius: 10,
-            padding: "6px 14px",
-            color: "rgb(255,215,0)",
-            fontSize: 13,
+            padding: "7px 16px",
+            color: "rgb(255,225,90)",
+            fontSize: 14,
             fontWeight: 700,
             fontFamily: "system-ui, -apple-system, sans-serif",
             letterSpacing: "0.02em",
             whiteSpace: "nowrap",
-            boxShadow: "0 4px 24px rgba(0,0,0,0.55), 0 0 12px rgba(255,215,0,0.18)",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.6), 0 0 16px rgba(255,200,40,0.28)",
           }}
         >
           {label}
