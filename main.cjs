@@ -19,10 +19,7 @@ function loadEnvFromFileSync(absolutePath) {
       const key = rest.slice(0, eq).trim();
       if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue;
       let value = rest.slice(eq + 1).trim();
-      if (
-        (value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))
-      ) {
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
         value = value.slice(1, -1);
       }
       process.env[key] = value;
@@ -100,6 +97,7 @@ function createWindow() {
     alwaysOnTop: true,
     transparent: true,
     skipTaskbar: true,
+    hiddenInMissionControl: process.platform === "darwin",
 
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -110,6 +108,9 @@ function createWindow() {
 
   win.setAlwaysOnTop(true, "screen-saver", 100);
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  if (process.platform === "darwin") {
+    win.setHiddenInMissionControl(true);
+  }
   win.moveTop();
 
   // Make the entire window click-through.

@@ -1,8 +1,3 @@
-import { createServerSupabaseClient } from "@/lib/server-utils";
-import { isSupabaseConfigured } from "@/lib/supabase-config";
-import { redirect } from "next/navigation";
-import SettingsLayoutClient from "./settings-layout-client";
-
 interface SettingsLayoutProps {
   children: React.ReactNode;
 }

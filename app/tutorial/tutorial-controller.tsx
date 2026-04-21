@@ -38,6 +38,7 @@ export function TutorialController() {
     coords: ScreenHighlight;
     screenshotWidth: number;
     screenshotHeight: number;
+    useCssCoords?: boolean;
   } | null>(null);
   const [isLoadingHighlight, setIsLoadingHighlight] = useState(false);
   const [spotlightRect, setSpotlightRect] = useState<{
@@ -153,7 +154,16 @@ export function TutorialController() {
           coords: currentStep.highlight,
           screenshotWidth: typeof window !== "undefined" ? window.innerWidth : 1,
           screenshotHeight: typeof window !== "undefined" ? window.innerHeight : 1,
+          useCssCoords: false,
         });
+        return;
+      }
+
+      if (currentStep.highlightSelector) {
+        // Measurement is handled in a dedicated effect below so it can respond
+        // to viewport resizes without re-running the vision pipeline.
+        setIsLoadingHighlight(false);
+        setHighlightError(null);
         return;
       }
 
@@ -169,12 +179,87 @@ export function TutorialController() {
     };
   }, [currentStep]);
 
+  // Selector-based highlights: keep measuring while layout/scroll changes so the
+  // spotlight stays attached to the element as containers move.
+  useEffect(() => {
+    if (!currentStep?.highlightSelector || typeof window === "undefined") return;
+
+    const selector = currentStep.highlightSelector;
+    let rafId: number | null = null;
+    const scheduleMeasure = () => {
+      if (rafId != null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        measure();
+      });
+    };
+
+    const measure = () => {
+      // Selector can contain a comma-separated list; spotlight spans the union
+      // of all matched elements (e.g. step card + a nav button together).
+      const nodes = Array.from(document.querySelectorAll(selector));
+      const rects = nodes
+        .map((n) => n.getBoundingClientRect())
+        .filter((r) => r.width > 0 && r.height > 0);
+      if (rects.length === 0) {
+        setHighlightPayload(null);
+        return;
+      }
+      const left = Math.min(...rects.map((r) => r.left));
+      const top = Math.min(...rects.map((r) => r.top));
+      const right = Math.max(...rects.map((r) => r.right));
+      const bottom = Math.max(...rects.map((r) => r.bottom));
+      const offsetX = currentStep.highlightOffsetX ?? 0;
+      const offsetY = currentStep.highlightOffsetY ?? 0;
+      setHighlightPayload({
+        coords: {
+          x: left + offsetX,
+          y: top + offsetY,
+          width: right - left,
+          height: bottom - top,
+          confidence: 1,
+        },
+        screenshotWidth: window.innerWidth,
+        screenshotHeight: window.innerHeight,
+        useCssCoords: true,
+      });
+    };
+
+    measure();
+    window.addEventListener("resize", scheduleMeasure);
+    // Capture-phase scroll catches nested scroll containers (like chat history).
+    window.addEventListener("scroll", scheduleMeasure, true);
+
+    const resizeObserver = new ResizeObserver(() => {
+      scheduleMeasure();
+    });
+    resizeObserver.observe(document.body);
+
+    const mutationObserver = new MutationObserver(() => {
+      scheduleMeasure();
+    });
+    mutationObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+    });
+
+    return () => {
+      window.removeEventListener("resize", scheduleMeasure);
+      window.removeEventListener("scroll", scheduleMeasure, true);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      if (rafId != null) {
+        window.cancelAnimationFrame(rafId);
+      }
+    };
+  }, [currentStep]);
+
   const fallbackW = typeof window !== "undefined" ? window.innerWidth : 1;
   const fallbackH = typeof window !== "undefined" ? window.innerHeight : 1;
 
   const textBoxStyle = useMemo(() => {
     const vw = viewport.w;
-    const vh = viewport.h;
     const margin = 16;
     const maxW = Math.min(420, vw - margin * 2);
 
@@ -208,7 +293,7 @@ export function TutorialController() {
     }
 
     return {
-      width: maxW,
+      width: cardW,
       left: margin,
       top: undefined as number | undefined,
       bottom: 64,
@@ -231,7 +316,7 @@ export function TutorialController() {
             <div
               className="pointer-events-none fixed inset-0"
               style={{
-                zIndex: 999991,
+                zIndex: 1000001,
                 background: "rgba(8, 10, 16, 0.54)",
               }}
               aria-hidden="true"
@@ -244,7 +329,10 @@ export function TutorialController() {
         coords={highlightPayload?.coords ?? null}
         screenshotWidth={highlightPayload?.screenshotWidth ?? fallbackW}
         screenshotHeight={highlightPayload?.screenshotHeight ?? fallbackH}
-        expandFactor={2.5}
+        expandFactor={currentStep.highlightExpandFactor ?? 2.1}
+        minPadding={currentStep.highlightMinPadding ?? 28}
+        useCssCoords={Boolean(highlightPayload?.useCssCoords)}
+        brightMode={Boolean(currentStep.highlightBright)}
         onSpotlightRectChange={setSpotlightRect}
       />
 
@@ -265,7 +353,8 @@ export function TutorialController() {
       {showStepText
         ? createPortal(
             <div
-              className="pointer-events-none fixed z-[999997] max-h-[42vh] overflow-y-auto rounded-xl border border-white/35 bg-[hsl(var(--foreground)/0.95)] p-4 text-white shadow-2xl backdrop-blur-sm"
+              id="tutorial-step-card"
+              className="pointer-events-none fixed z-[1000003] max-h-[42vh] overflow-y-auto rounded-xl border border-white/35 bg-[hsl(var(--foreground)/0.95)] p-4 text-white shadow-2xl backdrop-blur-sm"
               style={{
                 left: textBoxStyle.left,
                 top: textBoxStyle.top,
@@ -301,7 +390,7 @@ export function TutorialController() {
           )
         : createPortal(
             <div
-              className="pointer-events-none fixed inset-0 z-[999997] flex items-center justify-center px-6"
+              className="pointer-events-none fixed inset-0 z-[1000003] flex items-center justify-center px-6"
               role="status"
               aria-live="polite"
             >
@@ -314,7 +403,7 @@ export function TutorialController() {
         {highlightError
           ? createPortal(
               <div
-                className="pointer-events-none fixed left-1/2 top-6 z-[999998] w-[90vw] max-w-md -translate-x-1/2"
+                className="pointer-events-none fixed left-1/2 top-6 z-[1000004] w-[90vw] max-w-md -translate-x-1/2"
               >
                 <div className="rounded-xl border border-amber-400/40 bg-gradient-to-r from-amber-600/90 via-orange-500/90 to-red-500/90 px-5 py-4 text-white shadow-2xl backdrop-blur-sm">
                   <p className="mb-1 text-sm font-bold tracking-wide">{t("tutorial.highlightErrorTitle")}</p>
@@ -328,7 +417,7 @@ export function TutorialController() {
 
    
       {createPortal(
-        <div className="fixed bottom-4 left-4 z-[999998] flex flex-wrap items-center gap-2">
+        <div className="fixed bottom-4 left-4 z-[1000004] flex flex-wrap items-center gap-2">
           {canGoPrevious ? (
             <Button
               type="button"
@@ -345,18 +434,31 @@ export function TutorialController() {
             </Button>
           ) : null}
           {isLastStep ? (
-            <Button type="button" className="interactable bg-white text-black hover:bg-white/90" onClick={exitTutorial}>
+            <Button
+              id="tutorial-finish-button"
+              type="button"
+              className="interactable bg-white text-black hover:bg-white/90"
+              onClick={exitTutorial}
+            >
               {t("tutorial.finish")}
             </Button>
           ) : null}
-          <Button
-            type="button"
-            variant="ghost"
-            className="interactable border border-white/25 bg-black/45 text-white/95 hover:bg-black/60"
-            onClick={exitTutorial}
-          >
-            {t("tutorial.exit")}
-          </Button>
+          {!isLastStep ? (
+            <Button
+              id="tutorial-exit-button"
+              type="button"
+              variant={currentStep.id === "intro-exit" ? "default" : "ghost"}
+              data-intro="tutorial-exit"
+              className={
+                currentStep.id === "intro-exit"
+                  ? "interactable bg-white text-black hover:bg-white/90"
+                  : "interactable border border-white/25 bg-black/45 text-white/95 hover:bg-black/60"
+              }
+              onClick={exitTutorial}
+            >
+              {t("tutorial.exit")}
+            </Button>
+          ) : null}
         </div>,
         document.body,
       )}

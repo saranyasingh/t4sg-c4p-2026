@@ -3,9 +3,87 @@
     "welcome": "Bienvenido",
     "getStarted": "Comienza con el Chat o explora los Tutoriales para aprender más.",
     "brandTitle": "Granson AI",
-    "tutorialsHeading": "Tutoriales"
+    "tagline": "Tu asistente amigable de computadora. Haz preguntas, muestra tu pantalla y aprende a tu ritmo.",
+    "letsGetStarted": "¡Comencemos!",
+    "startIntroCta": "Comenzar el recorrido",
+    "featuresHeading": "Qué puedes hacer",
+    "tutorialsHeading": "Tutoriales",
+    "features": {
+      "chat": {
+        "title": "Conversa con el asistente",
+        "body": "Escribe tu pregunta en el cuadro de abajo y pulsa Enviar. El asistente te responde con palabras claras."
+      },
+      "screen": {
+        "title": "Pregunta sobre tu pantalla",
+        "body": "Dile al asistente lo que ves. Puede capturar tu pantalla para ayudarte a responder — solo pregunta sobre algo que estés viendo."
+      },
+      "voice": {
+        "title": "Habla con tu voz",
+        "body": "Pulsa el botón del micrófono para hablar en vez de escribir. Púlsalo otra vez para detener."
+      },
+      "language": {
+        "title": "Inglés o Español",
+        "body": "Usa el botón de idioma arriba a la derecha para cambiar entre Inglés y Español en cualquier momento."
+      },
+      "tutorials": {
+        "title": "Tutoriales paso a paso",
+        "body": "Abre un tutorial para aprender cosas como usar Google o enviar Gmail. Cada paso te guía en la pantalla."
+      },
+      "help": {
+        "title": "La Ayuda siempre está cerca",
+        "body": "Pulsa el botón de Ayuda arriba a la derecha para volver a ver este recorrido cuando necesites un recordatorio."
+      }
+    }
+  },
+  "help": {
+    "buttonLabel": "Ayuda",
+    "buttonTitle": "Mostrar el recorrido de la aplicación",
+    "buttonAriaLabel": "Mostrar el recorrido de la aplicación"
   },
   "tutorials": {
+    "intro": {
+      "title": "Recorrido de la app",
+      "intro-welcome": {
+        "title": "Bienvenido a Granson AI",
+        "text": "Este breve recorrido te muestra todo lo que la aplicación puede hacer.\n\nUsa el botón Siguiente abajo para avanzar, Atrás para volver al paso anterior, o Salir del tutorial para detenerte cuando quieras."
+      },
+      "intro-chat": {
+        "title": "Conversa con el asistente",
+        "text": "Este es el cuadro del chat. Escribe cualquier pregunta — en palabras sencillas — y pulsa Enviar o Entrar.\n\nPuedes preguntar sobre la computadora, el internet, o lo que sea que te interese."
+      },
+      "intro-screen": {
+        "title": "Pregunta sobre tu pantalla",
+        "text": "Puedes preguntarle al asistente sobre lo que estás viendo. Por ejemplo, prueba escribir:\n\n• «¿Qué hay en mi pantalla?»\n• «¿Qué hace este botón?»\n\nEl asistente tomará una foto de tu pantalla para ayudar a responder."
+      },
+      "intro-voice": {
+        "title": "Habla con tu voz",
+        "text": "Pulsa este botón del micrófono para hablar en vez de escribir.\n\nPúlsalo una vez para empezar a grabar. Púlsalo otra vez cuando termines. El asistente leerá lo que dijiste y te responderá."
+      },
+      "intro-audio-mode": {
+        "title": "Escucha las respuestas",
+        "text": "Activa el Modo de audio para que el asistente lea sus respuestas en voz alta.\n\nPulsa este botón una vez para activarlo. Púlsalo otra vez para apagarlo."
+      },
+      "intro-language": {
+        "title": "Inglés o Español",
+        "text": "Usa este botón para cambiar entre Inglés y Español.\n\nToda la aplicación — incluyendo los tutoriales y el asistente — cambia de idioma al instante."
+      },
+      "intro-tutorials": {
+        "title": "Tutoriales paso a paso",
+        "text": "Toca cualquier tutorial para comenzarlo. Cada lección te guía por una tarea, un paso a la vez, con resaltados en la pantalla para mostrarte dónde hacer clic.\n\nLas lecciones actuales incluyen Búsqueda básica en Google y Gmail."
+      },
+      "intro-exit": {
+        "title": "Salir de un tutorial",
+        "text": "Puedes salir de cualquier tutorial en cualquier momento.\n\nBusca el botón Salir del tutorial abajo a la izquierda de la pantalla mientras un tutorial está activo. Al pulsarlo vuelves directamente aquí."
+      },
+      "intro-help": {
+        "title": "El botón de Ayuda",
+        "text": "Este botón de Ayuda arriba a la derecha del panel siempre está aquí.\n\nPúlsalo cuando quieras ver este recorrido otra vez — no perderás tu lugar en la aplicación."
+      },
+      "intro-finish": {
+        "title": "Ya estás listo",
+        "text": "¡Eso es todo! Pulsa Terminar para empezar a usar Granson AI.\n\nRecuerda: el botón de Ayuda siempre está ahí si necesitas un recordatorio."
+      }
+    },
     "googleSearch": {
       "title": "Búsqueda básica en Google",
       "steps": {
@@ -246,6 +324,7 @@
     "highlightErrorTitle": "No se encontró el elemento",
     "highlightErrorHint": "Asegúrate de que Chrome esté visible y vuelve a intentar con Siguiente.",
     "courseTitles": {
+      "intro": "Recorrido de la app",
       "google-search": "Búsqueda de Google"
     }
   },
@@ -315,6 +394,21 @@
     "navProfile": "Perfil",
     "editGeneral": "Editar configuración general"
   },
+  "options": {
+    "heading": "Opciones",
+    "description": "Cambia el aspecto y el funcionamiento de la aplicación.",
+    "textSizeHeading": "Tamaño de texto",
+    "textSizeSliderAria": "Preajuste de tamaño de texto",
+    "textSizeCurrent": "Tamaño actual: {{size}}",
+    "textSizeSmall": "Pequeño",
+    "textSizeMedium": "Mediano",
+    "textSizeLarge": "Grande",
+    "textSizeExtraLarge": "Extra grande",
+    "assistantSpeaksHeading": "El asistente habla en voz alta",
+    "backgroundOpacityHeading": "Opacidad de fondo",
+    "backgroundOpacityCurrent": "Opacidad actual: {{percent}}%",
+    "backgroundOpacitySliderAria": "Opacidad del fondo"
+  },
   "profileForm": {
     "heading": "Perfil",
     "errorHeading": "Error",
@@ -341,7 +435,14 @@
     "es": "Español"
   },
   "shell": {
-    "rights": "Computers 4 People. Todos los derechos reservados."
+    "tabs": {
+      "home": "Inicio",
+      "tutorials": "Tutoriales",
+      "options": "Opciones"
+    },
+    "rights": "Computers 4 People. Todos los derechos reservados.",
+    "open": "ABRIR",
+    "close": "CERRAR"
   },
   "misc": {
     "loading": "Cargando...",

@@ -6,6 +6,9 @@ import { useTranslation } from "react-i18next";
 import "./i18n";
 import i18n from "./i18n";
 import { TutorialProvider } from "./tutorial/tutorial-provider";
+import { AudioModeProvider } from "./audio-mode-context";
+import { BackgroundOpacityProvider } from "./background-opacity-context";
+import { TextSizeProvider } from "./text-size-context";
 
 function I18nLangSync() {
   useEffect(() => {
@@ -33,11 +36,18 @@ function I18nKeyedContent({ children }: { children: React.ReactNode }) {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider forcedTheme="light" enableSystem={false}>
-      <I18nLangSync />
-      <TutorialProvider>
-        <I18nKeyedContent>{children}</I18nKeyedContent>
-      </TutorialProvider>
-    </ThemeProvider>
+    <TextSizeProvider>
+      <BackgroundOpacityProvider>
+        <AudioModeProvider>
+          <ThemeProvider forcedTheme="light" enableSystem={false}>
+            <I18nLangSync />
+            <TutorialProvider>
+              <I18nKeyedContent>{children}</I18nKeyedContent>
+              <VisionDebugPanel />
+            </TutorialProvider>
+          </ThemeProvider>
+        </AudioModeProvider>
+      </BackgroundOpacityProvider>
+    </TextSizeProvider>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { TypographySmall } from "@/components/ui/typography";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -73,9 +74,9 @@ export const ScrollContainer = ({ children }: ScrollContainerProps) => {
   }, [scrollOuterToBottom]);
 
   return (
-    <div className="relative h-full">
-      <div ref={outerDiv} className="relative h-full overflow-y-auto" onScroll={handleScroll}>
-        <div ref={innerDiv} className="flex min-h-full w-full flex-col justify-end">
+    <div className="interactable relative h-full">
+      <div ref={outerDiv} className="interactable relative h-full overflow-y-auto" onScroll={handleScroll}>
+        <div ref={innerDiv} className="interactable flex min-h-full w-full flex-col justify-end">
           <div className="interactable w-full space-y-4 rounded-lg border border-white/20 bg-[hsl(var(--foreground)/0.55)] p-4">
             {children}
           </div>
@@ -90,7 +91,7 @@ export const ScrollContainer = ({ children }: ScrollContainerProps) => {
         }}
         onClick={handleScrollButtonClick}
       >
-        {t("chat.newMessage")}
+        <TypographySmall className="m-0 font-semibold leading-none text-inherit">{t("chat.newMessage")}</TypographySmall>
       </Button>
     </div>
   );
