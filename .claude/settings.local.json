@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(git fetch *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(awk 'NR<84 || NR>421' main.cjs)",
+      "Bash(awk 'NR==83 || NR==84' main.cjs)"
     ]
   }
 }
