@@ -42,92 +42,6 @@ function setClickThrough(enabled, options) {
   win.setIgnoreMouseEvents(enabled, options);
 }
 
-function visionToNum(v) {
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  if (typeof v === "string" && v.trim() !== "") {
-    const n = Number(v);
-    if (Number.isFinite(n)) return n;
-  }
-  return NaN;
-}
-
-function normalizedBoxToPixels(parsed, w, h) {
-  const leftN = visionToNum(parsed.left);
-  const topN = visionToNum(parsed.top);
-  const widthN = visionToNum(parsed.width);
-  const heightN = visionToNum(parsed.height);
-  if (![leftN, topN, widthN, heightN].every((n) => Number.isFinite(n))) return null;
-  const clamp01 = (n) => Math.max(0, Math.min(1, n));
-  const confRaw = visionToNum(parsed.confidence);
-  return {
-    x: clamp01(leftN) * w,
-    y: clamp01(topN) * h,
-    width: clamp01(widthN) * w,
-    height: clamp01(heightN) * h,
-    confidence: Number.isFinite(confRaw) ? clamp01(confRaw) : 0,
-  };
-}
-
-function extractAssistantText(response) {
-  const textBlock = response.content.find((b) => b.type === "text");
-  return textBlock?.text ?? "";
-}
-
-/** Pull first `{ ... }` from text, respecting JSON string escaping (handles prose before/after the object). */
-function extractFirstJsonObject(s) {
-  const start = s.indexOf("{");
-  if (start === -1) return null;
-  let depth = 0;
-  let inString = false;
-  let escape = false;
-  for (let i = start; i < s.length; i++) {
-    const c = s[i];
-    if (escape) {
-      escape = false;
-      continue;
-    }
-    if (inString) {
-      if (c === "\\") {
-        escape = true;
-        continue;
-      }
-      if (c === '"') inString = false;
-      continue;
-    }
-    if (c === '"') {
-      inString = true;
-      continue;
-    }
-    if (c === "{") depth++;
-    else if (c === "}") {
-      depth--;
-      if (depth === 0) return s.slice(start, i + 1);
-    }
-  }
-  return null;
-}
-
-/**
- * Parse a JSON object from vision assistant text (may include markdown fences or a short preamble).
- */
-function parseAssistantJson(raw) {
-  const cleaned = raw.replace(/```json|```/g, "").trim();
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    const extracted = extractFirstJsonObject(cleaned);
-    if (extracted) {
-      try {
-        return JSON.parse(extracted);
-      } catch {
-        /* fall through */
-      }
-    }
-    const preview = cleaned.length > 200 ? `${cleaned.slice(0, 200)}…` : cleaned;
-    throw new SyntaxError(`Assistant reply is not valid JSON: ${preview}`);
-  }
-}
-
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -145,12 +59,15 @@ function isRetriableAnthropicError(err) {
 
 /**
  * Retries Messages API calls on rate limits / overload (exponential backoff + jitter).
+ * `requestOptions` is forwarded to `messages.create` (headers, timeout, etc.).
  */
-async function anthropicCreateWithRetry(client, body, { maxRetries = 8 } = {}) {
+async function anthropicCreateWithRetry(client, body, requestOptions, { maxRetries = 8 } = {}) {
   let lastErr;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      return await client.messages.create(body);
+      return requestOptions
+        ? await client.messages.create(body, requestOptions)
+        : await client.messages.create(body);
     } catch (err) {
       lastErr = err;
       if (!isRetriableAnthropicError(err) || attempt === maxRetries - 1) throw err;
@@ -164,349 +81,6 @@ async function anthropicCreateWithRetry(client, body, { maxRetries = 8 } = {}) {
   throw lastErr;
 }
 
-/** Default vision model (Haiku 4.5 — fast/cheap). Override with ANTHROPIC_MODEL. */
-const DEFAULT_VISION_MODEL = "claude-haiku-4-5";
-/** When tile IPC requests precise=true (small on-screen crop); override with ANTHROPIC_MODEL_TILE_PRECISE. */
-const DEFAULT_TILE_PRECISE_MODEL = "claude-sonnet-4-20250514";
-
-async function analyzeScreenshot(imageBase64, targetDescription, imageWidth, imageHeight) {
-  const { default: Anthropic } = await import("@anthropic-ai/sdk");
-  require("dotenv/config");
-
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return { found: false, explanation: "The assistant is not set up yet. Please ask your administrator to configure the API key and restart the app." };
-  }
-
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-  const display = screen.getPrimaryDisplay();
-  const { width: logicalW, height: logicalH } = display.size;
-  const w =
-    typeof imageWidth === "number" && Number.isFinite(imageWidth) && imageWidth > 0
-      ? Math.round(imageWidth)
-      : logicalW;
-  const h =
-    typeof imageHeight === "number" && Number.isFinite(imageHeight) && imageHeight > 0
-      ? Math.round(imageHeight)
-      : logicalH;
-
-  const target =
-    typeof targetDescription === "string" && targetDescription.trim().length > 0
-      ? targetDescription.trim()
-      : "the Google Chrome app icon on the desktop, taskbar, or Dock";
-
-  const model = process.env.ANTHROPIC_MODEL || DEFAULT_VISION_MODEL;
-  const response = await anthropicCreateWithRetry(client, {
-    model,
-    max_tokens: 1024,
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: "image/png",
-              data: imageBase64,
-            },
-          },
-          {
-            type: "text",
-            text: `This screenshot image is ${w} pixels wide by ${h} pixels tall. Locate the following on screen: ${target}
-
-A high-contrast coordinate grid is overlaid on the screenshot: columns A through T left to right (20 columns), rows 1 through 14 top to bottom (14 rows). Use the grid cells to place the target, then return the bounding box as normalized fractions (0–1) relative to the full image width and height (same pixel space as the screenshot under the grid).
-
-If the target IS visible, return ONLY a JSON object using **normalized fractions** (decimals from 0 to 1, not pixels):
-{ "found": true, "left": <0-1>, "top": <0-1>, "width": <0-1>, "height": <0-1>, "confidence": <0-1> }
-
-- left: distance from the image's left edge to the tight bounding box's left edge, divided by the full image width
-- top: distance from the image's top edge to the box's top edge, divided by the full image height
-- width: box width divided by the full image width
-- height: box height divided by the full image height
-
-If the target is NOT visible, return ONLY a JSON object:
-{ "found": false, "explanation": "<brief, helpful explanation of why it was not found and what the user can do to find it>" }
-
-In the explanation, describe what you DO see on the screen and give the user practical advice for locating the target. For example: "The Docker taskbar is not visible on screen, so the Chrome icon cannot be located there. On a Mac, try hovering your mouse near the bottom of the screen to reveal the Dock. You could also use the magnifying glass icon at the top right to search for Chrome."`,
-          },
-        ],
-      },
-    ],
-  });
-
-  const raw = extractAssistantText(response).replace(/```json|```/g, "").trim();
-  const parsed = parseAssistantJson(raw);
-
-  if (parsed.found === false || parsed.found === "false") {
-    return { found: false, explanation: parsed.explanation || "The target could not be located on screen." };
-  }
-
-  const box = normalizedBoxToPixels(parsed, w, h);
-  if (box) return { found: true, ...box };
-
-  return {
-    found: true,
-    x: parsed.x,
-    y: parsed.y,
-    width: parsed.width,
-    height: parsed.height,
-    confidence: parsed.confidence ?? 0,
-  };
-}
-
-/**
- * Fast/cheap vision pass: is the target visible in this crop? No bounding box — skips expensive bbox calls on empty tiles.
- * Uses ANTHROPIC_MODEL_TILE_FAST (default Haiku). Image should be the downscaled crop without the coordinate grid.
- */
-async function analyzeScreenshotTilePresence(imageBase64, targetDescription, imageWidth, imageHeight) {
-  const { default: Anthropic } = await import("@anthropic-ai/sdk");
-  require("dotenv/config");
-
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return { found: false, explanation: "The assistant is not set up yet. Please ask your administrator to configure the API key and restart the app." };
-  }
-
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const display = screen.getPrimaryDisplay();
-  const { width: logicalW, height: logicalH } = display.size;
-  const w =
-    typeof imageWidth === "number" && Number.isFinite(imageWidth) && imageWidth > 0
-      ? Math.round(imageWidth)
-      : logicalW;
-  const h =
-    typeof imageHeight === "number" && Number.isFinite(imageHeight) && imageHeight > 0
-      ? Math.round(imageHeight)
-      : logicalH;
-
-  const target =
-    typeof targetDescription === "string" && targetDescription.trim().length > 0
-      ? targetDescription.trim()
-      : "the Google Chrome app icon";
-
-  const model =
-    process.env.ANTHROPIC_MODEL_TILE_FAST || process.env.ANTHROPIC_MODEL || DEFAULT_VISION_MODEL;
-  const response = await anthropicCreateWithRetry(client, {
-    model,
-    max_tokens: 128,
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: "image/png",
-              data: imageBase64,
-            },
-          },
-          {
-            type: "text",
-            text: `You are a fast classifier for a small screen crop (${w}×${h} px).
-
-Is this target visible anywhere in the image (fully or partially)? Target: ${target}
-
-Reply with ONE JSON object only, no markdown:
-{"present":true} or {"present":false}`,
-          },
-        ],
-      },
-    ],
-  });
-
-  const raw = extractAssistantText(response).replace(/```json|```/g, "").trim();
-  const parsed = parseAssistantJson(raw);
-  if (parsed.present === true || parsed.present === "true") return { present: true };
-  if (parsed.present === false || parsed.present === "false") return { present: false };
-  if (parsed.found === true || parsed.found === "true") return { present: true };
-  if (parsed.found === false || parsed.found === "false") return { present: false };
-  throw new SyntaxError(`Tile presence reply missing present: ${raw.slice(0, 120)}`);
-}
-
-/**
- * Cheap vision: is the target clipped by the crop edge? If so, which way should we expand the search?
- * Expects the same gridded tile image as analyzeScreenshotTile (8×8 grid).
- */
-async function analyzeScreenshotTileClipHint(imageBase64, targetDescription, imageWidth, imageHeight) {
-  const { default: Anthropic } = await import("@anthropic-ai/sdk");
-  require("dotenv/config");
-
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const display = screen.getPrimaryDisplay();
-  const { width: logicalW, height: logicalH } = display.size;
-  const w =
-    typeof imageWidth === "number" && Number.isFinite(imageWidth) && imageWidth > 0
-      ? Math.round(imageWidth)
-      : logicalW;
-  const h =
-    typeof imageHeight === "number" && Number.isFinite(imageHeight) && imageHeight > 0
-      ? Math.round(imageHeight)
-      : logicalH;
-
-  const target =
-    typeof targetDescription === "string" && targetDescription.trim().length > 0
-      ? targetDescription.trim()
-      : "the Google Chrome app icon";
-
-  const model =
-    process.env.ANTHROPIC_MODEL_TILE_FAST || process.env.ANTHROPIC_MODEL || DEFAULT_VISION_MODEL;
-  const response = await anthropicCreateWithRetry(client, {
-    model,
-    max_tokens: 256,
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: "image/png",
-              data: imageBase64,
-            },
-          },
-          {
-            type: "text",
-            text: `This image is ONE crop from a desktop screenshot (${w}×${h} px), with an 8×8 coordinate grid.
-
-Target: ${target}
-
-Is this target visibly CUT OFF, CLIPPED, or partially OUTSIDE the image because the crop frame is too tight? (Say yes only if a meaningful part of the target is missing at an edge or clearly truncated.)
-
-Reply with ONE JSON object only — no markdown, no extra text:
-{"clipped":true|false,"direction":"<string>"}
-
-For direction use EXACTLY one of: "none", "left", "right", "top", "bottom", "out"
-- If clipped is false, use "none".
-- If clipped is true: "left" = need to see more content to the LEFT of this frame; "right" / "top" / "bottom" = need more in that direction; "out" = need a wider view (zoom out / show more all around).`,
-          },
-        ],
-      },
-    ],
-  });
-
-  const raw = extractAssistantText(response).replace(/```json|```/g, "").trim();
-  const parsed = parseAssistantJson(raw);
-  const clipped =
-    parsed.clipped === true || parsed.clipped === "true" || parsed.is_clipped === true || parsed.is_clipped === "true";
-  let direction = typeof parsed.direction === "string" ? parsed.direction.trim().toLowerCase() : "none";
-  const allowed = new Set(["none", "left", "right", "top", "bottom", "out", "zoom_out", "zoom out", "all"]);
-  if (!allowed.has(direction)) {
-    direction = "none";
-  }
-  if (direction === "zoom out" || direction === "zoom_out" || direction === "all") direction = "out";
-  if (!clipped) direction = "none";
-
-  return { clipped, direction };
-}
-
-/**
- * One screen tile: either { found: false } or normalized box in this tile's pixel grid (w×h).
- * @param {object} [callOpts]
- * @param {boolean} [callOpts.precise] Stronger model + budget: use when the crop is a small fraction of the desktop (tight box).
- */
-async function analyzeScreenshotTile(imageBase64, targetDescription, imageWidth, imageHeight, callOpts = {}) {
-  const { default: Anthropic } = await import("@anthropic-ai/sdk");
-  require("dotenv/config");
-
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const display = screen.getPrimaryDisplay();
-  const { width: logicalW, height: logicalH } = display.size;
-  const w =
-    typeof imageWidth === "number" && Number.isFinite(imageWidth) && imageWidth > 0
-      ? Math.round(imageWidth)
-      : logicalW;
-  const h =
-    typeof imageHeight === "number" && Number.isFinite(imageHeight) && imageHeight > 0
-      ? Math.round(imageHeight)
-      : logicalH;
-
-  const target =
-    typeof targetDescription === "string" && targetDescription.trim().length > 0
-      ? targetDescription.trim()
-      : "the Google Chrome app icon";
-
-  const precise = Boolean(callOpts && callOpts.precise);
-  const fastModel =
-    process.env.ANTHROPIC_MODEL_TILE_REFINE || process.env.ANTHROPIC_MODEL || DEFAULT_VISION_MODEL;
-  const model = precise
-    ? process.env.ANTHROPIC_MODEL_TILE_PRECISE || process.env.ANTHROPIC_MODEL || DEFAULT_TILE_PRECISE_MODEL
-    : fastModel;
-  const max_tokens = precise ? 2048 : 512;
-
-  const tightnessNote = precise
-    ? `
-
-This is a HIGH-ZOOM crop (a small area of the original desktop). The bounding box must be TIGHT to the visible target: align left/top/right/bottom to the actual pixels of the object, not a loose rectangle. Use the 8×8 grid (columns a–h, rows 1–8, e.g. cell f3) to place edges; prefer slight under-margin to padding.
-
-Think step-by-step internally, then output only the JSON object.`
-    : "";
-
-  const response = await anthropicCreateWithRetry(client, {
-    model,
-    max_tokens,
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: "image/png",
-              data: imageBase64,
-            },
-          },
-          {
-            type: "text",
-            text: `This image is ONE rectangular crop from a larger desktop screenshot. The crop is ${w} pixels wide by ${h} pixels tall.
-
-An 8×8 coordinate grid is overlaid on this crop only: columns a through h (left to right), rows 1 through 8 (top to bottom). Use the labeled cells to locate the target within this crop, then return normalized box coordinates relative to THIS crop only (0–1).
-
-What to find: ${target}
-${tightnessNote}
-
-Reply with ONE JSON object only — no markdown, no text before or after the object.
-
-If the target is NOT visible in this crop (even partially), use this shape (explanation: brief, crop-specific reason the target is absent or not identifiable here):
-{"found":false,"explanation":"<string>"}
-
-If the target IS visible (fully or partially), use:
-{"found":true,"left":<0-1>,"top":<0-1>,"width":<0-1>,"height":<0-1>,"confidence":<0-1>}
-
-When found is true, use normalized fractions relative to THIS crop only (top-left origin): left and top are the top-left corner of the tight box; width and height are box size divided by full crop width and height respectively.`,
-          },
-        ],
-      },
-    ],
-  });
-
-  const raw = extractAssistantText(response).replace(/```json|```/g, "").trim();
-  const parsed = parseAssistantJson(raw);
-
-  if (parsed.found === false || parsed.found === "false") {
-    return {
-      found: false,
-      explanation:
-        typeof parsed.explanation === "string" && parsed.explanation.trim().length > 0
-          ? parsed.explanation.trim()
-          : "The target is not visible in this crop.",
-    };
-  }
-
-  const box = normalizedBoxToPixels(parsed, w, h);
-  if (!box) {
-    return {
-      found: false,
-      explanation:
-        typeof parsed.explanation === "string" && parsed.explanation.trim().length > 0
-          ? parsed.explanation.trim()
-          : "Could not parse a valid bounding box from the model response.",
-    };
-  }
-  return { found: true, ...box };
-}
 
 function errMessage(err) {
   return String(err?.message ?? err);
@@ -590,84 +164,51 @@ ipcMain.handle("get-primary-display-bounds", () => {
   return { x: b.x, y: b.y, width: b.width, height: b.height };
 });
 
-ipcMain.handle("analyze-screenshot", async (_event, base64, targetDescription, imageWidth, imageHeight) => {
-  try {
-    const result = await analyzeScreenshot(base64, targetDescription, imageWidth, imageHeight);
-    if (result.found === false) {
-      return { success: true, found: false, explanation: result.explanation };
-    }
-    const { found, ...data } = result;
-    return { success: true, found: true, data };
-  } catch (err) {
-    console.error("analyze-screenshot error:", err);
-    return { success: false, error: errMessage(err) };
-  }
-});
-
-ipcMain.handle("analyze-screenshot-tile-presence", async (_event, base64, targetDescription, imageWidth, imageHeight) => {
-  try {
-    const r = await analyzeScreenshotTilePresence(base64, targetDescription, imageWidth, imageHeight);
-    return { success: true, present: r.present };
-  } catch (err) {
-    console.error("analyze-screenshot-tile-presence error:", err);
-    return { success: false, error: errMessage(err) };
-  }
-});
-
-ipcMain.handle("analyze-screenshot-tile-clip-hint", async (_event, base64, targetDescription, imageWidth, imageHeight) => {
-  try {
-    const r = await analyzeScreenshotTileClipHint(base64, targetDescription, imageWidth, imageHeight);
-    return { success: true, clipped: r.clipped, direction: r.direction };
-  } catch (err) {
-    console.error("analyze-screenshot-tile-clip-hint error:", err);
-    return { success: false, error: errMessage(err) };
-  }
-});
-
-ipcMain.handle("analyze-screenshot-tile", async (_event, base64, targetDescription, imageWidth, imageHeight, opts) => {
-  try {
-    const r = await analyzeScreenshotTile(base64, targetDescription, imageWidth, imageHeight, opts || {});
-    if (!r.found) {
-      return { success: true, found: false, explanation: r.explanation };
-    }
-    const { found, ...data } = r;
-    return { success: true, found: true, data };
-  } catch (err) {
-    console.error("analyze-screenshot-tile error:", err);
-    return { success: false, found: false, error: errMessage(err) };
-  }
-});
-
 /**
  * Computer Use API: find the exact center pixel of a UI element.
  * Uses Claude's Computer Use beta (pixel-accurate coordinate training).
  * Returns { found: true, x, y } in original screenshot pixel space,
  * or { found: false, explanation }.
  */
-const CU_RESOLUTIONS = [
-  { w: 1024, h: 768 },
-  { w: 1280, h: 800 },
-  { w: 1366, h: 768 },
-  { w: 1280, h: 1024 },
-];
+const DEFAULT_COMPUTER_USE_MODEL = "claude-haiku-4-5-20251001";
+const COMPUTER_USE_MAX_LONG_EDGE = 1280;
+const COMPUTER_USE_TIMEOUT_MS = 30_000;
 
-function pickComputerUseResolution(origW, origH) {
-  const targetAR = origW / origH;
-  let best = CU_RESOLUTIONS[0];
-  let bestScore = Infinity;
-  for (const res of CU_RESOLUTIONS) {
-    const score = Math.abs(res.w / res.h - targetAR);
-    if (score < bestScore) {
-      bestScore = score;
-      best = res;
-    }
+/** Scale the capture down so the long edge is ≤ MAX while keeping aspect ratio (avoids distorted coords). */
+function scaleForComputerUse(origW, origH) {
+  const long = Math.max(origW, origH);
+  if (long <= COMPUTER_USE_MAX_LONG_EDGE) return { w: origW, h: origH };
+  const s = COMPUTER_USE_MAX_LONG_EDGE / long;
+  return { w: Math.max(1, Math.round(origW * s)), h: Math.max(1, Math.round(origH * s)) };
+}
+
+/** Pick the first tool_use block with a usable (x, y) — tolerates `mouse_move`, `left_click`, etc. */
+function extractComputerUseCoordinate(content) {
+  if (!Array.isArray(content)) return null;
+  for (const block of content) {
+    if (block?.type !== "tool_use" || block.name !== "computer") continue;
+    const input = block.input;
+    if (!input || input.action === "screenshot") continue;
+    if (!Array.isArray(input.coordinate) || input.coordinate.length < 2) continue;
+    const cx = Number(input.coordinate[0]);
+    const cy = Number(input.coordinate[1]);
+    if (!Number.isFinite(cx) || !Number.isFinite(cy)) continue;
+    return { cx, cy, action: String(input.action ?? "") };
   }
-  return best;
+  return null;
 }
 
 async function locateElementComputerUse(imageBase64, targetDescription, imageWidth, imageHeight) {
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   require("dotenv/config");
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return {
+      found: false,
+      explanation:
+        "The assistant is not set up yet. Please ask your administrator to configure the API key and restart the app.",
+    };
+  }
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const display = screen.getPrimaryDisplay();
@@ -682,29 +223,29 @@ async function locateElementComputerUse(imageBase64, targetDescription, imageWid
       ? targetDescription.trim()
       : "the main interactive element";
 
-  // Resize to Computer Use optimized resolution for better coordinate accuracy
-  const cuRes = pickComputerUseResolution(origW, origH);
+  const cu = scaleForComputerUse(origW, origH);
   const { nativeImage } = require("electron");
   const img = nativeImage.createFromBuffer(Buffer.from(imageBase64, "base64"));
-  const resized = img.resize({ width: cuRes.w, height: cuRes.h });
+  const resized = cu.w === origW && cu.h === origH ? img : img.resize({ width: cu.w, height: cu.h, quality: "good" });
   const resizedBase64 = resized.toPNG().toString("base64");
 
   const model =
     process.env.ANTHROPIC_MODEL_COMPUTER_USE ||
     process.env.ANTHROPIC_MODEL ||
-    "claude-haiku-4-5-20251001";
+    DEFAULT_COMPUTER_USE_MODEL;
 
-  const response = await client.messages.create(
+  const response = await anthropicCreateWithRetry(
+    client,
     {
       model,
       max_tokens: 1024,
-      system: `You are a screen annotation assistant. A screenshot (${cuRes.w}x${cuRes.h} px) is already provided in the user message — you MUST NOT call screenshot. Your ONLY task: call the computer tool with action "mouse_move" and the coordinate of the exact center pixel of the target element. One tool call only. No text. No screenshot. No click.`,
+      system: `You are a screen annotation assistant. A screenshot (${cu.w}x${cu.h} px) is already provided in the user message — you MUST NOT call screenshot. Your ONLY task: call the computer tool with action "mouse_move" and the coordinate of the exact center pixel of the target element. One tool call only. No text. No screenshot. No click.`,
       tools: [
         {
           type: "computer_20250124",
           name: "computer",
-          display_width_px: cuRes.w,
-          display_height_px: cuRes.h,
+          display_width_px: cu.w,
+          display_height_px: cu.h,
         },
       ],
       tool_choice: { type: "tool", name: "computer" },
@@ -726,27 +267,25 @@ async function locateElementComputerUse(imageBase64, targetDescription, imageWid
     },
     {
       headers: { "anthropic-beta": "computer-use-2025-01-24" },
+      timeout: COMPUTER_USE_TIMEOUT_MS,
     },
   );
 
-  // Extract mouse_move coordinate from response — skip screenshot/click actions
-  for (const block of response.content) {
-    if (block.type === "tool_use" && block.name === "computer") {
-      const input = block.input;
-      if (input && input.action === "mouse_move" && Array.isArray(input.coordinate)) {
-        const [cx, cy] = input.coordinate;
-        const scaleX = origW / cuRes.w;
-        const scaleY = origH / cuRes.h;
-        return {
-          found: true,
-          x: Math.round(cx * scaleX),
-          y: Math.round(cy * scaleY),
-        };
-      }
-    }
+  const coord = extractComputerUseCoordinate(response.content);
+  if (coord) {
+    const scale = origW / cu.w;
+    return {
+      found: true,
+      x: Math.round(coord.cx * scale),
+      y: Math.round(coord.cy * scale),
+    };
   }
 
   const textBlock = response.content.find((b) => b.type === "text");
+  const blockSummary = response.content
+    .map((b) => (b.type === "tool_use" ? `tool_use:${b.name}:${b.input?.action ?? "?"}` : b.type))
+    .join(", ");
+  console.warn("locateElementComputerUse: no coordinate in response. blocks:", blockSummary, "text:", textBlock?.text);
   return {
     found: false,
     explanation: textBlock?.text || "Element not found on screen.",

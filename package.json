@@ -9,7 +9,7 @@
   "type": "module",
   "scripts": {
     "start": "electron .",
-    "dev": "concurrently -k \"(lsof -ti:3000 | xargs kill -9 2>/dev/null || true) && next dev\" \"wait-on http://localhost:3000 && electron .\""
+    "dev": "concurrently -k \"npx --yes kill-port 3000 && next dev\" \"wait-on http://localhost:3000 && electron .\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

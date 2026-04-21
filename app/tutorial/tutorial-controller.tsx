@@ -118,21 +118,7 @@ export function TutorialController() {
 
           if (result.success && result.found && result.x != null && result.y != null) {
             setHighlightError(null);
-
-            const boxW = 100;
-            const boxH = 50;
-            setHighlightPayload({
-              coords: {
-                x: result.x - boxW / 2,
-                y: result.y - boxH / 2,
-                width: boxW,
-                height: boxH,
-                confidence: 1,
-              },
-              screenshotWidth: cap.width,
-              screenshotHeight: cap.height,
-            });
-
+            setHighlightPayload(null);
             const vw = window.innerWidth;
             const vh = window.innerHeight;
             setPointerTarget({
@@ -207,14 +193,27 @@ export function TutorialController() {
       };
     }
 
-    // No detected spotlight: keep tutorial text anchored above bottom-left controls.
+    if (pointerTarget) {
+      const estBoxH = 200;
+      const preferBelow = pointerTarget.y + estBoxH + 40 < vh;
+      const top = preferBelow ? pointerTarget.y + 40 : pointerTarget.y - estBoxH - 20;
+      const left = clamp(pointerTarget.x - maxW / 2, margin, vw - maxW - margin);
+
+      return {
+        width: maxW,
+        left,
+        top: clamp(top, margin, vh - estBoxH - margin),
+        bottom: undefined as number | undefined,
+      };
+    }
+
     return {
       width: maxW,
       left: margin,
       top: undefined as number | undefined,
       bottom: 64,
     };
-  }, [spotlightRect, viewport.h, viewport.w]);
+  }, [pointerTarget, spotlightRect, viewport.h, viewport.w]);
 
   if (!mounted || !tutorialId || !activeTutorial || !currentStep) {
     return null;
@@ -223,10 +222,11 @@ export function TutorialController() {
   const shouldWaitForBox = Boolean(currentStep.highlightDescription);
   const showStepText = !shouldWaitForBox || !isLoadingHighlight;
   const hasSpotlight = Boolean(highlightPayload?.coords);
+  const hasPointerHighlight = Boolean(pointerTarget);
 
   return (
     <>
-      {!hasSpotlight
+      {!hasSpotlight && !hasPointerHighlight
         ? createPortal(
             <div
               className="pointer-events-none fixed inset-0"
