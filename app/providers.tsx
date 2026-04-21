@@ -43,7 +43,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <I18nLangSync />
             <TutorialProvider>
               <I18nKeyedContent>{children}</I18nKeyedContent>
-              <VisionDebugPanel />
+              
             </TutorialProvider>
           </ThemeProvider>
         </AudioModeProvider>
