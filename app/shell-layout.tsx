@@ -77,6 +77,8 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
       </Button>
       <div className="interactable relative flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="interactable min-h-0 flex-1 overflow-y-auto">{children}</div>
+        <TutorialController />
+      </div>
       <div className="shrink-0 px-4 pb-2 pt-14">
         <div className="grid grid-cols-3 gap-2 rounded-xl border border-white/30 bg-black/20 p-1">
           {tabs.map((tab) => {
@@ -95,10 +97,6 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
             );
           })}
         </div>
-      </div>
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
-        <TutorialController />
       </div>
       <p className="shrink-0 px-4 pb-2 text-center text-[10px] text-white/70">{t("shell.rights")}</p>
     </section>
