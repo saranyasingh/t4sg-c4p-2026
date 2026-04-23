@@ -41,6 +41,34 @@
     "buttonAriaLabel": "Show the app tour"
   },
   "tutorials": {
+    "landingDescription": "Choose a guided lesson from the home page, or try an AI-led tutorial below.",
+    "backToHome": "Back to home",
+    "backToTutorials": "Back to tutorials",
+    "interactiveAiButton": "AI-guided tutorial (ask anything)",
+    "interactiveAiHint": "Ask how to do something on your computer — the assistant walks you through it and can highlight your screen.",
+    "interactiveAi": {
+      "courseTitle": "AI-guided tutorial",
+      "heading": "Ask anything",
+      "subheading": "Describe what you want to do. The tutor answers one step at a time and can capture or highlight your screen when you use the desktop app.",
+      "landingTitle": "What do you want to learn?",
+      "landingSubtitle": "Ask in your own words. You’ll get one clear step at a time—like other tutorials—with optional screen highlights on the desktop app.",
+      "landingPlaceholder": "Example: How do I open Google Chrome? Or: Help me find the Wi‑Fi settings.",
+      "startLearning": "Start",
+      "emptyHint": "Try: “How do I open Google Chrome?” or “Where is the Wi‑Fi menu?”",
+      "inputPlaceholder": "Ask a follow-up or say what’s on your screen…",
+      "nextStep": "Next step",
+      "stepPlaceholderTitle": "Your step will appear here",
+      "stepPlaceholderBody": "Send a message or press Next step to continue.",
+      "chatHint": "Type to ask something new or clarify. Use Next step when you’re ready to move on without typing.",
+      "findingHighlight": "Finding that on your screen…",
+      "unexpectedContentType": "Unexpected response from the tutor. Please try again.",
+<<<<<<< HEAD
+      "toolLoopLimit": "Too many automatic steps in a row. Please send another message to continue.",
+      "tutorialCompleteTitle": "Tutorial complete",
+      "tutorialCompleteBody": "There are no more steps for this topic. You can type a new question below, or go back to Tutorials to pick another lesson.",
+      "finishTutorial": "Back to tutorials"
+=======
+      "toolLoopLimit": "Too many automatic steps in a row. Please send another message to continue."
     "cardLabel": "Tutorial",
     "startTutorial": "Start tutorial",
     "description": "Click on a tutorial for a step-by-step interactive lesson on a topic.",
@@ -86,6 +114,7 @@
         "title": "You're ready to go",
         "text": "That's it! Press Finish to start using Granson AI.\n\nRemember: the Help button is always there if you need a reminder."
       }
+>>>>>>> b6c9f0d055ba88d275d8fad98517905a0883d80b
     },
     "googleSearch": {
       "title": "Basic Google Search",
@@ -328,8 +357,9 @@
     "highlightErrorTitle": "Could not locate target",
     "highlightErrorHint": "Make sure Chrome is visible, then try Next again.",
     "courseTitles": {
-      "intro": "App Tour",
-      "google-search": "Google Search"
+      "google-search": "Google Search",
+      "interactive-ai": "AI-guided tutorial",
+      "intro": "App Tour"
     }
   },
   "nav": {
@@ -453,4 +483,4 @@
     "notFound": "404 - Page not found",
     "takePicture": "Take Picture"
   }
-}
+}}

@@ -40,31 +40,53 @@ export async function captureScreenToPngBase64(): Promise<{
     return null;
   }
 
-  const allowed = await window.electronAPI.requestScreenshotPermission();
+  let allowed = false;
+  try {
+    allowed = await window.electronAPI.requestScreenshotPermission();
+  } catch (err) {
+    console.error("requestScreenshotPermission failed:", err);
+    return null;
+  }
   if (!allowed) return null;
 
   let mediaSourceId: string | null = null;
   if (window.electronAPI.getPrimaryScreenMediaSourceId) {
-    mediaSourceId = await window.electronAPI.getPrimaryScreenMediaSourceId();
+    try {
+      mediaSourceId = await window.electronAPI.getPrimaryScreenMediaSourceId();
+    } catch (err) {
+      console.error("getPrimaryScreenMediaSourceId failed:", err);
+      mediaSourceId = null;
+    }
   }
   if (!mediaSourceId) {
-    const sources = await window.electronAPI.getScreenSources();
-    mediaSourceId = sources[0]?.id ?? null;
+    try {
+      const sources = await window.electronAPI.getScreenSources();
+      mediaSourceId = sources[0]?.id ?? null;
+    } catch (err) {
+      console.error("getScreenSources failed:", err);
+      mediaSourceId = null;
+    }
   }
   if (!mediaSourceId) {
     console.error("No screen source found");
     return null;
   }
 
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: false,
-    video: {
-      mandatory: {
-        chromeMediaSource: "desktop",
-        chromeMediaSourceId: mediaSourceId,
-      },
-    } as unknown as MediaTrackConstraints,
-  });
+  let stream: MediaStream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        mandatory: {
+          chromeMediaSource: "desktop",
+          chromeMediaSourceId: mediaSourceId,
+        },
+      } as unknown as MediaTrackConstraints,
+    });
+  } catch (err) {
+    console.error("getUserMedia desktop capture failed:", err);
+    return null;
+  }
 
   const video = document.createElement("video");
   video.srcObject = stream;

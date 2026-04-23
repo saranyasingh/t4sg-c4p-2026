@@ -1,3 +1,7 @@
+import { INTERACTIVE_AI_TUTORIAL_ID, INTERACTIVE_AI_TUTORIAL_ROUTE } from "@/lib/interactive-tutorial";
+
+export { INTERACTIVE_AI_TUTORIAL_ID, INTERACTIVE_AI_TUTORIAL_ROUTE };
+
 /**
  * Screen region for step highlights (same shape as `Coordinates` from screenshot analysis).
  * x,y are the top-left corner of the rectangle in screenshot / overlay pixel space.
@@ -50,12 +54,27 @@ export interface TutorialStep {
   highlightBright?: boolean;
 }
 
+/** Scripted lessons use i18n-backed steps; AI-guided lessons use empty steps and `/tutorials/interactive`. */
+export type TutorialMode = "scripted" | "ai-guided";
+
 export interface Tutorial {
   id: string;
   /** i18n key for tutorial name (e.g. home screen card). */
   title: string;
   steps: readonly TutorialStep[];
+  mode?: TutorialMode;
 }
+
+/**
+ * Metadata for the AI-led tutorial (not listed in `TUTORIALS` — no scripted `steps` to walk).
+ * Use for titles and parity with {@link Tutorial} in interactive UI.
+ */
+export const AI_GUIDED_TUTORIAL: Tutorial = {
+  id: INTERACTIVE_AI_TUTORIAL_ID,
+  title: "tutorials.interactiveAi.courseTitle",
+  steps: [],
+  mode: "ai-guided",
+};
 
 const googleSearchSteps: TutorialStep[] = [
   {

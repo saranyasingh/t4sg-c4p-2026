@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import c4pLogo from "../public/images/c4p.png";
+import NavLinks from "./(components-navbar)/nav-links";
 import { TutorialController } from "./tutorial/tutorial-controller";
 import { useTutorial } from "./tutorial/tutorial-provider";
 
