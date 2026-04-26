@@ -404,7 +404,7 @@ export function TutorialController() {
           <Button
             type="button"
             variant="ghost"
-            className="interactable border border-white/25 bg-black/45 text-white/95 hover:bg-black/60"
+            className="interactable border border-white/25 bg-black/45 text-white/95 hover:bg-accent hover:text-accent-foreground"
             onClick={exitTutorial}
           >
             <TypographySmall className="m-0 font-semibold leading-none text-inherit">
