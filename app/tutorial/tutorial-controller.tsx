@@ -32,12 +32,15 @@ export function TutorialController() {
     canGoNext,
     canGoPrevious,
     isLastStep,
+    generateNextInteractiveStep,
+    isGeneratingInteractiveStep,
   } = useTutorial();
 
   const [highlightPayload, setHighlightPayload] = useState<{
     coords: ScreenHighlight;
     screenshotWidth: number;
     screenshotHeight: number;
+    useCssCoords?: boolean;
   } | null>(null);
   const [isLoadingHighlight, setIsLoadingHighlight] = useState(false);
   const [spotlightRect, setSpotlightRect] = useState<{
@@ -84,6 +87,45 @@ export function TutorialController() {
         setPointerTarget(null);
         setIsLoadingHighlight(false);
         setHighlightError(null);
+        return;
+      }
+
+      if (currentStep.highlightSelector) {
+        setIsLoadingHighlight(false);
+        setHighlightError(null);
+        setPointerTarget(null);
+
+        const el =
+          typeof document !== "undefined" ? (document.querySelector(currentStep.highlightSelector) as HTMLElement | null) : null;
+        if (!el) {
+          setHighlightPayload(null);
+          setHighlightError("I couldn't find that UI element in the app panel.");
+          return;
+        }
+
+        const rect = el.getBoundingClientRect();
+        const expand = currentStep.highlightExpandFactor ?? 1.0;
+        const minPad = currentStep.highlightMinPadding ?? 10;
+        const offsetX = currentStep.highlightOffsetX ?? 0;
+        const offsetY = currentStep.highlightOffsetY ?? 0;
+
+        const w = Math.max(rect.width * expand, rect.width + minPad * 2);
+        const h = Math.max(rect.height * expand, rect.height + minPad * 2);
+        const cx = rect.left + rect.width / 2 + offsetX;
+        const cy = rect.top + rect.height / 2 + offsetY;
+
+        setHighlightPayload({
+          coords: {
+            x: cx - w / 2,
+            y: cy - h / 2,
+            width: w,
+            height: h,
+            confidence: 1,
+          },
+          screenshotWidth: window.innerWidth,
+          screenshotHeight: window.innerHeight,
+          useCssCoords: true,
+        });
         return;
       }
 
@@ -245,6 +287,8 @@ export function TutorialController() {
         screenshotWidth={highlightPayload?.screenshotWidth ?? fallbackW}
         screenshotHeight={highlightPayload?.screenshotHeight ?? fallbackH}
         expandFactor={2.5}
+        useCssCoords={Boolean(highlightPayload?.useCssCoords)}
+        brightMode={Boolean(currentStep.highlightBright)}
         onSpotlightRectChange={setSpotlightRect}
       />
 
@@ -283,7 +327,11 @@ export function TutorialController() {
                     {t(activeTutorial.title)}
                   </p>
                   <h2 id="tutorial-step-title" className="text-base font-semibold leading-snug text-white">
-                    {currentStep.title ? t(currentStep.title) : t(activeTutorial.title)}
+                    {currentStep.titleRaw
+                      ? currentStep.titleRaw
+                      : currentStep.title
+                        ? t(currentStep.title)
+                        : t(activeTutorial.title)}
                   </h2>
                 </div>
                 <span
@@ -294,7 +342,7 @@ export function TutorialController() {
                 </span>
               </div>
               <TypographyP id="tutorial-step-body" className="whitespace-pre-wrap text-sm leading-relaxed">
-                {t(currentStep.text)}
+                {currentStep.textRaw ? currentStep.textRaw : t(currentStep.text)}
               </TypographyP>
             </div>,
             document.body,
@@ -340,13 +388,23 @@ export function TutorialController() {
             </Button>
           ) : null}
           {canGoNext ? (
-            <Button type="button" className="interactable bg-white text-black hover:bg-white/90" onClick={nextStep}>
-              {t("tutorial.next")}
-            </Button>
-          ) : null}
-          {isLastStep ? (
-            <Button type="button" className="interactable bg-white text-black hover:bg-white/90" onClick={exitTutorial}>
-              {t("tutorial.finish")}
+            <Button
+              type="button"
+              className="interactable bg-white text-black hover:bg-white/90"
+              onClick={() => {
+                if (isLastStep) {
+                  if (tutorialId === "interactive") {
+                    void generateNextInteractiveStep();
+                    return;
+                  }
+                  exitTutorial();
+                  return;
+                }
+                nextStep();
+              }}
+              disabled={tutorialId === "interactive" && isLastStep && isGeneratingInteractiveStep}
+            >
+              {tutorialId === "interactive" && isLastStep && isGeneratingInteractiveStep ? "Thinking..." : t("tutorial.next")}
             </Button>
           ) : null}
           <Button

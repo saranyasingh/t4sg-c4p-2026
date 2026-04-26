@@ -79,7 +79,7 @@ export async function POST(req: Request) {
       bytes = await synthesize("tts-1", "nova");
     }
 
-    return new Response(bytes, {
+    return new Response(bytes as unknown as BodyInit, {
       status: 200,
       headers: {
         "Content-Type": "audio/mpeg",

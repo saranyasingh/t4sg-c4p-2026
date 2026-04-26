@@ -1,8 +1,9 @@
 "use client";
 
 import { TutorialCard } from "@/app/tutorials/tutorial-card";
-import { TypographyH2, TypographyP } from "@/components/ui/typography";
+import { TypographyH2, TypographyLarge, TypographyP, TypographySmall } from "@/components/ui/typography";
 import { TUTORIALS } from "@/lib/tutorials";
+import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { useTutorial } from "../tutorial/tutorial-provider";
 
@@ -33,6 +34,19 @@ export default function TutorialsLandingPage() {
               />
             );
           })}
+          <Link
+            href="/tutorials/interactive"
+            className="interactable flex h-auto min-h-36 flex-col items-start justify-between rounded-2xl border border-white/15 bg-white/5 p-5 text-left text-white transition-colors hover:border-white/30 hover:bg-white/10"
+          >
+            <div className="space-y-2">
+              <TypographyLarge className="leading-tight text-white">
+                {t("tutorials.interactiveTitle", { defaultValue: "Interactive tutorial (beta)" })}
+              </TypographyLarge>
+            </div>
+            <TypographySmall className="mt-6 text-white/75">
+              {t("tutorials.interactiveCta", { defaultValue: "Start" })}
+            </TypographySmall>
+          </Link>
         </div>
       </div>
     </div>

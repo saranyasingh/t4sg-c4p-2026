@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { app, BrowserWindow, desktopCapturer, dialog, ipcMain, globalShortcut, screen } = require("electron");
 
 // Assistant TTS runs after async chat responses; without this, Chromium often blocks HTMLAudioElement.play().

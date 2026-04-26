@@ -23,8 +23,12 @@ export interface TutorialStep {
   id: string;
   /** i18n key for step heading */
   title?: string;
+  /** Raw (non-i18n) step heading, used for AI-generated steps. */
+  titleRaw?: string;
   /** i18n key for step body */
   text: string;
+  /** Raw (non-i18n) step body, used for AI-generated steps. */
+  textRaw?: string;
   visual: StepVisual;
   /** Natural-language target for vision (English). */
   highlightDescription?: string;

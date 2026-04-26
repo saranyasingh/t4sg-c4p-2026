@@ -13,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { createBrowserSupabaseClient } from "@/lib/client-utils";
 import { type Database } from "@/lib/schema";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
@@ -63,8 +62,7 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
         variant: "destructive",
       });
     }
-    const sb = supabase as SupabaseClient<Database>;
-    const { error } = await sb
+    const { error } = await (supabase as unknown as any)
       .from("profiles")
       .update({ biography: data.bio, display_name: data.username })
       .eq("id", profile.id);

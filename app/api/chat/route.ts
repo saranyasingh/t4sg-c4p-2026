@@ -1,10 +1,21 @@
-import OpenAI from "openai";
 import { C4P_KNOWLEDGE_BASE } from "./c4p-knowledge-base";
+import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
 export const runtime = "nodejs";
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const MODEL = "gpt-4o";
+type AnthropicToolUseBlock = {
+  type: "tool_use";
+  id: string;
+  name: string;
+  input: unknown;
+};
+
+type AnthropicTextBlock = { type: "text"; text: string };
+
+type AnthropicAssistantContentBlock = AnthropicToolUseBlock | AnthropicTextBlock;
+
+// Prefer env override; fall back to a current model.
+const CHAT_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514";
 
 interface ChatHistoryItem {
   role: "user" | "assistant";
@@ -19,18 +30,21 @@ const SYSTEM_WITH_SCREENSHOT =
   C4P_KNOWLEDGE_BASE +
   "\n\nThe user has shared a screenshot of their screen. Use what you see to give specific answers — reference what is visible, guide step by step for computer help, and use the knowledge base for C4P questions. Keep all answers to a 3rd grade reading level.";
 
-const CAPTURE_SCREEN_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
-  type: "function",
-  function: {
-    name: "capture_screen",
-    description:
-      "Capture a screenshot of the user's current screen. Call this when seeing their desktop, a specific window, an error message, or browser would help you answer. Do not call for questions fully answered from the knowledge base. Do not ask the user to press a manual screenshot button. ",
-    parameters: { type: "object", properties: {}, required: [] },
-  },
+const CAPTURE_SCREEN_TOOL: {
+  name: string;
+  description: string;
+  input_schema: { type: "object"; properties: Record<string, unknown>; required: string[] };
+} = {
+  name: "capture_screen",
+  description:
+    "Capture a screenshot of the user's current screen. Call this when seeing their desktop, a specific window, an error message, or browser would help you answer. Do not call for questions fully answered from the knowledge base. Do not ask the user to press a manual screenshot button.",
+  input_schema: { type: "object", properties: {}, required: [] },
 };
 
-function historyToMessages(history: ChatHistoryItem[]): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
-  return history.map((h) => ({ role: h.role, content: h.content }));
+function historyToMessages(history: ChatHistoryItem[]) {
+  return history
+    .filter((h) => h.role === "user" || h.role === "assistant")
+    .map((h) => ({ role: h.role as "user" | "assistant", content: h.content }));
 }
 
 function normalizePngBase64(raw: string | null | undefined): string | null {
@@ -47,8 +61,8 @@ async function handleInitialTurn(body: {
 }): Promise<Response> {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   if (!prompt) return Response.json({ error: "Missing prompt" }, { status: 400 });
-  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    ...historyToMessages(body.history ?? []),
+  const messages: MessageParam[] = [
+    ...(historyToMessages(body.history ?? []) as MessageParam[]),
     { role: "user", content: prompt },
   ];
 
@@ -61,61 +75,58 @@ async function handleInitialTurn(body: {
       };
 
       try {
-        const stream = await client.chat.completions.create({
-          model: MODEL,
-          max_tokens: 8192,
-          stream: true,
+        const { default: Anthropic } = await import("@anthropic-ai/sdk");
+        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+        const stream = client.messages.stream({
+          model: CHAT_MODEL,
+          max_tokens: 2048,
+          system: SYSTEM_BASE,
           tools: [CAPTURE_SCREEN_TOOL],
-          tool_choice: "auto",
-          messages: [{ role: "system", content: SYSTEM_BASE }, ...messages],
+          messages,
         });
 
         let fullText = "";
-        let toolCallName = "";
-        let toolCallId = "";
+        let toolUse: AnthropicToolUseBlock | null = null;
 
-        for await (const chunk of stream) {
-          const delta = chunk.choices[0]?.delta;
-          if (!delta) continue;
+        stream.on("text", (delta) => {
+          if (!delta) return;
+          fullText += delta;
+          write({ type: "token", text: delta });
+        });
 
-          // Streaming text token
-          if (delta.content) {
-            fullText += delta.content;
-            write({ type: "token", text: delta.content });
+        stream.on("contentBlock", (block: unknown) => {
+          if (!block || typeof block !== "object") return;
+          const b = block as { type?: unknown; name?: unknown; id?: unknown; input?: unknown };
+          if (b.type === "tool_use" && b.name === "capture_screen" && typeof b.id === "string") {
+            toolUse = { type: "tool_use", id: b.id, name: "capture_screen", input: b.input };
           }
+        });
 
-          // Tool call detection
-          if (delta.tool_calls?.[0]) {
-            const tc = delta.tool_calls[0];
-            if (tc.id) toolCallId = tc.id;
-            if (tc.function?.name) toolCallName = tc.function.name;
-          }
+        const finalMessage = await stream.finalMessage();
 
-          // Check finish reason
-          const finish = chunk.choices[0]?.finish_reason;
-          if (finish === "tool_calls" && toolCallName === "capture_screen") {
-            write({
-              type: "done",
-              action: "capture_screen",
-              assistantContent: [{ type: "tool_call", id: toolCallId, name: toolCallName }],
-            });
-            controller.close();
-            return;
-          }
-
-          if (finish === "stop") {
-            write({ type: "done", action: null, reply: fullText.trim() });
-            controller.close();
-            return;
-          }
+        if (toolUse) {
+          write({
+            type: "done",
+            action: "capture_screen",
+            assistantContent: [toolUse],
+          });
+          controller.close();
+          return;
         }
 
-        // Fallback if stream ends without explicit stop
-        write({
-          type: "done",
-          action: null,
-          reply: fullText.trim() || "I could not generate a response. Please try again.",
-        });
+        const reply = Array.isArray(finalMessage?.content)
+          ? finalMessage.content
+              .map((b: unknown) => {
+                if (!b || typeof b !== "object") return "";
+                const bb = b as { type?: unknown; text?: unknown };
+                return bb.type === "text" && typeof bb.text === "string" ? bb.text : "";
+              })
+              .join("")
+              .trim()
+          : fullText.trim();
+
+        write({ type: "done", action: null, reply: reply || fullText.trim() });
         controller.close();
       } catch (err) {
         const message = err instanceof Error ? err.message : "Request failed";
@@ -146,54 +157,70 @@ async function handleCompleteScreenshot(body: {
   const imageBase64 = normalizePngBase64(body.imageBase64);
   if (!imageBase64) return Response.json({ error: "Missing screenshot" }, { status: 400 });
 
-  // Extract tool call id from assistantContent passed back by frontend
-  const assistantContent = body.assistantContent as { id?: string }[] | undefined;
-  const toolCallId = assistantContent?.[0]?.id ?? "call_capture";
-
-  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    ...historyToMessages(body.history ?? []),
-    { role: "user", content: prompt },
-    {
-      role: "assistant",
-      content: null,
-      tool_calls: [
-        {
-          id: toolCallId,
-          type: "function",
-          function: { name: "capture_screen", arguments: "{}" },
-        },
-      ],
-    },
-    {
-      role: "tool",
-      tool_call_id: toolCallId,
-      content: "Screenshot captured successfully.",
-    },
-    {
-      role: "user",
-      content: [
-        { type: "image_url", image_url: { url: `data:image/png;base64,${imageBase64}` } },
-        { type: "text", text: "Current screenshot of the user's screen." },
-      ],
-    },
-  ];
-
   try {
-    const stream = await client.chat.completions.create({
-      model: MODEL,
-      max_tokens: 8192,
-      stream: true,
-      messages: [{ role: "system", content: SYSTEM_WITH_SCREENSHOT }, ...messages],
-    });
-
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
       async start(controller) {
-        for await (const chunk of stream) {
-          const delta = chunk.choices[0]?.delta?.content;
-          if (delta) controller.enqueue(encoder.encode(delta));
+        try {
+          const assistantBlocks = Array.isArray(body.assistantContent) ? (body.assistantContent as unknown[]) : [];
+          const toolUse = assistantBlocks.find((b) => {
+            if (!b || typeof b !== "object") return false;
+            const bb = b as Record<string, unknown>;
+            return bb.type === "tool_use" && bb.name === "capture_screen" && typeof bb.id === "string";
+          }) as { id?: string } | undefined;
+
+          const toolUseId = toolUse?.id ?? "toolu_capture_screen";
+
+          const { default: Anthropic } = await import("@anthropic-ai/sdk");
+          const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+          const stream = client.messages.stream({
+            model: CHAT_MODEL,
+            max_tokens: 2048,
+            system: SYSTEM_WITH_SCREENSHOT,
+            messages: [
+              ...historyToMessages(body.history ?? []),
+              { role: "user", content: prompt },
+              {
+                role: "assistant",
+                content: [
+                  {
+                    type: "tool_use",
+                    id: toolUseId,
+                    name: "capture_screen",
+                    input: {},
+                  },
+                ],
+              },
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "tool_result",
+                    tool_use_id: toolUseId,
+                    content: "Screenshot captured successfully.",
+                  },
+                  {
+                    type: "image",
+                    source: { type: "base64", media_type: "image/png", data: imageBase64 },
+                  },
+                  { type: "text", text: "Current screenshot of the user's screen." },
+                ],
+              },
+            ],
+          });
+
+          stream.on("text", (delta) => {
+            if (delta) controller.enqueue(encoder.encode(delta));
+          });
+
+          await stream.finalMessage();
+          controller.close();
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Request failed";
+          controller.enqueue(encoder.encode(`\n\n[error] ${message}`));
+          controller.close();
         }
-        controller.close();
       },
     });
 

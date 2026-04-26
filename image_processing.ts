@@ -20,17 +20,19 @@ function getScreenDimensions(): { width: number; height: number } {
     if (process.platform === "darwin") {
       const output = execSync("system_profiler SPDisplaysDataType | grep Resolution").toString();
       const match = output.match(/(\d+) x (\d+)/);
-      if (match) return { width: parseInt(match[1]) / 2, height: parseInt(match[2]) / 2 }; // div by 2 for retina display
+      if (match?.[1] && match?.[2]) {
+        return { width: parseInt(match[1], 10) / 2, height: parseInt(match[2], 10) / 2 }; // div by 2 for retina display
+      }
     } else if (process.platform === "win32") {
       const output = execSync(
         "wmic path Win32_VideoController get CurrentHorizontalResolution,CurrentVerticalResolution",
       ).toString();
       const match = output.match(/(\d+)\s+(\d+)/);
-      if (match) return { width: parseInt(match[1]), height: parseInt(match[2]) };
+      if (match?.[1] && match?.[2]) return { width: parseInt(match[1], 10), height: parseInt(match[2], 10) };
     } else {
       const output = execSync("xrandr | grep '*'").toString();
       const match = output.match(/(\d+)x(\d+)/);
-      if (match) return { width: parseInt(match[1]), height: parseInt(match[2]) };
+      if (match?.[1] && match?.[2]) return { width: parseInt(match[1], 10), height: parseInt(match[2], 10) };
     }
   } catch {
     console.warn("Could not detect screen size, using fallback");

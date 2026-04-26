@@ -1,3 +1,9 @@
+import type React from "react";
+import { isSupabaseConfigured } from "@/lib/supabase-config";
+import { createServerSupabaseClient } from "@/lib/server-utils";
+import { redirect } from "next/navigation";
+import SettingsLayoutClient from "./settings-layout-client";
+
 interface SettingsLayoutProps {
   children: React.ReactNode;
 }
