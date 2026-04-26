@@ -464,6 +464,9 @@ const introSteps: TutorialStep[] = [
 
 export const INTRO_TUTORIAL_ID = "intro";
 
+/** AI-driven interactive tutorial (not listed in TUTORIALS; driven by TutorialProvider state). */
+export const INTERACTIVE_TUTORIAL_ID = "interactive";
+
 export const TUTORIALS: readonly Tutorial[] = [
   {
     id: INTRO_TUTORIAL_ID,
