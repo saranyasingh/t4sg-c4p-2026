@@ -1,7 +1,7 @@
 {
   "home": {
     "welcome": "Bienvenido",
-    "getStarted": "Comienza con el Chat o explora los Tutoriales para aprender más.",
+    "getStarted": "Hazle preguntas al asistente. Por ejemplo, \"¿Cómo envío un correo electrónico?\"",
     "brandTitle": "Granson AI",
     "tagline": "Tu asistente amigable de computadora. Haz preguntas, muestra tu pantalla y aprende a tu ritmo.",
     "letsGetStarted": "¡Comencemos!",
@@ -441,8 +441,8 @@
       "options": "Opciones"
     },
     "rights": "Computers 4 People. Todos los derechos reservados.",
-    "open": "ABRIR",
-    "close": "CERRAR"
+    "open": "Abrir",
+    "close": "Cerrar"
   },
   "misc": {
     "loading": "Cargando...",

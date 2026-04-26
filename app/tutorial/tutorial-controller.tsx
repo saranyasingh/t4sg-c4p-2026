@@ -3,7 +3,7 @@
 import BoundingBoxOverlay from "@/app/bounding-box-overlay";
 import { PointerOverlay } from "@/components/pointer-overlay";
 import { Button } from "@/components/ui/button";
-import { TypographyP } from "@/components/ui/typography";
+import { TypographyH4, TypographyP, TypographySmall } from "@/components/ui/typography";
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
 import type { ScreenHighlight, StepVisual } from "@/lib/tutorials";
 import { useEffect, useMemo, useState } from "react";
@@ -95,8 +95,7 @@ export function TutorialController() {
         setHighlightError(null);
         setPointerTarget(null);
 
-        const el =
-          typeof document !== "undefined" ? (document.querySelector(currentStep.highlightSelector) as HTMLElement | null) : null;
+        const el = typeof document !== "undefined" ? document.querySelector(currentStep.highlightSelector) : null;
         if (!el) {
           setHighlightPayload(null);
           setHighlightError("I couldn't find that UI element in the app panel.");
@@ -323,25 +322,25 @@ export function TutorialController() {
             >
               <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0 space-y-0.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-white/60">
+                  <TypographySmall className="m-0 font-semibold uppercase tracking-wide text-white/60">
                     {t(activeTutorial.title)}
-                  </p>
-                  <h2 id="tutorial-step-title" className="text-base font-semibold leading-snug text-white">
+                  </TypographySmall>
+                  <TypographyH4 id="tutorial-step-title" className="m-0 border-none pb-0 leading-snug text-white">
                     {currentStep.titleRaw
                       ? currentStep.titleRaw
                       : currentStep.title
                         ? t(currentStep.title)
                         : t(activeTutorial.title)}
-                  </h2>
+                  </TypographyH4>
                 </div>
-                <span
+                <TypographySmall
                   className="shrink-0 rounded-md border border-white/25 bg-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white/85"
                   title={t("tutorial.visualBadgeHint")}
                 >
                   {t(visualLabelKey(currentStep.visual))}
-                </span>
+                </TypographySmall>
               </div>
-              <TypographyP id="tutorial-step-body" className="whitespace-pre-wrap text-sm leading-relaxed">
+              <TypographyP id="tutorial-step-body" className="mt-0 whitespace-pre-wrap leading-relaxed">
                 {currentStep.textRaw ? currentStep.textRaw : t(currentStep.text)}
               </TypographyP>
             </div>,
@@ -353,27 +352,28 @@ export function TutorialController() {
               role="status"
               aria-live="polite"
             >
-              <div className="rounded-lg border border-white/30 bg-black/70 px-4 py-2 text-sm font-medium tracking-wide text-white">
+              <TypographySmall className="m-0 rounded-lg border border-white/30 bg-black/70 px-4 py-2 tracking-wide text-white">
                 Loading...
-              </div>
+              </TypographySmall>
             </div>,
             document.body,
           )}
-        {highlightError
-          ? createPortal(
-              <div
-                className="pointer-events-none fixed left-1/2 top-6 z-[999998] w-[90vw] max-w-md -translate-x-1/2"
-              >
-                <div className="rounded-xl border border-amber-400/40 bg-gradient-to-r from-amber-600/90 via-orange-500/90 to-red-500/90 px-5 py-4 text-white shadow-2xl backdrop-blur-sm">
-                  <p className="mb-1 text-sm font-bold tracking-wide">{t("tutorial.highlightErrorTitle")}</p>
-                  <p className="mb-2 text-sm leading-snug">{highlightError}</p>
-                  <p className="text-xs font-medium text-white/80">{t("tutorial.highlightErrorHint")}</p>
-                </div>
-              </div>,
-              document.body,
-            )
-          : null}
-
+      {highlightError
+        ? createPortal(
+            <div className="pointer-events-none fixed left-1/2 top-6 z-[999998] w-[90vw] max-w-md -translate-x-1/2">
+              <div className="rounded-xl border border-amber-400/40 bg-gradient-to-r from-amber-600/90 via-orange-500/90 to-red-500/90 px-5 py-4 text-white shadow-2xl backdrop-blur-sm">
+                <TypographyP className="mb-1 mt-0 text-sm font-bold leading-snug tracking-wide">
+                  {t("tutorial.highlightErrorTitle")}
+                </TypographyP>
+                <TypographyP className="mb-2 mt-0 text-sm leading-snug">{highlightError}</TypographyP>
+                <TypographySmall className="m-0 font-medium text-white/80">
+                  {t("tutorial.highlightErrorHint")}
+                </TypographySmall>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {createPortal(
         <div className="fixed bottom-4 left-4 z-[999998] flex flex-wrap items-center gap-2">
@@ -384,7 +384,9 @@ export function TutorialController() {
               className="interactable border-white/40 bg-black/60 text-white"
               onClick={previousStep}
             >
-              {t("tutorial.back")}
+              <TypographySmall className="m-0 font-semibold leading-none text-inherit">
+                {t("tutorial.back")}
+              </TypographySmall>
             </Button>
           ) : null}
           {canGoNext ? (
@@ -404,7 +406,11 @@ export function TutorialController() {
               }}
               disabled={tutorialId === "interactive" && isLastStep && isGeneratingInteractiveStep}
             >
-              {tutorialId === "interactive" && isLastStep && isGeneratingInteractiveStep ? "Thinking..." : t("tutorial.next")}
+              <TypographySmall className="m-0 font-semibold leading-none text-inherit">
+                {tutorialId === "interactive" && isLastStep && isGeneratingInteractiveStep
+                  ? "Thinking..."
+                  : t("tutorial.next")}
+              </TypographySmall>
             </Button>
           ) : null}
           <Button
@@ -413,7 +419,9 @@ export function TutorialController() {
             className="interactable border border-white/25 bg-black/45 text-white/95 hover:bg-black/60"
             onClick={exitTutorial}
           >
-            {t("tutorial.exit")}
+            <TypographySmall className="m-0 font-semibold leading-none text-inherit">
+              {t("tutorial.exit")}
+            </TypographySmall>
           </Button>
         </div>,
         document.body,
