@@ -45,6 +45,7 @@ export default function Settings() {
             <Button
               type="button"
               variant={audioModeEnabled ? "default" : "outline"}
+              data-intro="audio-mode"
               className={
                 audioModeEnabled
                   ? "interactable !text-white ring-2 ring-primary/40 hover:!text-white"
