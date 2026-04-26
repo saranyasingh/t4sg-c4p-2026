@@ -325,8 +325,14 @@
     "visualScreen": "Screen",
     "visualScreenText": "Screen + text",
     "visualBadgeHint": "Lesson format: text only, screen demo, or both",
-    "highlightErrorTitle": "Could not locate target",
-    "highlightErrorHint": "Make sure Chrome is visible, then try Next again.",
+    "highlightErrorTitle": "We couldn't find that on your screen",
+    "highlightErrorTargetLabel": "Looking for: {{target}}",
+    "highlightErrorHint": "Bring the right window into view, then try Next again.",
+    "highlightErrorHintChrome": "Open Google Chrome so it's visible on your screen, then try Next again.",
+    "highlightErrorHintGmail": "Open Gmail in Chrome so it's visible on your screen, then try Next again.",
+    "highlightErrorHintBrowser": "Make sure your web browser window is showing, then try Next again.",
+    "highlightErrorRetry": "Try again",
+    "highlightErrorDismiss": "Dismiss",
     "courseTitles": {
       "intro": "App Tour",
       "google-search": "Google Search"

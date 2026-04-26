@@ -200,6 +200,68 @@ function extractComputerUseCoordinate(content) {
   return null;
 }
 
+/**
+ * Pre-flight visibility check using a normal vision model (NOT Computer Use).
+ * Computer Use models, when forced via tool_choice, will hallucinate coordinates
+ * even for off-screen targets — so we ask plainly first whether the element is
+ * actually visible. Returns { visible: true } when the verifier confirms, or
+ * { visible: false, reason } when it doesn't.
+ */
+async function verifyTargetVisible(client, resizedBase64, target) {
+  const verifierModel =
+    process.env.ANTHROPIC_MODEL_VISION ||
+    process.env.ANTHROPIC_MODEL ||
+    "claude-haiku-4-5-20251001";
+
+  const response = await anthropicCreateWithRetry(
+    client,
+    {
+      model: verifierModel,
+      max_tokens: 200,
+      system:
+        'You verify whether a UI element is currently visible in a screenshot. ' +
+        'Respond with a single line of strict JSON only — no prose, no code fences. ' +
+        'Schema: {"visible": boolean, "reason": string}. ' +
+        'Set "visible" to true ONLY if the described element is clearly present and identifiable in the image. ' +
+        'If the relevant app/window is not open, the element is off-screen, partially obscured beyond recognition, or you are not confident, set "visible" to false and put a one-sentence plain-language reason in "reason".',
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: { type: "base64", media_type: "image/png", data: resizedBase64 },
+            },
+            {
+              type: "text",
+              text: `Target element: ${target}\n\nIs this target currently visible on the screenshot?`,
+            },
+          ],
+        },
+      ],
+    },
+    { timeout: COMPUTER_USE_TIMEOUT_MS },
+  );
+
+  const textBlock = response.content?.find?.((b) => b.type === "text");
+  const raw = (textBlock?.text ?? "").trim();
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    console.warn("verifyTargetVisible: no JSON in response:", raw.slice(0, 200));
+    return { visible: true, reason: "" };
+  }
+  try {
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      visible: parsed.visible === true,
+      reason: typeof parsed.reason === "string" ? parsed.reason.trim() : "",
+    };
+  } catch (err) {
+    console.warn("verifyTargetVisible: parse failed:", err?.message, "raw:", raw.slice(0, 200));
+    return { visible: true, reason: "" };
+  }
+}
+
 async function locateElementComputerUse(imageBase64, targetDescription, imageWidth, imageHeight) {
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   require("dotenv/config");
@@ -231,17 +293,32 @@ async function locateElementComputerUse(imageBase64, targetDescription, imageWid
   const resized = cu.w === origW && cu.h === origH ? img : img.resize({ width: cu.w, height: cu.h, quality: "good" });
   const resizedBase64 = resized.toPNG().toString("base64");
 
+  // Step 1: pre-verification. Bail before Computer Use if the element clearly isn't on screen.
+  const verdict = await verifyTargetVisible(client, resizedBase64, target);
+  if (!verdict.visible) {
+    return {
+      found: false,
+      explanation: verdict.reason || "Element not found on screen.",
+    };
+  }
+
   const model =
     process.env.ANTHROPIC_MODEL_COMPUTER_USE ||
     process.env.ANTHROPIC_MODEL ||
     DEFAULT_COMPUTER_USE_MODEL;
 
+  // Step 2: Computer Use locate. tool_choice is "auto" + the prompt explicitly allows
+  // the model to refuse with "NOT_FOUND: <reason>" so a wrong verifier verdict can still bail.
   const response = await anthropicCreateWithRetry(
     client,
     {
       model,
       max_tokens: 1024,
-      system: `You are a screen annotation assistant. A screenshot (${cu.w}x${cu.h} px) is already provided in the user message — you MUST NOT call screenshot. Your ONLY task: call the computer tool with action "mouse_move" and the coordinate of the exact center pixel of the target element. One tool call only. No text. No screenshot. No click.`,
+      system:
+        `You are a screen annotation assistant. A screenshot (${cu.w}x${cu.h} px) is already provided — you MUST NOT call screenshot.\n\n` +
+        `Your task: locate the target element on the screen.\n` +
+        `- If the target IS clearly visible, call the computer tool ONCE with action "mouse_move" and the coordinate of its exact center pixel. No text, no click, no other tool calls.\n` +
+        `- If the target is NOT visible (relevant app/window not open, off-screen, or not identifiable), DO NOT call the tool. Reply with a single line of plain text starting exactly with "NOT_FOUND: " followed by a brief one-sentence reason in plain language.`,
       tools: [
         {
           type: "computer_20250124",
@@ -250,7 +327,7 @@ async function locateElementComputerUse(imageBase64, targetDescription, imageWid
           display_height_px: cu.h,
         },
       ],
-      tool_choice: { type: "tool", name: "computer" },
+      tool_choice: { type: "auto" },
       messages: [
         {
           role: "user",
@@ -261,7 +338,7 @@ async function locateElementComputerUse(imageBase64, targetDescription, imageWid
             },
             {
               type: "text",
-              text: `Move the mouse to the center of: ${target}`,
+              text: `Target: ${target}\n\nFollow the rules in the system prompt: emit a mouse_move tool call if visible, otherwise reply with "NOT_FOUND: <reason>".`,
             },
           ],
         },
@@ -284,13 +361,17 @@ async function locateElementComputerUse(imageBase64, targetDescription, imageWid
   }
 
   const textBlock = response.content.find((b) => b.type === "text");
+  const rawText = (textBlock?.text ?? "").trim();
+  const notFoundMatch = rawText.match(/^NOT_FOUND:\s*(.*)$/i);
+  const explanation = notFoundMatch?.[1]?.trim() || rawText || "Element not found on screen.";
+
   const blockSummary = response.content
     .map((b) => (b.type === "tool_use" ? `tool_use:${b.name}:${b.input?.action ?? "?"}` : b.type))
     .join(", ");
-  console.warn("locateElementComputerUse: no coordinate in response. blocks:", blockSummary, "text:", textBlock?.text);
+  console.warn("locateElementComputerUse: no coordinate in response. blocks:", blockSummary, "text:", rawText);
   return {
     found: false,
-    explanation: textBlock?.text || "Element not found on screen.",
+    explanation,
   };
 }
 
