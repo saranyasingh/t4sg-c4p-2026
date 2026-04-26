@@ -5,17 +5,11 @@ import { PointerOverlay } from "@/components/pointer-overlay";
 import { Button } from "@/components/ui/button";
 import { TypographyH4, TypographyP, TypographySmall } from "@/components/ui/typography";
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
-import type { ScreenHighlight, StepVisual } from "@/lib/tutorials";
+import type { ScreenHighlight } from "@/lib/tutorials";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useTutorial } from "./tutorial-provider";
-
-function visualLabelKey(v: StepVisual): string {
-  if (v === "text") return "tutorial.visualText";
-  if (v === "screen") return "tutorial.visualScreen";
-  return "tutorial.visualScreenText";
-}
 
 /**
  * Tutorial UI + highlight overlay. Renders inside the shell panel; bounding boxes use fixed positioning for the full window.
@@ -333,12 +327,6 @@ export function TutorialController() {
                         : t(activeTutorial.title)}
                   </TypographyH4>
                 </div>
-                <TypographySmall
-                  className="shrink-0 rounded-md border border-white/25 bg-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white/85"
-                  title={t("tutorial.visualBadgeHint")}
-                >
-                  {t(visualLabelKey(currentStep.visual))}
-                </TypographySmall>
               </div>
               <TypographyP id="tutorial-step-body" className="mt-0 whitespace-pre-wrap leading-relaxed">
                 {currentStep.textRaw ? currentStep.textRaw : t(currentStep.text)}
@@ -362,10 +350,10 @@ export function TutorialController() {
         ? createPortal(
             <div className="pointer-events-none fixed left-1/2 top-6 z-[999998] w-[90vw] max-w-md -translate-x-1/2">
               <div className="rounded-xl border border-amber-400/40 bg-gradient-to-r from-amber-600/90 via-orange-500/90 to-red-500/90 px-5 py-4 text-white shadow-2xl backdrop-blur-sm">
-                <TypographyP className="mb-1 mt-0 text-sm font-bold leading-snug tracking-wide">
+                <TypographyP className="mb-1 mt-0 font-bold leading-snug tracking-wide">
                   {t("tutorial.highlightErrorTitle")}
                 </TypographyP>
-                <TypographyP className="mb-2 mt-0 text-sm leading-snug">{highlightError}</TypographyP>
+                <TypographyP className="mb-2 mt-0 leading-snug">{highlightError}</TypographyP>
                 <TypographySmall className="m-0 font-medium text-white/80">
                   {t("tutorial.highlightErrorHint")}
                 </TypographySmall>
