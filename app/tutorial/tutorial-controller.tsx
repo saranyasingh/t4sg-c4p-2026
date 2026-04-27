@@ -268,10 +268,10 @@ export function TutorialController() {
 
   return (
     <>
-      {/* No fallback full-screen dim when there's no spotlight target — the
-          BoundingBoxOverlay handles its own dimming when there's something to
-          highlight. Without this, steps without a target just dimmed the whole
-          screen for no useful reason. */}
+      {/* No fallback full-screen dim when there's no spotlight target. The
+          BoundingBoxOverlay handles its own dimming when there IS a target;
+          steps without a target shouldn't darken the whole screen — that just
+          made the editor / desktop unreadable behind the tour bubble. */}
 
       <BoundingBoxOverlay
         coords={highlightPayload?.coords ?? null}
