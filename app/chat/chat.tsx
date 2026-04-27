@@ -552,7 +552,7 @@ export function Chat({ showHeader = true }: ChatProps) {
         </header>
       ) : null}
 
-      <section className="min-h-0 flex-1 overflow-hidden">
+      <section className="min-h-0 flex-1 overflow-hidden" data-intro="chat-box">
         <ScrollContainer>
           {messages.map((msg) => (
             <Message key={msg.id} text={msg.text} variant={msg.variant} isError={msg.isError} />
@@ -574,7 +574,7 @@ export function Chat({ showHeader = true }: ChatProps) {
           disabled={isLoading}
         />
 
-        <div className="relative flex-1">
+        <div className="relative flex-1" data-intro="chat-input">
           {!message ? (
             <TypographySmall className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--placeholder-foreground))]">
               {t("chat.inputPlaceholder")}
