@@ -270,12 +270,15 @@ export function TutorialController() {
     <>
       {/* Full-screen dim when a tour step has no spotlight target (e.g. the
           welcome step). Matches the dim level used OUTSIDE the spotlight on
-          regular tutorial steps so all tour pages feel consistent. */}
+          regular tutorial steps so all tour pages feel consistent. We place
+          this BELOW the shell panel (z-[999999]), the step card (z-[999997]),
+          and the tour controls (z-[999998]) so those stay fully readable —
+          only the area outside the panel gets dimmed. */}
       {!hasSpotlight && !currentStep.highlightBright
         ? createPortal(
             <div
               className="pointer-events-none fixed inset-0"
-              style={{ zIndex: 1000001 }}
+              style={{ zIndex: 999990 }}
               aria-hidden="true"
             >
               <div
