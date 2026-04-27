@@ -2,15 +2,16 @@
 
 import { Button } from "@/components/ui/button";
 import { INTRO_TUTORIAL_ID } from "@/lib/tutorials";
-import { HelpCircle, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import { TypographySmall } from "@/components/ui/typography";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import c4pLogo from "../public/images/c4p.png";
+import { useLanding } from "./landing-context";
 import { TutorialController } from "./tutorial/tutorial-controller";
 import { useTutorial } from "./tutorial/tutorial-provider";
 
@@ -19,7 +20,19 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const { t } = useTranslation();
   const { startTutorial, tutorialId } = useTutorial();
+  const { hasEnteredApp } = useLanding();
   const pathname = usePathname();
+  const router = useRouter();
+
+  // The intro tour highlights elements that only exist on the home page (chat,
+  // voice, audio-mode, language). Make sure we route there before kicking off
+  // the tour so every step has a target to highlight.
+  const handleStartIntro = () => {
+    if (pathname !== "/") {
+      router.push("/");
+    }
+    startTutorial(INTRO_TUTORIAL_ID);
+  };
 
   const tabs = [
     { href: "/", label: t("shell.tabs.home") },
@@ -68,7 +81,7 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
             ? "bg-white text-black hover:bg-white/90"
             : "border-white/30 bg-[hsl(var(--foreground)/0.8)] text-white hover:bg-[hsl(var(--foreground)/0.9)]"
         }`}
-        onClick={() => startTutorial(INTRO_TUTORIAL_ID)}
+        onClick={handleStartIntro}
         aria-label={t("help.buttonAriaLabel")}
         title={t("help.buttonTitle")}
       >
@@ -85,6 +98,7 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
               <Link
                 key={tab.href}
                 href={tab.href}
+                data-intro={tab.href === "/tutorials" ? "tutorials" : undefined}
                 className={`interactable rounded-lg px-2 py-1.5 text-center text-xs font-semibold transition-colors ${
                   isActive ? "bg-white/25 text-white" : "text-white/75 hover:bg-white/10 hover:text-white"
                 }`}
@@ -103,6 +117,13 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
     </section>
   );
 
-  if (!mounted) return null;
+  // Before the user dismisses the landing screen, render children directly so
+  // the page (and its full-screen landing overlay) can mount with no shell
+  // panel competing for the viewport. Once they click "Let's get started",
+  // swap to the shell panel — which contains children — so the app lives in
+  // the side panel only.
+  if (!mounted || !hasEnteredApp) {
+    return <>{children}</>;
+  }
   return createPortal(panel, document.body);
 }
