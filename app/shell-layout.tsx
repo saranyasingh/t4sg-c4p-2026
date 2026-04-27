@@ -44,6 +44,16 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
     setMounted(true);
   }, []);
 
+  // If the user reloads on a non-home route before dismissing the landing
+  // screen, send them back to "/" so the landing overlay shows. Without this,
+  // pages like /tutorials would render with no panel and no landing — just
+  // black default text on the transparent body, "hidden in the dark."
+  useEffect(() => {
+    if (!hasEnteredApp && pathname !== "/") {
+      router.replace("/");
+    }
+  }, [hasEnteredApp, pathname, router]);
+
   const isIntroActive = tutorialId === INTRO_TUTORIAL_ID;
 
   const panel = (
