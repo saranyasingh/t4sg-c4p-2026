@@ -268,19 +268,10 @@ export function TutorialController() {
 
   return (
     <>
-      {!hasSpotlight && !hasPointerHighlight
-        ? createPortal(
-            <div
-              className="pointer-events-none fixed inset-0"
-              style={{
-                zIndex: 999991,
-                background: "rgba(8, 10, 16, 0.54)",
-              }}
-              aria-hidden="true"
-            />,
-            document.body,
-          )
-        : null}
+      {/* No fallback full-screen dim when there's no spotlight target — the
+          BoundingBoxOverlay handles its own dimming when there's something to
+          highlight. Without this, steps without a target just dimmed the whole
+          screen for no useful reason. */}
 
       <BoundingBoxOverlay
         coords={highlightPayload?.coords ?? null}
