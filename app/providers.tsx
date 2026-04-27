@@ -8,6 +8,7 @@ import i18n from "./i18n";
 import { TutorialProvider } from "./tutorial/tutorial-provider";
 import { AudioModeProvider } from "./audio-mode-context";
 import { BackgroundOpacityProvider } from "./background-opacity-context";
+import { LandingProvider } from "./landing-context";
 import { TextSizeProvider } from "./text-size-context";
 
 function I18nLangSync() {
@@ -39,13 +40,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <TextSizeProvider>
       <BackgroundOpacityProvider>
         <AudioModeProvider>
-          <ThemeProvider forcedTheme="light" enableSystem={false}>
-            <I18nLangSync />
-            <TutorialProvider>
-              <I18nKeyedContent>{children}</I18nKeyedContent>
-              
-            </TutorialProvider>
-          </ThemeProvider>
+          <LandingProvider>
+            <ThemeProvider forcedTheme="light" enableSystem={false}>
+              <I18nLangSync />
+              <TutorialProvider>
+                <I18nKeyedContent>{children}</I18nKeyedContent>
+              </TutorialProvider>
+            </ThemeProvider>
+          </LandingProvider>
         </AudioModeProvider>
       </BackgroundOpacityProvider>
     </TextSizeProvider>

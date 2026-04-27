@@ -1,6 +1,6 @@
 "use client";
 
-import { getTutorialById, type Tutorial, type TutorialStep } from "@/lib/tutorials";
+import { getTutorialById, INTERACTIVE_TUTORIAL_ID, type Tutorial, type TutorialStep } from "@/lib/tutorials";
 import {
   createContext,
   useCallback,
@@ -11,8 +11,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-
-const INTERACTIVE_TUTORIAL_ID = "interactive";
 
 export type TutorialContextValue = {
   /** `tutorialId !== null` means a tutorial is active (tutorial “mode”). */

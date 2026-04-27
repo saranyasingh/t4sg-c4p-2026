@@ -405,24 +405,6 @@ const introSteps: TutorialStep[] = [
     highlightMinPadding: 10,
   },
   {
-    id: "intro-audio-mode",
-    title: "tutorials.intro.intro-audio-mode.title",
-    text: "tutorials.intro.intro-audio-mode.text",
-    visual: "screen_text",
-    highlightSelector: "[data-intro='audio-mode']",
-    highlightExpandFactor: 1.0,
-    highlightMinPadding: 2,
-  },
-  {
-    id: "intro-language",
-    title: "tutorials.intro.intro-language.title",
-    text: "tutorials.intro.intro-language.text",
-    visual: "screen_text",
-    highlightSelector: "[data-intro='language']",
-    highlightExpandFactor: 1.0,
-    highlightMinPadding: 2,
-  },
-  {
     id: "intro-tutorials",
     title: "tutorials.intro.intro-tutorials.title",
     text: "tutorials.intro.intro-tutorials.text",
@@ -463,6 +445,9 @@ const introSteps: TutorialStep[] = [
 ];
 
 export const INTRO_TUTORIAL_ID = "intro";
+
+/** AI-driven interactive tutorial (not listed in TUTORIALS; driven by TutorialProvider state). */
+export const INTERACTIVE_TUTORIAL_ID = "interactive";
 
 export const TUTORIALS: readonly Tutorial[] = [
   {
