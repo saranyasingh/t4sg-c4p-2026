@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
 const BACKGROUND_OPACITY_STORAGE_KEY = "background-opacity";
-const DEFAULT_BACKGROUND_OPACITY = 1;
+const DEFAULT_BACKGROUND_OPACITY = 0.8;
 const MIN_BACKGROUND_OPACITY = 0.8;
 const MAX_BACKGROUND_OPACITY = 1;
 

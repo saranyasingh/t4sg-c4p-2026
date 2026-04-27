@@ -6,7 +6,7 @@ export const TEXT_SIZE_PRESETS = [1, 1.25, 1.5, 1.75] as const;
 export type TextSizeScale = (typeof TEXT_SIZE_PRESETS)[number];
 
 const TEXT_SIZE_STORAGE_KEY = "text-size-scale";
-const DEFAULT_TEXT_SIZE_SCALE: TextSizeScale = 1.5;
+const DEFAULT_TEXT_SIZE_SCALE: TextSizeScale = 1;
 
 interface TextSizeContextType {
   scale: TextSizeScale;

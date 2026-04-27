@@ -103,10 +103,10 @@ export default function Home() {
   // not render until that happens (see ShellLayout). The background uses the
   // same opacity variable as the shell so the user can preview their choice.
   const presetButtonClass = (active: boolean) =>
-    `interactable rounded-lg border px-3 py-2 ${TEXT_SM} font-semibold outline-none focus:outline-none ${
+    `interactable rounded-lg border px-3 py-2 ${TEXT_SM} font-semibold outline-none focus:outline-none focus-visible:outline-none ${
       active
-        ? "border-white bg-white text-black shadow"
-        : "border-white/30 bg-white/5 text-white hover:bg-white/15"
+        ? "!border-white !bg-white !text-black shadow focus:!bg-white focus-visible:!bg-white"
+        : "!border-white/30 !bg-white/5 !text-white hover:!bg-white/15 focus:!bg-white/5 focus-visible:!bg-white/5"
     }`;
 
   // Strip focus from the button immediately after a click so the previous
@@ -160,6 +160,7 @@ export default function Home() {
                   type="button"
                   className={presetButtonClass(currentLng === "en")}
                   aria-pressed={currentLng === "en"}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={(e) => {
                     blurOnClick(e);
                     void i18n.changeLanguage("en");
@@ -171,6 +172,7 @@ export default function Home() {
                   type="button"
                   className={presetButtonClass(currentLng === "es")}
                   aria-pressed={currentLng === "es"}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={(e) => {
                     blurOnClick(e);
                     void i18n.changeLanguage("es");
@@ -196,6 +198,7 @@ export default function Home() {
                       type="button"
                       className={presetButtonClass(isActive)}
                       aria-pressed={isActive}
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={(e) => {
                         blurOnClick(e);
                         setBackgroundOpacity(preset.value);
@@ -221,6 +224,7 @@ export default function Home() {
                       type="button"
                       className={presetButtonClass(isActive)}
                       aria-pressed={isActive}
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={(e) => {
                         blurOnClick(e);
                         setScale(preset);
