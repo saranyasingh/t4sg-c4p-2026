@@ -268,17 +268,19 @@ export function TutorialController() {
 
   return (
     <>
-      {/* Full-screen dim when a tour step has no spotlight target (e.g. the
-          welcome step). Matches the dim level used OUTSIDE the spotlight on
-          regular tutorial steps so all tour pages feel consistent. We place
-          this BELOW the shell panel (z-[999999]), the step card (z-[999997]),
-          and the tour controls (z-[999998]) so those stay fully readable —
-          only the area outside the panel gets dimmed. */}
+      {/* Dim when a tour step has no spotlight target (e.g. the welcome
+          step). Matches the dim level used OUTSIDE the spotlight on regular
+          tutorial steps so all tour pages feel consistent. Spans only the
+          area to the LEFT of the shell panel — the panel itself is
+          semi-transparent (0.8) so dimming behind it would bleed through and
+          make the panel content unreadable. Panel sits at right-6 with
+          w-[420px] so its left edge is at right: 444px. Tour controls
+          (z-[999998]) and step card (z-[999997]) stay on top via z-index. */}
       {!hasSpotlight && !currentStep.highlightBright
         ? createPortal(
             <div
-              className="pointer-events-none fixed inset-0"
-              style={{ zIndex: 999990 }}
+              className="pointer-events-none fixed top-0 bottom-0 left-0"
+              style={{ right: 444, zIndex: 999990 }}
               aria-hidden="true"
             >
               <div
