@@ -216,46 +216,20 @@ export function TutorialController() {
 
   const textBoxStyle = useMemo(() => {
     const vw = viewport.w;
-    const vh = viewport.h;
     const margin = 16;
     const maxW = Math.min(420, vw - margin * 2);
 
-    const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
-
-    if (spotlightRect) {
-      const preferBelow = spotlightRect.top + spotlightRect.height + 220 < vh;
-      const top = preferBelow ? spotlightRect.top + spotlightRect.height + 12 : spotlightRect.top - 200;
-      const left = clamp(spotlightRect.left + spotlightRect.width / 2 - maxW / 2, margin, vw - maxW - margin);
-
-      return {
-        width: maxW,
-        left,
-        top: clamp(top, margin, vh - 180 - margin),
-        bottom: undefined as number | undefined,
-      };
-    }
-
-    if (pointerTarget) {
-      const estBoxH = 200;
-      const preferBelow = pointerTarget.y + estBoxH + 40 < vh;
-      const top = preferBelow ? pointerTarget.y + 40 : pointerTarget.y - estBoxH - 20;
-      const left = clamp(pointerTarget.x - maxW / 2, margin, vw - maxW - margin);
-
-      return {
-        width: maxW,
-        left,
-        top: clamp(top, margin, vh - estBoxH - margin),
-        bottom: undefined as number | undefined,
-      };
-    }
-
+    // Anchor the step card to the bottom-left on every step. We intentionally
+    // do not reposition it relative to the spotlight or pointer target — a
+    // consistent location is easier to scan and matches the welcome step's
+    // placement so the tour feels uniform.
     return {
       width: maxW,
       left: margin,
       top: undefined as number | undefined,
       bottom: 64,
     };
-  }, [pointerTarget, spotlightRect, viewport.h, viewport.w]);
+  }, [viewport.w]);
 
   if (!mounted || !tutorialId || !activeTutorial || !currentStep) {
     return null;
