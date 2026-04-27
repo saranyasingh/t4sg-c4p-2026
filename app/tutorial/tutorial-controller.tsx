@@ -3,7 +3,7 @@
 import BoundingBoxOverlay from "@/app/bounding-box-overlay";
 import { PointerOverlay } from "@/components/pointer-overlay";
 import { Button } from "@/components/ui/button";
-import { TypographyP } from "@/components/ui/typography";
+import { TypographyH4, TypographyP, TypographySmall } from "@/components/ui/typography";
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
 import type { ScreenHighlight, StepVisual } from "@/lib/tutorials";
 import { Search, X } from "lucide-react";
@@ -193,8 +193,7 @@ export function TutorialController() {
         setHighlightError(null);
         setPointerTarget(null);
 
-        const el =
-          typeof document !== "undefined" ? (document.querySelector(currentStep.highlightSelector) as HTMLElement | null) : null;
+        const el = typeof document !== "undefined" ? document.querySelector(currentStep.highlightSelector) : null;
         if (!el) {
           setHighlightPayload(null);
           setHighlightError({
@@ -487,25 +486,19 @@ export function TutorialController() {
             >
               <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0 space-y-0.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-white/60">
+                  <TypographySmall className="m-0 font-semibold uppercase tracking-wide text-white/60">
                     {t(activeTutorial.title)}
-                  </p>
-                  <h2 id="tutorial-step-title" className="text-base font-semibold leading-snug text-white">
+                  </TypographySmall>
+                  <TypographyH4 id="tutorial-step-title" className="m-0 border-none pb-0 leading-snug text-white">
                     {currentStep.titleRaw
                       ? currentStep.titleRaw
                       : currentStep.title
                         ? t(currentStep.title)
                         : t(activeTutorial.title)}
-                  </h2>
+                  </TypographyH4>
                 </div>
-                <span
-                  className="shrink-0 rounded-md border border-white/25 bg-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white/85"
-                  title={t("tutorial.visualBadgeHint")}
-                >
-                  {t(visualLabelKey(currentStep.visual))}
-                </span>
               </div>
-              <TypographyP id="tutorial-step-body" className="whitespace-pre-wrap text-sm leading-relaxed">
+              <TypographyP id="tutorial-step-body" className="mt-0 whitespace-pre-wrap leading-relaxed">
                 {currentStep.textRaw ? currentStep.textRaw : t(currentStep.text)}
               </TypographyP>
             </div>,
@@ -517,9 +510,9 @@ export function TutorialController() {
               role="status"
               aria-live="polite"
             >
-              <div className="rounded-lg border border-white/30 bg-black/70 px-4 py-2 text-sm font-medium tracking-wide text-white">
+              <TypographySmall className="m-0 rounded-lg border border-white/30 bg-black/70 px-4 py-2 tracking-wide text-white">
                 Loading...
-              </div>
+              </TypographySmall>
             </div>,
             document.body,
           )}
@@ -617,7 +610,9 @@ export function TutorialController() {
               className="interactable border-white/40 bg-black/60 text-white"
               onClick={previousStep}
             >
-              {t("tutorial.back")}
+              <TypographySmall className="m-0 font-semibold leading-none text-inherit">
+                {t("tutorial.back")}
+              </TypographySmall>
             </Button>
           ) : null}
           {canGoNext ? (
@@ -637,18 +632,22 @@ export function TutorialController() {
               }}
               disabled={tutorialId === INTERACTIVE_TUTORIAL_ID && isLastStep && isGeneratingInteractiveStep}
             >
-              {tutorialId === INTERACTIVE_TUTORIAL_ID && isLastStep && isGeneratingInteractiveStep
-                ? "Thinking..."
-                : t("tutorial.next")}
+              <TypographySmall className="m-0 font-semibold leading-none text-inherit">
+                {tutorialId === "interactive" && isLastStep && isGeneratingInteractiveStep
+                  ? "Thinking..."
+                  : t("tutorial.next")}
+              </TypographySmall>
             </Button>
           ) : null}
           <Button
             type="button"
             variant="ghost"
-            className="interactable border border-white/25 bg-black/45 text-white/95 hover:bg-black/60"
+            className="interactable border border-white/25 bg-black/45 text-white/95 hover:bg-accent hover:text-accent-foreground"
             onClick={exitTutorial}
           >
-            {t("tutorial.exit")}
+            <TypographySmall className="m-0 font-semibold leading-none text-inherit">
+              {t("tutorial.exit")}
+            </TypographySmall>
           </Button>
         </div>,
         document.body,

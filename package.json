@@ -59,7 +59,7 @@
     "concurrently": "^9.2.1",
     "cross-env": "^7.0.3",
     "dotenv-cli": "^7.4.2",
-    "electron": "^41.1.1",
+    "electron": "^41.3.0",
     "electron-rebuild": "^3.2.9",
     "electronmon": "^2.0.4",
     "eslint-config-next": "^14.2.4",
@@ -72,7 +72,7 @@
     "supabase": "^1.176.10",
     "tailwindcss": "^3.4.4",
     "typescript": "^5.4.5",
-    "wait-on": "^9.0.4"
+    "wait-on": "^9.0.5"
   },
   "main": "main.cjs"
 }

@@ -214,7 +214,7 @@ export function PointerOverlay({
             height: 36,
             borderRadius: "50%",
             background:
-              "radial-gradient(circle, rgba(255,215,0,0.55) 0%, rgba(255,165,0,0.25) 55%, rgba(255,140,0,0) 75%)",
+              "radial-gradient(circle, hsl(var(--accent) / 0.55) 0%, hsl(var(--primary) / 0.25) 55%, hsl(var(--accent) / 0) 75%)",
             animation: "tutorial-pointer-pulse 1.4s ease-out infinite",
           }}
         />
@@ -239,20 +239,20 @@ export function PointerOverlay({
           transformOrigin: "30px 9px",
           transform: `rotate(${angle}deg) scale(${scale})`,
           overflow: "visible",
-          filter: `drop-shadow(0 0 ${glowSize}px rgba(255,180,0,0.95)) drop-shadow(0 2px 4px rgba(0,0,0,0.45))`,
+          filter: `drop-shadow(0 0 ${glowSize}px hsl(var(--accent) / 0.95)) drop-shadow(0 2px 4px rgba(0,0,0,0.45))`,
         }}
       >
         <defs>
           <linearGradient id="tutorial-arrow-fill" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="rgb(255,240,150)" />
-            <stop offset="55%" stopColor="rgb(255,205,0)" />
-            <stop offset="100%" stopColor="rgb(255,140,0)" />
+            <stop offset="0%" stopColor="var(--green-1)" />
+            <stop offset="55%" stopColor="var(--green-2)" />
+            <stop offset="100%" stopColor="var(--green-3)" />
           </linearGradient>
         </defs>
         {/* Outer soft halo */}
         <polygon
           points="0,2 0,18 32,10"
-          fill="rgba(255,220,90,0.28)"
+          fill="hsl(var(--accent) / 0.28)"
           transform="scale(1.4) translate(-2.5,-1.8)"
         />
         {/* Main arrow with gradient */}
@@ -273,16 +273,16 @@ export function PointerOverlay({
             left: bubbleLeft,
             top: pos.y - 38,
             background: "linear-gradient(135deg, rgba(18,14,6,0.95), rgba(10,10,18,0.95))",
-            border: "1.5px solid rgba(255,200,40,0.85)",
+            border: "1.5px solid hsl(var(--accent) / 0.85)",
             borderRadius: 10,
             padding: "7px 16px",
-            color: "rgb(255,225,90)",
+            color: "hsl(var(--accent))",
             fontSize: 14,
             fontWeight: 700,
             fontFamily: "system-ui, -apple-system, sans-serif",
             letterSpacing: "0.02em",
             whiteSpace: "nowrap",
-            boxShadow: "0 4px 24px rgba(0,0,0,0.6), 0 0 16px rgba(255,200,40,0.28)",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.6), 0 0 16px hsl(var(--accent) / 0.28)",
           }}
         >
           {label}
@@ -298,7 +298,7 @@ export function PointerOverlay({
               borderTop: "6px solid transparent",
               borderBottom: "6px solid transparent",
               [bubbleRight ? "borderLeft" : "borderRight"]:
-                "8px solid rgba(255,215,0,0.75)",
+                "8px solid hsl(var(--accent) / 0.75)",
             }}
           />
         </div>

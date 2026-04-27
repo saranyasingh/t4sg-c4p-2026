@@ -1,7 +1,7 @@
 {
   "home": {
     "welcome": "Welcome",
-    "getStarted": "Get started with Chat or explore Tutorials to learn more.",
+    "getStarted": "Ask questions to the assistant. For example, \"How do I send an email?\"",
     "brandTitle": "Granson AI",
     "tagline": "Your friendly computer helper. Ask questions, show your screen, and learn at your own pace.",
     "letsGetStarted": "Let's get started!",
@@ -464,8 +464,8 @@
       "options": "Options"
     },
     "rights": "Computers 4 People. All Rights Reserved.",
-    "open": "OPEN",
-    "close": "CLOSE"
+    "open": "Open",
+    "close": "Close"
   },
   "misc": {
     "loading": "Loading...",

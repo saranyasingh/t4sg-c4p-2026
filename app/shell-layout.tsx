@@ -1,9 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { TypographySmall } from "@/components/ui/typography";
 import { INTRO_TUTORIAL_ID } from "@/lib/tutorials";
 import { HelpCircle } from "lucide-react";
-import { TypographySmall } from "@/components/ui/typography";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -89,16 +89,18 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
         className={`interactable absolute right-1 top-1 z-20 h-8 min-w-0 gap-1 rounded-full px-3 text-xs font-semibold ${
           isIntroActive
             ? "bg-white text-black hover:bg-white/90"
-            : "border-white/30 bg-[hsl(var(--foreground)/0.8)] text-white hover:bg-[hsl(var(--foreground)/0.9)]"
+            : "!hover:text-white border-white/30 bg-[hsl(var(--foreground)/0.8)] text-white hover:bg-accent"
         }`}
         onClick={handleStartIntro}
         aria-label={t("help.buttonAriaLabel")}
         title={t("help.buttonTitle")}
       >
         <HelpCircle className="h-4 w-4" />
-        <span>{t("help.buttonLabel")}</span>
+        <TypographySmall className="m-0 font-semibold leading-none text-inherit">
+          {t("help.buttonLabel")}
+        </TypographySmall>
       </Button>
-      
+
       <div className="shrink-0 px-4 pb-2 pt-14">
         <div className="grid grid-cols-3 gap-2 rounded-xl border border-white/30 bg-black/20 p-1">
           {tabs.map((tab) => {
