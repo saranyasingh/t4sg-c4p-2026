@@ -268,10 +268,23 @@ export function TutorialController() {
 
   return (
     <>
-      {/* No fallback full-screen dim when there's no spotlight target. The
-          BoundingBoxOverlay handles its own dimming when there IS a target;
-          steps without a target shouldn't darken the whole screen — that just
-          made the editor / desktop unreadable behind the tour bubble. */}
+      {/* Light fallback dim when a tour step has no spotlight target (e.g. the
+          welcome step). Kept low-alpha so the panel and what's behind the
+          window remain readable — earlier 0.54 alpha + a low-opacity panel
+          made the whole UI nearly black. */}
+      {!hasSpotlight && !currentStep.highlightBright
+        ? createPortal(
+            <div
+              className="pointer-events-none fixed inset-0"
+              style={{
+                zIndex: 1000001,
+                background: "rgba(8, 10, 16, 0.25)",
+              }}
+              aria-hidden="true"
+            />,
+            document.body,
+          )
+        : null}
 
       <BoundingBoxOverlay
         coords={highlightPayload?.coords ?? null}
