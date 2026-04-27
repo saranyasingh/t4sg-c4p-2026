@@ -268,20 +268,25 @@ export function TutorialController() {
 
   return (
     <>
-      {/* Light fallback dim when a tour step has no spotlight target (e.g. the
-          welcome step). Kept low-alpha so the panel and what's behind the
-          window remain readable — earlier 0.54 alpha + a low-opacity panel
-          made the whole UI nearly black. */}
+      {/* Full-screen dim when a tour step has no spotlight target (e.g. the
+          welcome step). Matches the dim level used OUTSIDE the spotlight on
+          regular tutorial steps so all tour pages feel consistent. */}
       {!hasSpotlight && !currentStep.highlightBright
         ? createPortal(
             <div
               className="pointer-events-none fixed inset-0"
-              style={{
-                zIndex: 1000001,
-                background: "rgba(8, 10, 16, 0.25)",
-              }}
+              style={{ zIndex: 1000001 }}
               aria-hidden="true"
-            />,
+            >
+              <div
+                className="absolute inset-0"
+                style={{ background: "rgba(0, 0, 0, 0.82)" }}
+              />
+              <div
+                className="absolute inset-0"
+                style={{ background: "rgba(0, 3, 10, 0.32)" }}
+              />
+            </div>,
             document.body,
           )
         : null}
