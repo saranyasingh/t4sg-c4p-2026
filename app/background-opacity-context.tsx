@@ -2,8 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 
-const BACKGROUND_OPACITY_STORAGE_KEY = "background-opacity";
-const DEFAULT_BACKGROUND_OPACITY = 1;
+const DEFAULT_BACKGROUND_OPACITY = 0.8;
 const MIN_BACKGROUND_OPACITY = 0.8;
 const MAX_BACKGROUND_OPACITY = 1;
 
@@ -19,18 +18,9 @@ function clampOpacity(value: number) {
 }
 
 export function BackgroundOpacityProvider({ children }: { children: React.ReactNode }) {
-  const [backgroundOpacity, setBackgroundOpacityState] = useState<number>(() => {
-    if (typeof window === "undefined") {
-      return DEFAULT_BACKGROUND_OPACITY;
-    }
-
-    const stored = Number(window.localStorage.getItem(BACKGROUND_OPACITY_STORAGE_KEY));
-    if (!Number.isFinite(stored)) {
-      return DEFAULT_BACKGROUND_OPACITY;
-    }
-
-    return clampOpacity(stored);
-  });
+  // Always start at the default on every fresh load — we intentionally do not
+  // restore from localStorage so Low (0.8) is the default each time the app opens.
+  const [backgroundOpacity, setBackgroundOpacityState] = useState<number>(DEFAULT_BACKGROUND_OPACITY);
 
   const setBackgroundOpacity = (value: number) => {
     setBackgroundOpacityState(clampOpacity(value));
@@ -38,7 +28,6 @@ export function BackgroundOpacityProvider({ children }: { children: React.ReactN
 
   useEffect(() => {
     document.documentElement.style.setProperty("--shell-bg-opacity", String(backgroundOpacity));
-    window.localStorage.setItem(BACKGROUND_OPACITY_STORAGE_KEY, String(backgroundOpacity));
   }, [backgroundOpacity]);
 
   return (
