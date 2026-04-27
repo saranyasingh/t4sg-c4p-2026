@@ -265,6 +265,16 @@ export function TutorialController() {
   const showStepText = !shouldWaitForBox || !isLoadingHighlight;
   const hasSpotlight = Boolean(highlightPayload?.coords);
   const hasPointerHighlight = Boolean(pointerTarget);
+  // Whether THIS step is intended to have a highlight target. Used to decide
+  // if the no-spotlight dim should render — checking step properties is more
+  // reliable than checking `hasSpotlight`, which can briefly be stale during
+  // step transitions and would make the dim flicker on/off.
+  const stepHasHighlightTarget = Boolean(
+    currentStep.highlightSelector ||
+      currentStep.highlightDescription ||
+      currentStep.highlight ||
+      currentStep.highlightBright,
+  );
 
   return (
     <>
@@ -276,7 +286,7 @@ export function TutorialController() {
           make the panel content unreadable. Panel sits at right-6 with
           w-[420px] so its left edge is at right: 444px. Tour controls
           (z-[999998]) and step card (z-[999997]) stay on top via z-index. */}
-      {!hasSpotlight && !currentStep.highlightBright
+      {!stepHasHighlightTarget
         ? createPortal(
             <div
               className="pointer-events-none fixed top-0 bottom-0 left-0"
@@ -323,7 +333,7 @@ export function TutorialController() {
       {showStepText
         ? createPortal(
             <div
-              className="pointer-events-none fixed z-[999997] max-h-[42vh] overflow-y-auto rounded-xl border border-white/35 bg-[hsl(var(--foreground)/0.95)] p-4 text-white shadow-2xl backdrop-blur-sm"
+              className="pointer-events-none fixed z-[1000003] max-h-[42vh] overflow-y-auto rounded-xl border border-white/35 bg-[hsl(var(--foreground)/0.95)] p-4 text-white shadow-2xl backdrop-blur-sm"
               style={{
                 left: textBoxStyle.left,
                 top: textBoxStyle.top,
@@ -363,7 +373,7 @@ export function TutorialController() {
           )
         : createPortal(
             <div
-              className="pointer-events-none fixed inset-0 z-[999997] flex items-center justify-center px-6"
+              className="pointer-events-none fixed inset-0 z-[1000003] flex items-center justify-center px-6"
               role="status"
               aria-live="polite"
             >
@@ -376,7 +386,7 @@ export function TutorialController() {
         {highlightError
           ? createPortal(
               <div
-                className="pointer-events-none fixed left-1/2 top-6 z-[999998] w-[90vw] max-w-md -translate-x-1/2"
+                className="pointer-events-none fixed left-1/2 top-6 z-[1000005] w-[90vw] max-w-md -translate-x-1/2"
               >
                 <div className="rounded-xl border border-amber-400/40 bg-gradient-to-r from-amber-600/90 via-orange-500/90 to-red-500/90 px-5 py-4 text-white shadow-2xl backdrop-blur-sm">
                   <p className="mb-1 text-sm font-bold tracking-wide">{t("tutorial.highlightErrorTitle")}</p>
@@ -390,7 +400,7 @@ export function TutorialController() {
 
 
       {createPortal(
-        <div className="fixed bottom-4 left-4 z-[999998] flex flex-wrap items-center gap-2">
+        <div className="fixed bottom-4 left-4 z-[1000004] flex flex-wrap items-center gap-2">
           {canGoPrevious ? (
             <Button
               type="button"
