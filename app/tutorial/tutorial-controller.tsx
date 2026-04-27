@@ -5,7 +5,7 @@ import { PointerOverlay } from "@/components/pointer-overlay";
 import { Button } from "@/components/ui/button";
 import { TypographyP } from "@/components/ui/typography";
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
-import type { ScreenHighlight, StepVisual } from "@/lib/tutorials";
+import { INTERACTIVE_TUTORIAL_ID, type ScreenHighlight, type StepVisual } from "@/lib/tutorials";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
@@ -81,6 +81,14 @@ export function TutorialController() {
   useEffect(() => {
     let cancelled = false;
 
+    function buildInteractivePointerDescription(step: NonNullable<typeof currentStep>): string {
+      const title = typeof step.titleRaw === "string" ? step.titleRaw.trim() : "";
+      const body = typeof step.textRaw === "string" ? step.textRaw.trim() : "";
+      const combined = [title, body].filter(Boolean).join(" — ").trim();
+      const clipped = combined.length > 420 ? `${combined.slice(0, 420)}…` : combined;
+      return clipped || "the main UI element the user should interact with next on the screen";
+    }
+
     async function syncHighlight() {
       if (!currentStep) {
         setHighlightPayload(null);
@@ -89,6 +97,25 @@ export function TutorialController() {
         setHighlightError(null);
         return;
       }
+
+      // Always capture a screenshot once per step (Electron only).
+      // This supports consistent “computer help” context even for text-only steps.
+      let captured:
+        | {
+            base64: string;
+            width: number;
+            height: number;
+          }
+        | null
+        | undefined = null;
+      try {
+        if (typeof window !== "undefined" && window.electronAPI?.requestScreenshotPermission) {
+          captured = await captureScreenToPngBase64();
+        }
+      } catch {
+        // ignore capture errors for non-screen steps
+      }
+      if (cancelled) return;
 
       if (currentStep.highlightSelector) {
         setIsLoadingHighlight(false);
@@ -126,6 +153,11 @@ export function TutorialController() {
           screenshotHeight: window.innerHeight,
           useCssCoords: true,
         });
+
+        // Interactive tutorials should still show the “yellow arrow” style pointer, even for in-app selector highlights.
+        if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
+          setPointerTarget({ x: cx, y: cy });
+        }
         return;
       }
 
@@ -141,7 +173,7 @@ export function TutorialController() {
         }
 
         try {
-          const cap = await captureScreenToPngBase64();
+          const cap = captured ?? (await captureScreenToPngBase64());
           if (cancelled || !cap) {
             setIsLoadingHighlight(false);
             return;
@@ -187,6 +219,62 @@ export function TutorialController() {
         return;
       }
 
+      // Interactive tutorial: always attempt an on-screen pointer after capturing a screenshot,
+      // even if the model forgot to include highlightDescription.
+      if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
+        setHighlightPayload(null);
+        setPointerTarget(null);
+        setIsLoadingHighlight(true);
+        setHighlightError(null);
+        if (typeof window === "undefined" || !window.electronAPI?.locateElementComputerUse) {
+          setIsLoadingHighlight(false);
+          setHighlightError("Screen analysis is only available in the desktop app.");
+          return;
+        }
+
+        try {
+          const cap = captured ?? (await captureScreenToPngBase64());
+          if (cancelled || !cap) {
+            setIsLoadingHighlight(false);
+            return;
+          }
+
+          const target = buildInteractivePointerDescription(currentStep);
+          const result = await window.electronAPI.locateElementComputerUse(cap.base64, target, cap.width, cap.height);
+          if (cancelled) {
+            setIsLoadingHighlight(false);
+            return;
+          }
+
+          if (result.success && result.found && result.x != null && result.y != null) {
+            setHighlightError(null);
+            setHighlightPayload(null);
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            setPointerTarget({
+              x: result.x * (vw / cap.width),
+              y: result.y * (vh / cap.height),
+            });
+          } else {
+            setHighlightPayload(null);
+            setPointerTarget(null);
+            setHighlightError(result.explanation ?? result.error ?? "Element not found on screen.");
+          }
+        } catch (err) {
+          if (cancelled) return;
+          console.error("Interactive pointer vision failed:", err);
+          setHighlightPayload(null);
+          setPointerTarget(null);
+          setHighlightError(
+            err instanceof Error
+              ? `Something went wrong while locating the target: ${err.message}`
+              : "Something went wrong while locating the target on screen.",
+          );
+        }
+        setIsLoadingHighlight(false);
+        return;
+      }
+
       if (currentStep.highlight) {
         setIsLoadingHighlight(false);
         setHighlightError(null);
@@ -209,7 +297,7 @@ export function TutorialController() {
     return () => {
       cancelled = true;
     };
-  }, [currentStep]);
+  }, [currentStep, tutorialId]);
 
   const fallbackW = typeof window !== "undefined" ? window.innerWidth : 1;
   const fallbackH = typeof window !== "undefined" ? window.innerHeight : 1;
@@ -391,7 +479,7 @@ export function TutorialController() {
               className="interactable bg-white text-black hover:bg-white/90"
               onClick={() => {
                 if (isLastStep) {
-                  if (tutorialId === "interactive") {
+                  if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
                     void generateNextInteractiveStep();
                     return;
                   }
@@ -400,9 +488,11 @@ export function TutorialController() {
                 }
                 nextStep();
               }}
-              disabled={tutorialId === "interactive" && isLastStep && isGeneratingInteractiveStep}
+              disabled={tutorialId === INTERACTIVE_TUTORIAL_ID && isLastStep && isGeneratingInteractiveStep}
             >
-              {tutorialId === "interactive" && isLastStep && isGeneratingInteractiveStep ? "Thinking..." : t("tutorial.next")}
+              {tutorialId === INTERACTIVE_TUTORIAL_ID && isLastStep && isGeneratingInteractiveStep
+                ? "Thinking..."
+                : t("tutorial.next")}
             </Button>
           ) : null}
           <Button

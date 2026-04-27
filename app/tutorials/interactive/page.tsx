@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TypographyH2, TypographyP, TypographySmall } from "@/components/ui/typography";
 import { useTutorial } from "@/app/tutorial/tutorial-provider";
-import type { TutorialStep } from "@/lib/tutorials";
+import { INTERACTIVE_TUTORIAL_ID, type TutorialStep } from "@/lib/tutorials";
+import { Message } from "@/app/chat/message";
+import { ScrollContainer } from "@/app/chat/scroll-container";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type BoundingBox = {
@@ -16,6 +18,39 @@ type BoundingBox = {
   width?: number;
   height?: number;
 };
+
+function promptLikelyNeedsScreenPointer(userText: string): boolean {
+  const t = userText.toLowerCase();
+  const keywords = [
+    "chrome",
+    "browser",
+    "address bar",
+    "url",
+    "gmail",
+    "inbox",
+    "tab",
+    "desktop",
+    "dock",
+    "taskbar",
+    "start menu",
+    "google",
+    "icon",
+    "open",
+    "click",
+    "word",
+    "microsoft word",
+    "excel",
+    "powerpoint",
+    "outlook",
+    "application",
+    "app",
+    "program",
+    "windows",
+    "spotlight",
+    "launchpad",
+  ];
+  return keywords.some((k) => t.includes(k));
+}
 
 function boundingBoxes(selectors: string[]): { boxes: BoundingBox[] } {
   const boxes: BoundingBox[] = selectors.map((selector) => {
@@ -53,14 +88,21 @@ function extractStepFromContent(content: unknown): TutorialStep | null {
     if (visual !== "text" && visual !== "screen" && visual !== "screen_text") return null;
     const textRaw = typeof parsed.textRaw === "string" ? parsed.textRaw : null;
     if (!textRaw) return null;
+    const highlightSelector = typeof parsed.highlightSelector === "string" ? parsed.highlightSelector : undefined;
+    const highlightDescription =
+      typeof parsed.highlightDescription === "string" ? parsed.highlightDescription : undefined;
+
+    // Guardrails: don't allow "random" highlights for pure text steps.
+    const allowHighlight = visual !== "text";
+
     return {
       id: parsed.id,
       titleRaw: typeof parsed.titleRaw === "string" ? parsed.titleRaw : undefined,
       text: "interactive.step", // unused when textRaw present
       textRaw,
       visual,
-      highlightSelector: typeof parsed.highlightSelector === "string" ? parsed.highlightSelector : undefined,
-      highlightDescription: typeof parsed.highlightDescription === "string" ? parsed.highlightDescription : undefined,
+      highlightSelector: allowHighlight ? highlightSelector : undefined,
+      highlightDescription: allowHighlight ? highlightDescription : undefined,
       highlightBright: Boolean((parsed as any).highlightBright),
     };
   } catch {
@@ -86,7 +128,7 @@ export default function InteractiveTutorialPage() {
   const promptRef = useRef<HTMLTextAreaElement | null>(null);
   const promptFormRef = useRef<HTMLFormElement | null>(null);
 
-  const isActive = tutorialId === "interactive";
+  const isActive = tutorialId === INTERACTIVE_TUTORIAL_ID;
 
   const initialMessages = useMemo<MessageParam[]>(
     () => [
@@ -103,7 +145,10 @@ export default function InteractiveTutorialPage() {
     messagesRef.current = initialMessages;
   }, [initialMessages]);
 
-  const runAgentTurn = async (userText: string) => {
+  const runAgentTurn = async (
+    userText: string,
+    opts?: { forceScreenPointer?: boolean; attempt?: number },
+  ): Promise<TutorialStep | null> => {
     const userMsg: MessageParam = { role: "user", content: userText };
     messagesRef.current = [...messagesRef.current, userMsg];
 
@@ -152,7 +197,36 @@ export default function InteractiveTutorialPage() {
 
       // Otherwise we expect a step JSON in text.
       const step = extractStepFromContent(content);
-      if (step) return step;
+      if (step) {
+        // Validate in-app selector highlights before accepting them.
+        if (step.highlightSelector) {
+          const check = boundingBoxes([step.highlightSelector]);
+          const found = check.boxes[0]?.found === true;
+          if (!found) {
+            return { ...step, highlightSelector: undefined };
+          }
+        }
+
+        if (opts?.forceScreenPointer) {
+          const hasPointer = Boolean(step.highlightDescription);
+          const isScreenStep = step.visual === "screen" || step.visual === "screen_text";
+          if (!hasPointer || !isScreenStep) {
+            const attempt = opts.attempt ?? 0;
+            if (attempt < 1) {
+              return runAgentTurn(
+                `Regenerate the step with an on-screen pointer.\n` +
+                  `Requirements:\n` +
+                  `- visual MUST be "screen" or "screen_text"\n` +
+                  `- include highlightDescription (clear English description)\n` +
+                  `- do NOT include highlightSelector\n\n` +
+                  `Original user message: ${userText}`,
+                { forceScreenPointer: true, attempt: attempt + 1 },
+              );
+            }
+          }
+        }
+        return step;
+      }
 
       // If no step and no tool_use, stop.
       return null;
@@ -167,8 +241,10 @@ export default function InteractiveTutorialPage() {
     setLog([{ role: "user", text: first }]);
     try {
       startInteractiveTutorial(goal || first);
+      const forcePointer = promptLikelyNeedsScreenPointer(first);
       const step = await runAgentTurn(
         `User goal: ${goal || first}\nUser message: ${first}\nNow generate the next tutorial step JSON.`,
+        { forceScreenPointer: forcePointer },
       );
       if (step) {
         addInteractiveStep(step);
@@ -271,23 +347,20 @@ export default function InteractiveTutorialPage() {
           </div>
         </div>
       ) : (
-        <div className="flex flex-1 flex-col gap-4">
-          <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-black/15 p-4">
-            {log.length ? (
-              <div className="space-y-3">
-                {log.map((m, idx) => (
-                  <div key={idx} className="text-sm">
-                    <span className="font-semibold text-white/80">{m.role === "user" ? "You" : "Assistant"}:</span>{" "}
-                    <span className="text-white/90">{m.text}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <TypographySmall className="text-white/70">
-                Ask something like “Where is the Tutorials tab?” or “Help me open Gmail.”
-              </TypographySmall>
-            )}
-          </div>
+        <div className="flex flex-1 min-h-0 flex-col gap-4">
+          <section className="min-h-0 flex-1 overflow-hidden">
+            <ScrollContainer>
+              {log.length ? (
+                log.map((m, idx) => <Message key={idx} text={m.text} variant={m.role} />)
+              ) : (
+                <Message
+                  text={`Ask something like “Where is the Tutorials tab?” or “Help me open Gmail.”`}
+                  variant="assistant"
+                />
+              )}
+              {isLoading ? <Message text="Thinking..." variant="assistant" /> : null}
+            </ScrollContainer>
+          </section>
 
           <form
             ref={(el) => {
@@ -303,7 +376,10 @@ export default function InteractiveTutorialPage() {
               void (async () => {
                 setIsLoading(true);
                 try {
-                  const step = await runAgentTurn(`User message: ${p}\nGenerate the next tutorial step JSON.`);
+                  const forcePointer = promptLikelyNeedsScreenPointer(p);
+                  const step = await runAgentTurn(`User message: ${p}\nGenerate the next tutorial step JSON.`, {
+                    forceScreenPointer: forcePointer,
+                  });
                   if (step) addInteractiveStep(step);
                   setLog((prev) => [...prev, { role: "assistant", text: step?.textRaw ?? "Okay." }]);
                 } finally {
