@@ -334,8 +334,14 @@
     "visualScreen": "Pantalla",
     "visualScreenText": "Texto + pantalla",
     "visualBadgeHint": "Formato de la lección: solo texto, demo en pantalla, o ambos",
-    "highlightErrorTitle": "No se encontró el elemento",
-    "highlightErrorHint": "Asegúrate de que Chrome esté visible y vuelve a intentar con Siguiente.",
+    "highlightErrorTitle": "No encontramos eso en tu pantalla",
+    "highlightErrorTargetLabel": "Buscando: {{target}}",
+    "highlightErrorHint": "Pon la ventana correcta a la vista y vuelve a intentar con Siguiente.",
+    "highlightErrorHintChrome": "Abre Google Chrome para que esté visible en tu pantalla y vuelve a intentar con Siguiente.",
+    "highlightErrorHintGmail": "Abre Gmail en Chrome para que esté visible en tu pantalla y vuelve a intentar con Siguiente.",
+    "highlightErrorHintBrowser": "Asegúrate de que la ventana de tu navegador esté visible y vuelve a intentar con Siguiente.",
+    "highlightErrorRetry": "Intentar de nuevo",
+    "highlightErrorDismiss": "Cerrar",
     "courseTitles": {
       "intro": "Recorrido de la app",
       "google-search": "Búsqueda de Google"

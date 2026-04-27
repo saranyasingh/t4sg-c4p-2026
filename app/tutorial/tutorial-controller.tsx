@@ -5,11 +5,67 @@ import { PointerOverlay } from "@/components/pointer-overlay";
 import { Button } from "@/components/ui/button";
 import { TypographyP } from "@/components/ui/typography";
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
+import type { ScreenHighlight, StepVisual } from "@/lib/tutorials";
+import { Search, X } from "lucide-react";
+import Image from "next/image";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { INTERACTIVE_TUTORIAL_ID, type ScreenHighlight, type StepVisual } from "@/lib/tutorials";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import c4pLogo from "../../public/images/c4p.png";
 import { useTutorial } from "./tutorial-provider";
+
+interface HighlightErrorState {
+  /** Title shown at the top of the card. */
+  title: string;
+  /** Short, plain-language target name (the thing we were trying to find). */
+  target?: string;
+  /** Smart, target-aware guidance for how to recover. */
+  hint: string;
+  /** Optional extra detail from the vision model — only shown when it adds info. */
+  detail?: string;
+}
+
+/** Map a raw target description to a short, friendly name shown to the user. */
+function shortTargetName(description: string): string {
+  const d = description.trim();
+  const lower = d.toLowerCase();
+  if (lower.includes("chrome")) return "Google Chrome";
+  if (lower.includes("gmail")) return "Gmail";
+  if (lower.includes("address bar")) return "the address bar";
+  if (lower.includes("compose")) return "the Compose button";
+  if (lower.includes("inbox")) return "the Gmail inbox";
+  if (lower.includes("reply") || lower.includes("forward")) return "the Reply or Forward button";
+  if (lower.includes("bookmark")) return "the bookmark icon";
+  if (lower.includes("tabs") || lower.includes("new tab")) return "the browser tabs";
+  if (lower.includes("send button")) return "the Send button";
+  // Fall back to the first sentence/clause, trimmed.
+  const firstSentence = d.split(/[.!?]/)[0]?.trim() ?? d;
+  return firstSentence.length > 80 ? `${firstSentence.slice(0, 77)}…` : firstSentence;
+}
+
+/** Choose a contextual hint based on what the step was looking for. */
+function smartHintKey(description: string): string {
+  const lower = description.toLowerCase();
+  if (lower.includes("gmail")) return "tutorial.highlightErrorHintGmail";
+  if (lower.includes("chrome")) return "tutorial.highlightErrorHintChrome";
+  if (lower.includes("browser") || lower.includes("address bar") || lower.includes("tab")) {
+    return "tutorial.highlightErrorHintBrowser";
+  }
+  return "tutorial.highlightErrorHint";
+}
+
+/** Decide whether a model explanation is helpful enough to show to the user. */
+function usefulDetail(explanation: string | undefined): string | undefined {
+  if (!explanation) return undefined;
+  const trimmed = explanation.trim();
+  if (!trimmed) return undefined;
+  // Filter out the boilerplate "not found" string from the API.
+  if (/^element not found on screen\.?$/i.test(trimmed)) return undefined;
+  if (trimmed.length < 8) return undefined;
+  return trimmed.length > 200 ? `${trimmed.slice(0, 197)}…` : trimmed;
+}
 
 function visualLabelKey(v: StepVisual): string {
   if (v === "text") return "tutorial.visualText";
@@ -76,7 +132,22 @@ export function TutorialController() {
     return () => window.removeEventListener("resize", syncViewport);
   }, []);
 
-  const [highlightError, setHighlightError] = useState<string | null>(null);
+  const [highlightError, setHighlightError] = useState<HighlightErrorState | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
+
+  const buildSmartError = useCallback(
+    (description: string | undefined, explanation?: string): HighlightErrorState => {
+      const target = description ? shortTargetName(description) : undefined;
+      const hintKey = description ? smartHintKey(description) : "tutorial.highlightErrorHint";
+      return {
+        title: t("tutorial.highlightErrorTitle"),
+        target,
+        hint: t(hintKey),
+        detail: usefulDetail(explanation),
+      };
+    },
+    [t],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -126,7 +197,10 @@ export function TutorialController() {
           typeof document !== "undefined" ? (document.querySelector(currentStep.highlightSelector) as HTMLElement | null) : null;
         if (!el) {
           setHighlightPayload(null);
-          setHighlightError("I couldn't find that UI element in the app panel.");
+          setHighlightError({
+            title: t("tutorial.highlightErrorTitle"),
+            hint: t("tutorial.highlightErrorHint"),
+          });
           return;
         }
 
@@ -168,7 +242,11 @@ export function TutorialController() {
         setHighlightError(null);
         if (typeof window === "undefined" || !window.electronAPI?.locateElementComputerUse) {
           setIsLoadingHighlight(false);
-          setHighlightError("Screen analysis is only available in the desktop app.");
+          setHighlightError({
+            title: t("tutorial.highlightErrorTitle"),
+            hint: t("tutorial.highlightErrorHint"),
+            detail: "Screen analysis is only available in the desktop app.",
+          });
           return;
         }
 
@@ -202,7 +280,9 @@ export function TutorialController() {
           } else {
             setHighlightPayload(null);
             setPointerTarget(null);
-            setHighlightError(result.explanation ?? result.error ?? "Element not found on screen.");
+            setHighlightError(
+              buildSmartError(currentStep.highlightDescription, result.explanation ?? result.error),
+            );
           }
         } catch (err) {
           if (cancelled) return;
@@ -210,9 +290,7 @@ export function TutorialController() {
           setHighlightPayload(null);
           setPointerTarget(null);
           setHighlightError(
-            err instanceof Error
-              ? `Something went wrong while locating the target: ${err.message}`
-              : "Something went wrong while locating the target on screen.",
+            buildSmartError(currentStep.highlightDescription, err instanceof Error ? err.message : undefined),
           );
         }
         setIsLoadingHighlight(false);
@@ -297,7 +375,7 @@ export function TutorialController() {
     return () => {
       cancelled = true;
     };
-  }, [currentStep, tutorialId]);
+  }, [currentStep, retryToken, buildSmartError, t]);
 
   const fallbackW = typeof window !== "undefined" ? window.innerWidth : 1;
   const fallbackH = typeof window !== "undefined" ? window.innerHeight : 1;
@@ -448,12 +526,81 @@ export function TutorialController() {
         {highlightError
           ? createPortal(
               <div
-                className="pointer-events-none fixed left-1/2 top-6 z-[1000005] w-[90vw] max-w-md -translate-x-1/2"
+                className="fixed left-1/2 top-6 z-[999998] w-[90vw] max-w-md -translate-x-1/2"
+                role="alert"
+                aria-live="assertive"
               >
-                <div className="rounded-xl border border-amber-400/40 bg-gradient-to-r from-amber-600/90 via-orange-500/90 to-red-500/90 px-5 py-4 text-white shadow-2xl backdrop-blur-sm">
-                  <p className="mb-1 text-sm font-bold tracking-wide">{t("tutorial.highlightErrorTitle")}</p>
-                  <p className="mb-2 text-sm leading-snug">{highlightError}</p>
-                  <p className="text-xs font-medium text-white/80">{t("tutorial.highlightErrorHint")}</p>
+                <div
+                  className="overflow-hidden rounded-2xl border border-white/40 bg-[hsl(var(--foreground)/0.96)] text-white shadow-2xl backdrop-blur-md"
+                  style={{
+                    boxShadow:
+                      "0 18px 40px rgba(0, 20, 7, 0.45), 0 0 0 1px hsl(var(--primary) / 0.35)",
+                  }}
+                >
+                  <div
+                    className="h-1.5 w-full"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, var(--green-1) 0%, var(--green-2) 50%, var(--green-3) 100%)",
+                    }}
+                    aria-hidden="true"
+                  />
+                  <div className="flex items-start gap-3 px-5 py-4">
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Image
+                        src={c4pLogo}
+                        alt="Computers 4 People"
+                        width={32}
+                        height={32}
+                        className="rounded-md bg-white/10 p-1"
+                      />
+                      <span
+                        className="flex h-8 w-8 items-center justify-center rounded-full"
+                        style={{ background: "hsl(var(--primary) / 0.18)", color: "var(--green-1)" }}
+                        aria-hidden="true"
+                      >
+                        <Search className="h-4 w-4" />
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold leading-tight tracking-wide" style={{ color: "var(--green-1)" }}>
+                        {highlightError.title}
+                      </p>
+                      {highlightError.target ? (
+                        <p className="mt-1 text-xs font-medium uppercase tracking-wide text-white/65">
+                          {t("tutorial.highlightErrorTargetLabel", { target: highlightError.target })}
+                        </p>
+                      ) : null}
+                      <p className="mt-2 text-sm leading-snug text-white/95">{highlightError.hint}</p>
+                      {highlightError.detail ? (
+                        <p className="mt-2 text-xs leading-snug text-white/65">{highlightError.detail}</p>
+                      ) : null}
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="interactable h-8 rounded-full px-3 text-xs font-semibold"
+                          style={{
+                            background: "var(--green-1)",
+                            color: "var(--black)",
+                          }}
+                          onClick={() => setRetryToken((n) => n + 1)}
+                        >
+                          {t("tutorial.highlightErrorRetry")}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="interactable h-8 rounded-full border border-white/25 bg-white/5 px-3 text-xs font-semibold text-white/85 hover:bg-white/15"
+                          onClick={() => setHighlightError(null)}
+                        >
+                          <X className="mr-1 h-3.5 w-3.5" />
+                          {t("tutorial.highlightErrorDismiss")}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>,
               document.body,
