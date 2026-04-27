@@ -14,7 +14,7 @@ export default function TutorialsLandingPage() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-6">
       <div className="shrink-0 space-y-2">
-        <TypographyH2>{t("nav.tutorials")}</TypographyH2>
+        <TypographyH2 className="text-white">{t("nav.tutorials")}</TypographyH2>
         <TypographyP className="text-white/80">{t("tutorials.description")}</TypographyP>
       </div>
 

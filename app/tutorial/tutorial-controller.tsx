@@ -9,6 +9,8 @@ import type { ScreenHighlight, StepVisual } from "@/lib/tutorials";
 import { Search, X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { INTERACTIVE_TUTORIAL_ID, type ScreenHighlight, type StepVisual } from "@/lib/tutorials";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import c4pLogo from "../../public/images/c4p.png";
@@ -150,6 +152,14 @@ export function TutorialController() {
   useEffect(() => {
     let cancelled = false;
 
+    function buildInteractivePointerDescription(step: NonNullable<typeof currentStep>): string {
+      const title = typeof step.titleRaw === "string" ? step.titleRaw.trim() : "";
+      const body = typeof step.textRaw === "string" ? step.textRaw.trim() : "";
+      const combined = [title, body].filter(Boolean).join(" — ").trim();
+      const clipped = combined.length > 420 ? `${combined.slice(0, 420)}…` : combined;
+      return clipped || "the main UI element the user should interact with next on the screen";
+    }
+
     async function syncHighlight() {
       if (!currentStep) {
         setHighlightPayload(null);
@@ -158,6 +168,25 @@ export function TutorialController() {
         setHighlightError(null);
         return;
       }
+
+      // Always capture a screenshot once per step (Electron only).
+      // This supports consistent “computer help” context even for text-only steps.
+      let captured:
+        | {
+            base64: string;
+            width: number;
+            height: number;
+          }
+        | null
+        | undefined = null;
+      try {
+        if (typeof window !== "undefined" && window.electronAPI?.requestScreenshotPermission) {
+          captured = await captureScreenToPngBase64();
+        }
+      } catch {
+        // ignore capture errors for non-screen steps
+      }
+      if (cancelled) return;
 
       if (currentStep.highlightSelector) {
         setIsLoadingHighlight(false);
@@ -198,6 +227,11 @@ export function TutorialController() {
           screenshotHeight: window.innerHeight,
           useCssCoords: true,
         });
+
+        // Interactive tutorials should still show the “yellow arrow” style pointer, even for in-app selector highlights.
+        if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
+          setPointerTarget({ x: cx, y: cy });
+        }
         return;
       }
 
@@ -217,7 +251,7 @@ export function TutorialController() {
         }
 
         try {
-          const cap = await captureScreenToPngBase64();
+          const cap = captured ?? (await captureScreenToPngBase64());
           if (cancelled || !cap) {
             setIsLoadingHighlight(false);
             return;
@@ -263,6 +297,62 @@ export function TutorialController() {
         return;
       }
 
+      // Interactive tutorial: always attempt an on-screen pointer after capturing a screenshot,
+      // even if the model forgot to include highlightDescription.
+      if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
+        setHighlightPayload(null);
+        setPointerTarget(null);
+        setIsLoadingHighlight(true);
+        setHighlightError(null);
+        if (typeof window === "undefined" || !window.electronAPI?.locateElementComputerUse) {
+          setIsLoadingHighlight(false);
+          setHighlightError("Screen analysis is only available in the desktop app.");
+          return;
+        }
+
+        try {
+          const cap = captured ?? (await captureScreenToPngBase64());
+          if (cancelled || !cap) {
+            setIsLoadingHighlight(false);
+            return;
+          }
+
+          const target = buildInteractivePointerDescription(currentStep);
+          const result = await window.electronAPI.locateElementComputerUse(cap.base64, target, cap.width, cap.height);
+          if (cancelled) {
+            setIsLoadingHighlight(false);
+            return;
+          }
+
+          if (result.success && result.found && result.x != null && result.y != null) {
+            setHighlightError(null);
+            setHighlightPayload(null);
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            setPointerTarget({
+              x: result.x * (vw / cap.width),
+              y: result.y * (vh / cap.height),
+            });
+          } else {
+            setHighlightPayload(null);
+            setPointerTarget(null);
+            setHighlightError(result.explanation ?? result.error ?? "Element not found on screen.");
+          }
+        } catch (err) {
+          if (cancelled) return;
+          console.error("Interactive pointer vision failed:", err);
+          setHighlightPayload(null);
+          setPointerTarget(null);
+          setHighlightError(
+            err instanceof Error
+              ? `Something went wrong while locating the target: ${err.message}`
+              : "Something went wrong while locating the target on screen.",
+          );
+        }
+        setIsLoadingHighlight(false);
+        return;
+      }
+
       if (currentStep.highlight) {
         setIsLoadingHighlight(false);
         setHighlightError(null);
@@ -292,46 +382,20 @@ export function TutorialController() {
 
   const textBoxStyle = useMemo(() => {
     const vw = viewport.w;
-    const vh = viewport.h;
     const margin = 16;
     const maxW = Math.min(420, vw - margin * 2);
 
-    const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
-
-    if (spotlightRect) {
-      const preferBelow = spotlightRect.top + spotlightRect.height + 220 < vh;
-      const top = preferBelow ? spotlightRect.top + spotlightRect.height + 12 : spotlightRect.top - 200;
-      const left = clamp(spotlightRect.left + spotlightRect.width / 2 - maxW / 2, margin, vw - maxW - margin);
-
-      return {
-        width: maxW,
-        left,
-        top: clamp(top, margin, vh - 180 - margin),
-        bottom: undefined as number | undefined,
-      };
-    }
-
-    if (pointerTarget) {
-      const estBoxH = 200;
-      const preferBelow = pointerTarget.y + estBoxH + 40 < vh;
-      const top = preferBelow ? pointerTarget.y + 40 : pointerTarget.y - estBoxH - 20;
-      const left = clamp(pointerTarget.x - maxW / 2, margin, vw - maxW - margin);
-
-      return {
-        width: maxW,
-        left,
-        top: clamp(top, margin, vh - estBoxH - margin),
-        bottom: undefined as number | undefined,
-      };
-    }
-
+    // Anchor the step card to the bottom-left on every step. We intentionally
+    // do not reposition it relative to the spotlight or pointer target — a
+    // consistent location is easier to scan and matches the welcome step's
+    // placement so the tour feels uniform.
     return {
       width: maxW,
       left: margin,
       top: undefined as number | undefined,
       bottom: 64,
     };
-  }, [pointerTarget, spotlightRect, viewport.h, viewport.w]);
+  }, [viewport.w]);
 
   if (!mounted || !tutorialId || !activeTutorial || !currentStep) {
     return null;
@@ -341,19 +405,43 @@ export function TutorialController() {
   const showStepText = !shouldWaitForBox || !isLoadingHighlight;
   const hasSpotlight = Boolean(highlightPayload?.coords);
   const hasPointerHighlight = Boolean(pointerTarget);
+  // Whether THIS step is intended to have a highlight target. Used to decide
+  // if the no-spotlight dim should render — checking step properties is more
+  // reliable than checking `hasSpotlight`, which can briefly be stale during
+  // step transitions and would make the dim flicker on/off.
+  const stepHasHighlightTarget = Boolean(
+    currentStep.highlightSelector ||
+      currentStep.highlightDescription ||
+      currentStep.highlight ||
+      currentStep.highlightBright,
+  );
 
   return (
     <>
-      {!hasSpotlight && !hasPointerHighlight
+      {/* Dim when a tour step has no spotlight target (e.g. the welcome
+          step). Matches the dim level used OUTSIDE the spotlight on regular
+          tutorial steps so all tour pages feel consistent. Spans only the
+          area to the LEFT of the shell panel — the panel itself is
+          semi-transparent (0.8) so dimming behind it would bleed through and
+          make the panel content unreadable. Panel sits at right-6 with
+          w-[420px] so its left edge is at right: 444px. Tour controls
+          (z-[999998]) and step card (z-[999997]) stay on top via z-index. */}
+      {!stepHasHighlightTarget
         ? createPortal(
             <div
-              className="pointer-events-none fixed inset-0"
-              style={{
-                zIndex: 999991,
-                background: "rgba(8, 10, 16, 0.54)",
-              }}
+              className="pointer-events-none fixed top-0 bottom-0 left-0"
+              style={{ right: 444, zIndex: 999990 }}
               aria-hidden="true"
-            />,
+            >
+              <div
+                className="absolute inset-0"
+                style={{ background: "rgba(0, 0, 0, 0.82)" }}
+              />
+              <div
+                className="absolute inset-0"
+                style={{ background: "rgba(0, 3, 10, 0.32)" }}
+              />
+            </div>,
             document.body,
           )
         : null}
@@ -385,7 +473,7 @@ export function TutorialController() {
       {showStepText
         ? createPortal(
             <div
-              className="pointer-events-none fixed z-[999997] max-h-[42vh] overflow-y-auto rounded-xl border border-white/35 bg-[hsl(var(--foreground)/0.95)] p-4 text-white shadow-2xl backdrop-blur-sm"
+              className="pointer-events-none fixed z-[1000003] max-h-[42vh] overflow-y-auto rounded-xl border border-white/35 bg-[hsl(var(--foreground)/0.95)] p-4 text-white shadow-2xl backdrop-blur-sm"
               style={{
                 left: textBoxStyle.left,
                 top: textBoxStyle.top,
@@ -425,7 +513,7 @@ export function TutorialController() {
           )
         : createPortal(
             <div
-              className="pointer-events-none fixed inset-0 z-[999997] flex items-center justify-center px-6"
+              className="pointer-events-none fixed inset-0 z-[1000003] flex items-center justify-center px-6"
               role="status"
               aria-live="polite"
             >
@@ -521,7 +609,7 @@ export function TutorialController() {
 
 
       {createPortal(
-        <div className="fixed bottom-4 left-4 z-[999998] flex flex-wrap items-center gap-2">
+        <div className="fixed bottom-4 left-4 z-[1000004] flex flex-wrap items-center gap-2">
           {canGoPrevious ? (
             <Button
               type="button"
@@ -538,7 +626,7 @@ export function TutorialController() {
               className="interactable bg-white text-black hover:bg-white/90"
               onClick={() => {
                 if (isLastStep) {
-                  if (tutorialId === "interactive") {
+                  if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
                     void generateNextInteractiveStep();
                     return;
                   }
@@ -547,9 +635,11 @@ export function TutorialController() {
                 }
                 nextStep();
               }}
-              disabled={tutorialId === "interactive" && isLastStep && isGeneratingInteractiveStep}
+              disabled={tutorialId === INTERACTIVE_TUTORIAL_ID && isLastStep && isGeneratingInteractiveStep}
             >
-              {tutorialId === "interactive" && isLastStep && isGeneratingInteractiveStep ? "Thinking..." : t("tutorial.next")}
+              {tutorialId === INTERACTIVE_TUTORIAL_ID && isLastStep && isGeneratingInteractiveStep
+                ? "Thinking..."
+                : t("tutorial.next")}
             </Button>
           ) : null}
           <Button
