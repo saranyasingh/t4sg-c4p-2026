@@ -133,6 +133,9 @@ export default function Home() {
   const currentLandingStep = LANDING_STEPS[landingStepIndex];
   const isFirstLandingStep = landingStepIndex === 0;
   const isLastLandingStep = landingStepIndex === LANDING_STEPS.length - 1;
+  const isPermissionsStepBlocked = currentLandingStep === "permissions" && screenCaptureStatus !== "granted";
+  const wizardCurrentStep = Math.max(landingStepIndex, 1);
+  const wizardTotalSteps = LANDING_STEPS.length - 1;
 
   useEffect(() => {
     landingStepMemory = landingStepIndex;
@@ -148,21 +151,12 @@ export default function Home() {
 
   const renderStepContent = (): ReactNode => {
     if (currentLandingStep === "welcome") {
-      return (
-        <section className="space-y-3 rounded-xl border border-white/15 bg-white/5 p-5">
-          <h3 className={`${TEXT_BASE} font-semibold text-white`}>{t("home.onboarding.steps.welcome.title")}</h3>
-          <p className={`${TEXT_SM} leading-relaxed text-white/80`}>{t("home.onboarding.steps.welcome.body")}</p>
-        </section>
-      );
+      return null;
     }
 
     if (currentLandingStep === "language") {
       return (
         <section className="space-y-4 rounded-xl border border-white/15 bg-white/5 p-5">
-          <div className="space-y-1">
-            <h3 className={`${TEXT_BASE} font-semibold text-white`}>{t("home.languageHeading")}</h3>
-            <p className={`${TEXT_XS} text-white/75`}>{t("home.onboarding.steps.language.body")}</p>
-          </div>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -194,10 +188,6 @@ export default function Home() {
     if (currentLandingStep === "opacity") {
       return (
         <section className="space-y-4 rounded-xl border border-white/15 bg-white/5 p-5">
-          <div className="space-y-1">
-            <h3 className={`${TEXT_BASE} font-semibold text-white`}>{t("home.opacityHeading")}</h3>
-            <p className={`${TEXT_XS} text-white/75`}>{t("home.onboarding.steps.opacity.body")}</p>
-          </div>
           <div className="grid grid-cols-3 gap-2">
             {OPACITY_PRESETS.map((preset) => {
               const isActive = Math.abs(backgroundOpacity - preset.value) < 0.025;
@@ -224,10 +214,6 @@ export default function Home() {
     if (currentLandingStep === "audioMode") {
       return (
         <section className="space-y-4 rounded-xl border border-white/15 bg-white/5 p-5">
-          <div className="space-y-1">
-            <h3 className={`${TEXT_BASE} font-semibold text-white`}>{t("home.onboarding.steps.audioMode.title")}</h3>
-            <p className={`${TEXT_XS} text-white/75`}>{t("home.onboarding.steps.audioMode.body")}</p>
-          </div>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -266,10 +252,6 @@ export default function Home() {
     if (currentLandingStep === "textSize") {
       return (
         <section className="space-y-4 rounded-xl border border-white/15 bg-white/5 p-5">
-          <div className="space-y-1">
-            <h3 className={`${TEXT_BASE} font-semibold text-white`}>{t("home.textSizeHeading")}</h3>
-            <p className={`${TEXT_XS} text-white/75`}>{t("home.onboarding.steps.textSize.body")}</p>
-          </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {TEXT_SIZE_PRESETS.map((preset) => {
               const isActive = scale === preset;
@@ -296,13 +278,6 @@ export default function Home() {
     if (currentLandingStep === "permissions") {
       return (
         <section className="space-y-4 rounded-xl border border-white/15 bg-white/5 p-5">
-          <div className="space-y-1">
-            <h3 className={`flex items-center gap-2 ${TEXT_BASE} font-semibold text-white`}>
-              <Monitor className="h-4 w-4" aria-hidden="true" />
-              {t("home.screenCaptureHeading")}
-            </h3>
-            <p className={`${TEXT_XS} leading-relaxed text-white/75`}>{t("home.screenCaptureBody")}</p>
-          </div>
           <Button
             type="button"
             disabled={screenCaptureStatus === "requesting" || screenCaptureStatus === "granted"}
@@ -328,10 +303,6 @@ export default function Home() {
 
     return (
       <section className="space-y-4 rounded-xl border border-white/15 bg-white/5 p-5">
-        <div className="space-y-1">
-          <h3 className={`${TEXT_BASE} font-semibold text-white`}>{t("home.featuresHeading")}</h3>
-          <p className={`${TEXT_XS} text-white/75`}>{t("home.onboarding.steps.features.body")}</p>
-        </div>
         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {features.map(({ icon: Icon, titleKey, bodyKey }) => (
             <li key={titleKey} className="flex gap-2">
@@ -354,28 +325,27 @@ export default function Home() {
       aria-modal="true"
       aria-labelledby="landing-title"
     >
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8 sm:px-10 sm:py-10">
-        <header className="space-y-1 text-center">
-          <p className={`${TEXT_XS} font-semibold uppercase tracking-wide text-white/60`}>
-            {t("home.welcome")}
-          </p>
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-6 py-6 sm:px-10 sm:py-8">
+        <header className="space-y-2 text-center">
           <TypographyH2 id="landing-title" className="!mt-0 !border-0 !pb-0 text-center text-white">
             {t("home.brandTitle")}
           </TypographyH2>
-          <TypographyP className={`!mt-1 text-center ${TEXT_SM} text-white/85`}>
+          <TypographyP className={`!mt-0 text-center ${TEXT_BASE} text-white/85`}>
             {t("home.tagline")}
           </TypographyP>
         </header>
 
-        <div className="mt-4 mx-auto w-full max-w-3xl space-y-4">
+        <div className="mt-6 mx-auto w-full max-w-4xl space-y-4">
           <div className="space-y-1 text-center">
-            <p className={`${TEXT_XS} font-semibold uppercase tracking-wide text-white/65`}>
-              {t("home.onboarding.progress", {
-                current: landingStepIndex + 1,
-                total: LANDING_STEPS.length,
-              })}
-            </p>
-            <h3 className={`${TEXT_BASE} font-semibold text-white`}>
+            {!isFirstLandingStep ? (
+              <p className={`${TEXT_XS} font-semibold uppercase tracking-wide text-white/65`}>
+                {t("home.onboarding.progress", {
+                  current: wizardCurrentStep,
+                  total: wizardTotalSteps,
+                })}
+              </p>
+            ) : null}
+            <h3 className="text-[calc(1.125rem*var(--text-scale))] font-semibold text-white">
               {t(`home.onboarding.steps.${currentLandingStep}.title`)}
             </h3>
           </div>
@@ -383,23 +353,35 @@ export default function Home() {
           {renderStepContent()}
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isFirstLandingStep}
-            className={`interactable w-full ${TEXT_BASE} border-white/30 bg-transparent text-white hover:bg-white/10`}
-            onClick={handlePreviousLandingStep}
-          >
-            {t("home.onboarding.back")}
-          </Button>
-          <Button
-            type="button"
-            className={`interactable w-full ${TEXT_BASE} bg-white text-black hover:bg-white/90`}
-            onClick={isLastLandingStep ? handleEnterApp : handleNextLandingStep}
-          >
-            {isLastLandingStep ? t("home.onboarding.getStarted") : t("home.onboarding.next")}
-          </Button>
+        <div className="mx-auto mt-5 w-full max-w-4xl">
+          {isFirstLandingStep ? (
+            <Button
+              type="button"
+              className={`interactable w-full ${TEXT_BASE} bg-white text-black hover:bg-white/90`}
+              onClick={handleNextLandingStep}
+            >
+              {t("home.onboarding.start")}
+            </Button>
+          ) : (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <Button
+                type="button"
+                variant="outline"
+                className={`interactable w-full ${TEXT_BASE} border-white/30 bg-transparent text-white hover:bg-white/10`}
+                onClick={handlePreviousLandingStep}
+              >
+                {t("home.onboarding.back")}
+              </Button>
+              <Button
+                type="button"
+                disabled={!isLastLandingStep && isPermissionsStepBlocked}
+                className={`interactable w-full ${TEXT_BASE} bg-white text-black hover:bg-white/90`}
+                onClick={isLastLandingStep ? handleEnterApp : handleNextLandingStep}
+              >
+                {isLastLandingStep ? t("home.onboarding.getStarted") : t("home.onboarding.next")}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

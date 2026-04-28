@@ -3,7 +3,7 @@
     "welcome": "Bienvenido",
     "getStarted": "Hazle preguntas al asistente. Por ejemplo, \"¿Cómo envío un correo electrónico?\"",
     "brandTitle": "Granson AI",
-    "tagline": "Tu asistente amigable de computadora. Haz preguntas, muestra tu pantalla y aprende a tu ritmo.",
+    "tagline": "Haz preguntas, recibe ayuda y aprende a tu propio ritmo.",
     "letsGetStarted": "¡Comencemos!",
     "startIntroCta": "Comenzar el recorrido",
     "featuresHeading": "Qué puedes hacer",
@@ -17,37 +17,38 @@
     "opacityFull": "Total",
     "textSizeHeading": "Tamaño del texto",
     "screenCaptureHeading": "Muéstrale tu pantalla al asistente",
-    "screenCaptureBody": "El asistente puede mirar tu pantalla para ayudarte a responder preguntas sobre lo que ves. Pulsa el botón de abajo para permitir la captura de pantalla. Solo tendrás que dar permiso una vez — después, el asistente podrá capturar tu pantalla cuando se lo pidas.",
+    "screenCaptureBody": "Permite la captura de pantalla para que el asistente te ayude con lo que ves. Solo necesitas permitirlo una vez.",
     "screenCaptureAllow": "Permitir captura de pantalla",
     "screenCaptureGranted": "Captura de pantalla permitida",
     "screenCaptureRequesting": "Solicitando permiso...",
     "onboarding": {
       "progress": "Paso {{current}} de {{total}}",
       "back": "Atrás",
+      "start": "Comenzar",
       "next": "Siguiente",
       "getStarted": "Comenzar",
       "audioOn": "Activado",
       "audioOff": "Desactivado",
       "steps": {
         "welcome": {
-          "title": "Bienvenido",
-          "body": "Te guiaremos por unos pasos rápidos de configuración para que Granson AI se sienta cómodo desde el inicio."
+          "title": "Configuración rápida",
+          "body": "Hagamos una configuración rápida para que Granson AI te resulte cómodo."
         },
         "language": {
-          "title": "Controles de idioma",
-          "body": "Elige el idioma que quieres usar. Puedes cambiarlo más tarde en Opciones."
+          "title": "Elige tu idioma",
+          "body": "Elige tu idioma. Puedes cambiarlo más tarde en Opciones."
         },
         "audioMode": {
-          "title": "El asistente habla en voz alta",
-          "body": "Elige si el asistente debe leer las respuestas en voz alta. Puedes cambiar esto cuando quieras en Opciones.",
+          "title": "Modo de voz",
+          "body": "Elige si el asistente debe leer las respuestas en voz alta. Cámbialo cuando quieras en Opciones.",
           "hint": "Consejo: siempre puedes cambiar esto más tarde desde la pestaña Opciones."
         },
         "opacity": {
-          "title": "Controles de opacidad",
+          "title": "Ajusta la opacidad del fondo",
           "body": "Elige la opacidad del fondo que te resulte más fácil de leer."
         },
         "textSize": {
-          "title": "Controles de tamaño de texto",
+          "title": "Ajusta el tamaño del texto",
           "body": "Selecciona el tamaño de texto que te resulte más cómodo."
         },
         "permissions": {
@@ -55,8 +56,8 @@
           "body": "Permite la captura de pantalla para que el asistente pueda ayudarte con lo que ves."
         },
         "features": {
-          "title": "Qué puedes hacer",
-          "body": "Estas son las funciones principales con las que Granson AI puede ayudarte."
+          "title": "Explora las funciones principales",
+          "body": "Esto es lo que Granson AI puede hacer por ti."
         }
       }
     },
@@ -82,7 +83,7 @@
         "body": "Abre un tutorial para aprender cosas como usar Google o enviar Gmail. Cada paso te guía en la pantalla."
       },
       "help": {
-        "title": "La Ayuda siempre está cerca",
+        "title": "La ayuda siempre está disponible",
         "body": "Pulsa el botón de Ayuda arriba a la derecha para volver a ver este recorrido cuando necesites un recordatorio."
       }
     }
