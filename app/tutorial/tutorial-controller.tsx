@@ -191,7 +191,29 @@ export function TutorialController() {
         setHighlightError(null);
         setPointerTarget(null);
 
-        const el = typeof document !== "undefined" ? document.querySelector(currentStep.highlightSelector) : null;
+        const findElementWithRetry = async (selector: string): Promise<Element | null> => {
+          if (typeof document === "undefined") {
+            return null;
+          }
+
+          const attempts = 6;
+          const delayMs = 80;
+          for (let i = 0; i < attempts; i += 1) {
+            const match = document.querySelector(selector);
+            if (match) {
+              return match;
+            }
+            if (i < attempts - 1) {
+              await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+            }
+          }
+          return null;
+        };
+
+        const el = await findElementWithRetry(currentStep.highlightSelector);
+        if (cancelled) {
+          return;
+        }
         if (!el) {
           setHighlightPayload(null);
           setHighlightError({
@@ -616,6 +638,7 @@ export function TutorialController() {
           {canGoNext ? (
             <Button
               type="button"
+              data-intro={isLastStep ? "tutorial-finish" : undefined}
               className="interactable bg-white text-black hover:bg-white/90"
               onClick={() => {
                 if (isLastStep) {
@@ -639,6 +662,7 @@ export function TutorialController() {
           ) : null}
           <Button
             type="button"
+            data-intro="tutorial-exit"
             variant="ghost"
             className="interactable border border-white/25 bg-black/45 text-white/95 hover:bg-accent hover:text-accent-foreground"
             onClick={exitTutorial}

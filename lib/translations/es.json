@@ -21,6 +21,45 @@
     "screenCaptureAllow": "Permitir captura de pantalla",
     "screenCaptureGranted": "Captura de pantalla permitida",
     "screenCaptureRequesting": "Solicitando permiso...",
+    "onboarding": {
+      "progress": "Paso {{current}} de {{total}}",
+      "back": "Atrás",
+      "next": "Siguiente",
+      "getStarted": "Comenzar",
+      "audioOn": "Activado",
+      "audioOff": "Desactivado",
+      "steps": {
+        "welcome": {
+          "title": "Bienvenido",
+          "body": "Te guiaremos por unos pasos rápidos de configuración para que Granson AI se sienta cómodo desde el inicio."
+        },
+        "language": {
+          "title": "Controles de idioma",
+          "body": "Elige el idioma que quieres usar. Puedes cambiarlo más tarde en Opciones."
+        },
+        "audioMode": {
+          "title": "El asistente habla en voz alta",
+          "body": "Elige si el asistente debe leer las respuestas en voz alta. Puedes cambiar esto cuando quieras en Opciones.",
+          "hint": "Consejo: siempre puedes cambiar esto más tarde desde la pestaña Opciones."
+        },
+        "opacity": {
+          "title": "Controles de opacidad",
+          "body": "Elige la opacidad del fondo que te resulte más fácil de leer."
+        },
+        "textSize": {
+          "title": "Controles de tamaño de texto",
+          "body": "Selecciona el tamaño de texto que te resulte más cómodo."
+        },
+        "permissions": {
+          "title": "Permisos de captura de pantalla",
+          "body": "Permite la captura de pantalla para que el asistente pueda ayudarte con lo que ves."
+        },
+        "features": {
+          "title": "Qué puedes hacer",
+          "body": "Estas son las funciones principales con las que Granson AI puede ayudarte."
+        }
+      }
+    },
     "features": {
       "chat": {
         "title": "Conversa con el asistente",

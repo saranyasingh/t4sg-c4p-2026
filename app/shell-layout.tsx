@@ -28,10 +28,17 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
   // voice, audio-mode, language). Make sure we route there before kicking off
   // the tour so every step has a target to highlight.
   const handleStartIntro = () => {
+    if (tutorialId === INTRO_TUTORIAL_ID) {
+      return;
+    }
+
+    const delayMs = pathname !== "/" ? 300 : 80;
     if (pathname !== "/") {
       router.push("/");
     }
-    startTutorial(INTRO_TUTORIAL_ID);
+    window.setTimeout(() => {
+      startTutorial(INTRO_TUTORIAL_ID);
+    }, delayMs);
   };
 
   const tabs = [

@@ -21,6 +21,45 @@
     "screenCaptureAllow": "Allow screen capture",
     "screenCaptureGranted": "Screen capture allowed",
     "screenCaptureRequesting": "Asking for permission...",
+    "onboarding": {
+      "progress": "Step {{current}} of {{total}}",
+      "back": "Back",
+      "next": "Next",
+      "getStarted": "Get started",
+      "audioOn": "On",
+      "audioOff": "Off",
+      "steps": {
+        "welcome": {
+          "title": "Welcome",
+          "body": "We'll walk you through a few quick setup steps so Granson AI feels comfortable right away."
+        },
+        "language": {
+          "title": "Language controls",
+          "body": "Choose the language you want to use. You can change this later in Options."
+        },
+        "audioMode": {
+          "title": "Assistant speaks out loud",
+          "body": "Choose whether the assistant reads responses out loud. You can change this anytime in Options.",
+          "hint": "Tip: You can always switch this later from the Options tab."
+        },
+        "opacity": {
+          "title": "Opacity controls",
+          "body": "Pick the background opacity that feels easiest to read."
+        },
+        "textSize": {
+          "title": "Text size controls",
+          "body": "Choose a text size that feels comfortable for you."
+        },
+        "permissions": {
+          "title": "Screen capture permissions",
+          "body": "Allow screen capture so the assistant can help with what is on your screen."
+        },
+        "features": {
+          "title": "What you can do",
+          "body": "Here are the main things Granson AI can help you with."
+        }
+      }
+    },
     "features": {
       "chat": {
         "title": "Chat with the assistant",
