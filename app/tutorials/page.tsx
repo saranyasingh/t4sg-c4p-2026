@@ -4,12 +4,21 @@ import { TutorialCard } from "@/app/tutorials/tutorial-card";
 import { TypographyH2, TypographyLarge, TypographyP, TypographySmall } from "@/components/ui/typography";
 import { TUTORIALS } from "@/lib/tutorials";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { useTutorial } from "../tutorial/tutorial-provider";
 
 export default function TutorialsLandingPage() {
   const { t } = useTranslation();
   const { startTutorial } = useTutorial();
+  const router = useRouter();
+
+  const handleStartTutorial = (tutorialId: string) => {
+    if (tutorialId === "intro") {
+      router.push("/");
+    }
+    startTutorial(tutorialId);
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-6">
@@ -30,7 +39,7 @@ export default function TutorialsLandingPage() {
                 key={tutorial.id}
                 ctaLabel={t("tutorials.startTutorial")}
                 title={title}
-                onClick={() => startTutorial(tutorial.id)}
+                onClick={() => handleStartTutorial(tutorial.id)}
               />
             );
           })}
