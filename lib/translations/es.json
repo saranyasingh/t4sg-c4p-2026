@@ -40,19 +40,17 @@
         },
         "audioMode": {
           "title": "Modo de voz",
+          "subtitle": "Elige si quieres que Granson AI hable en voz alta",
           "body": "Elige si el asistente debe leer las respuestas en voz alta. Cámbialo cuando quieras en Opciones.",
           "hint": "Consejo: siempre puedes cambiar esto más tarde desde la pestaña Opciones."
-        },
-        "opacity": {
-          "title": "Ajusta la opacidad del fondo",
-          "body": "Elige la opacidad del fondo que te resulte más fácil de leer."
         },
         "textSize": {
           "title": "Ajusta el tamaño del texto",
           "body": "Selecciona el tamaño de texto que te resulte más cómodo."
         },
         "permissions": {
-          "title": "Permisos de captura de pantalla",
+          "title": "Captura de pantalla",
+          "subtitle": "Granson AI necesita ver tu pantalla para ayudarte",
           "body": "Permite la captura de pantalla para que el asistente pueda ayudarte con lo que ves."
         },
         "features": {

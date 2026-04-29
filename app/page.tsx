@@ -7,17 +7,10 @@ import { BookOpen, Check, HelpCircle, Languages, MessageSquare, Mic, Monitor } f
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useAudioMode } from "./audio-mode-context";
-import { useBackgroundOpacity } from "./background-opacity-context";
 import { Chat } from "./chat/chat";
 import { useLanding } from "./landing-context";
 import { TEXT_SIZE_PRESETS, useTextSize, type TextSizeScale } from "./text-size-context";
 import { useTutorial } from "./tutorial/tutorial-provider";
-
-const OPACITY_PRESETS: { value: number; labelKey: string }[] = [
-  { value: 0.8, labelKey: "home.opacityLow" },
-  { value: 0.9, labelKey: "home.opacityMedium" },
-  { value: 1, labelKey: "home.opacityFull" },
-];
 
 const TEXT_SIZE_LABEL_KEYS: Record<TextSizeScale, string> = {
   1: "options.textSizeSmall",
@@ -34,8 +27,8 @@ const TEXT_SM = "text-[calc(0.875rem*var(--text-scale))]";
 const TEXT_BASE = "text-[calc(1rem*var(--text-scale))]";
 
 type ScreenCaptureStatus = "unknown" | "requesting" | "granted" | "denied";
-type LandingStep = "welcome" | "language" | "audioMode" | "opacity" | "textSize" | "permissions" | "features";
-const LANDING_STEPS: LandingStep[] = ["welcome", "language", "audioMode", "opacity", "textSize", "permissions", "features"];
+type LandingStep = "welcome" | "language" | "audioMode" | "textSize" | "permissions" | "features";
+const LANDING_STEPS: LandingStep[] = ["welcome", "language", "audioMode", "textSize", "permissions", "features"];
 let landingStepMemory = 0;
 const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAAAAAA==";
 
@@ -43,11 +36,12 @@ export default function Home() {
   const { t, i18n } = useTranslation();
   const { startTutorial } = useTutorial();
   const { audioModeEnabled, setAudioModeEnabled } = useAudioMode();
-  const { backgroundOpacity, setBackgroundOpacity } = useBackgroundOpacity();
   const { scale, setScale } = useTextSize();
   const { hasEnteredApp, enterApp } = useLanding();
   const [screenCaptureStatus, setScreenCaptureStatus] = useState<ScreenCaptureStatus>("unknown");
-  const [landingStepIndex, setLandingStepIndex] = useState(() => landingStepMemory);
+  const [landingStepIndex, setLandingStepIndex] = useState(
+    () => Math.min(landingStepMemory, LANDING_STEPS.length - 1),
+  );
 
   // Dismiss the landing screen and kick off the intro tour. We wait a beat
   // so that the shell panel and the chat (which contain the highlighted
@@ -107,9 +101,8 @@ export default function Home() {
   }
 
   // Full-screen landing. The whole viewport is taken over by the welcome
-  // screen until the user clicks "Let's get started" — the shell panel does
-  // not render until that happens (see ShellLayout). The background uses the
-  // same opacity variable as the shell so the user can preview their choice.
+  // screen until the user clicks Start — the shell panel does not render until
+  // that happens (see ShellLayout). Background opacity is set in Options.
   const presetButtonClass = (active: boolean) =>
     `interactable rounded-lg border px-3 py-2 ${TEXT_SM} font-semibold outline-none focus:outline-none ${
       active
@@ -180,32 +173,6 @@ export default function Home() {
             >
               {t("languageSelector.es")}
             </button>
-          </div>
-        </section>
-      );
-    }
-
-    if (currentLandingStep === "opacity") {
-      return (
-        <section className="space-y-4 rounded-xl border border-white/15 bg-white/5 p-5">
-          <div className="grid grid-cols-3 gap-2">
-            {OPACITY_PRESETS.map((preset) => {
-              const isActive = Math.abs(backgroundOpacity - preset.value) < 0.025;
-              return (
-                <button
-                  key={preset.value}
-                  type="button"
-                  className={presetButtonClass(isActive)}
-                  aria-pressed={isActive}
-                  onClick={(e) => {
-                    blurOnClick(e);
-                    setBackgroundOpacity(preset.value);
-                  }}
-                >
-                  {t(preset.labelKey)} ({Math.round(preset.value * 100)}%)
-                </button>
-              );
-            })}
           </div>
         </section>
       );
@@ -336,7 +303,7 @@ export default function Home() {
         </header>
 
         <div className="mt-6 mx-auto w-full max-w-4xl space-y-4">
-          <div className="space-y-1 text-center">
+          <div className="space-y-2 text-center">
             {!isFirstLandingStep ? (
               <p className={`${TEXT_XS} font-semibold uppercase tracking-wide text-white/65`}>
                 {t("home.onboarding.progress", {
@@ -348,6 +315,11 @@ export default function Home() {
             <h3 className="text-[calc(1.125rem*var(--text-scale))] font-semibold text-white">
               {t(`home.onboarding.steps.${currentLandingStep}.title`)}
             </h3>
+            {currentLandingStep === "audioMode" || currentLandingStep === "permissions" ? (
+              <p className={`${TEXT_SM} text-white/75`}>
+                {t(`home.onboarding.steps.${currentLandingStep}.subtitle`)}
+              </p>
+            ) : null}
           </div>
 
           {renderStepContent()}

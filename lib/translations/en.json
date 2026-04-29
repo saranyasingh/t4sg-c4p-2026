@@ -40,19 +40,17 @@
         },
         "audioMode": {
           "title": "Voice mode",
+          "subtitle": "Choose if you want Granson AI to speak out loud",
           "body": "Choose if the assistant reads replies out loud. Change it anytime in Options.",
           "hint": "Tip: You can always switch this later from the Options tab."
-        },
-        "opacity": {
-          "title": "Adjust background opacity",
-          "body": "Pick the background opacity that feels easiest to read."
         },
         "textSize": {
           "title": "Adjust text size",
           "body": "Choose a text size that feels comfortable for you."
         },
         "permissions": {
-          "title": "Screen capture permissions",
+          "title": "Capture screen",
+          "subtitle": "Granson AI needs to see your screen to help you",
           "body": "Allow screen capture so the assistant can help with what is on your screen."
         },
         "features": {
