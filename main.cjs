@@ -63,9 +63,7 @@ async function anthropicCreateWithRetry(client, body, requestOptions, { maxRetri
   let lastErr;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      return requestOptions
-        ? await client.messages.create(body, requestOptions)
-        : await client.messages.create(body);
+      return requestOptions ? await client.messages.create(body, requestOptions) : await client.messages.create(body);
     } catch (err) {
       lastErr = err;
       if (!isRetriableAnthropicError(err) || attempt === maxRetries - 1) throw err;
@@ -78,7 +76,6 @@ async function anthropicCreateWithRetry(client, body, requestOptions, { maxRetri
   }
   throw lastErr;
 }
-
 
 function errMessage(err) {
   return String(err?.message ?? err);
@@ -209,9 +206,7 @@ function extractComputerUseCoordinate(content) {
  */
 async function verifyTargetVisible(client, resizedBase64, target) {
   const verifierModel =
-    process.env.ANTHROPIC_MODEL_VISION ||
-    process.env.ANTHROPIC_MODEL ||
-    "claude-haiku-4-5-20251001";
+    process.env.ANTHROPIC_MODEL_VISION || process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";
 
   const response = await anthropicCreateWithRetry(
     client,
@@ -219,8 +214,8 @@ async function verifyTargetVisible(client, resizedBase64, target) {
       model: verifierModel,
       max_tokens: 200,
       system:
-        'You verify whether a UI element is currently visible in a screenshot. ' +
-        'Respond with a single line of strict JSON only — no prose, no code fences. ' +
+        "You verify whether a UI element is currently visible in a screenshot. " +
+        "Respond with a single line of strict JSON only — no prose, no code fences. " +
         'Schema: {"visible": boolean, "reason": string}. ' +
         'Set "visible" to true ONLY if the described element is clearly present and identifiable in the image. ' +
         'If the relevant app/window is not open, the element is off-screen, partially obscured beyond recognition, or you are not confident, set "visible" to false and put a one-sentence plain-language reason in "reason".',
@@ -278,10 +273,8 @@ async function locateElementComputerUse(imageBase64, targetDescription, imageWid
   const display = screen.getPrimaryDisplay();
   const { width: logicalW, height: logicalH } = display.size;
 
-  const origW =
-    typeof imageWidth === "number" && imageWidth > 0 ? Math.round(imageWidth) : logicalW;
-  const origH =
-    typeof imageHeight === "number" && imageHeight > 0 ? Math.round(imageHeight) : logicalH;
+  const origW = typeof imageWidth === "number" && imageWidth > 0 ? Math.round(imageWidth) : logicalW;
+  const origH = typeof imageHeight === "number" && imageHeight > 0 ? Math.round(imageHeight) : logicalH;
   const target =
     typeof targetDescription === "string" && targetDescription.trim()
       ? targetDescription.trim()
@@ -302,10 +295,7 @@ async function locateElementComputerUse(imageBase64, targetDescription, imageWid
     };
   }
 
-  const model =
-    process.env.ANTHROPIC_MODEL_COMPUTER_USE ||
-    process.env.ANTHROPIC_MODEL ||
-    DEFAULT_COMPUTER_USE_MODEL;
+  const model = process.env.ANTHROPIC_MODEL_COMPUTER_USE || process.env.ANTHROPIC_MODEL || DEFAULT_COMPUTER_USE_MODEL;
 
   // Step 2: Computer Use locate. tool_choice is "auto" + the prompt explicitly allows
   // the model to refuse with "NOT_FOUND: <reason>" so a wrong verifier verdict can still bail.
@@ -375,23 +365,15 @@ async function locateElementComputerUse(imageBase64, targetDescription, imageWid
   };
 }
 
-ipcMain.handle(
-  "locate-element-computer-use",
-  async (_event, base64, targetDescription, imageWidth, imageHeight) => {
-    try {
-      const result = await locateElementComputerUse(
-        base64,
-        targetDescription,
-        imageWidth,
-        imageHeight,
-      );
-      return { success: true, ...result };
-    } catch (err) {
-      console.error("locate-element-computer-use error:", err);
-      return { success: false, found: false, error: errMessage(err) };
-    }
-  },
-);
+ipcMain.handle("locate-element-computer-use", async (_event, base64, targetDescription, imageWidth, imageHeight) => {
+  try {
+    const result = await locateElementComputerUse(base64, targetDescription, imageWidth, imageHeight);
+    return { success: true, ...result };
+  } catch (err) {
+    console.error("locate-element-computer-use error:", err);
+    return { success: false, found: false, error: errMessage(err) };
+  }
+});
 
 app.whenReady().then(() => {
   createWindow();
