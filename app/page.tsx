@@ -39,9 +39,11 @@ export default function Home() {
   const { scale, setScale } = useTextSize();
   const { hasEnteredApp, enterApp } = useLanding();
   const [screenCaptureStatus, setScreenCaptureStatus] = useState<ScreenCaptureStatus>("unknown");
-  const [landingStepIndex, setLandingStepIndex] = useState(
-    () => Math.min(landingStepMemory, LANDING_STEPS.length - 1),
-  );
+  const [landingStepIndex, setLandingStepIndex] = useState(() => Math.min(landingStepMemory, LANDING_STEPS.length - 1));
+
+  useEffect(() => {
+    landingStepMemory = landingStepIndex;
+  }, [landingStepIndex]);
 
   // Dismiss the landing screen and kick off the intro tour. We wait a beat
   // so that the shell panel and the chat (which contain the highlighted
@@ -105,9 +107,7 @@ export default function Home() {
   // that happens (see ShellLayout). Background opacity is set in Options.
   const presetButtonClass = (active: boolean) =>
     `interactable rounded-lg border px-3 py-2 ${TEXT_SM} font-semibold outline-none focus:outline-none ${
-      active
-        ? "border-white bg-white text-black shadow"
-        : "border-white/30 bg-white/5 text-white hover:bg-white/15"
+      active ? "border-white bg-white text-black shadow" : "border-white/30 bg-white/5 text-white hover:bg-white/15"
     }`;
 
   // Strip focus from the button immediately after a click so the previous
@@ -129,10 +129,6 @@ export default function Home() {
   const isPermissionsStepBlocked = currentLandingStep === "permissions" && screenCaptureStatus !== "granted";
   const wizardCurrentStep = Math.max(landingStepIndex, 1);
   const wizardTotalSteps = LANDING_STEPS.length - 1;
-
-  useEffect(() => {
-    landingStepMemory = landingStepIndex;
-  }, [landingStepIndex]);
 
   const handleNextLandingStep = () => {
     setLandingStepIndex((prev) => Math.min(prev + 1, LANDING_STEPS.length - 1));
@@ -297,12 +293,10 @@ export default function Home() {
           <TypographyH2 id="landing-title" className="!mt-0 !border-0 !pb-0 text-center text-white">
             {t("home.brandTitle")}
           </TypographyH2>
-          <TypographyP className={`!mt-0 text-center ${TEXT_BASE} text-white/85`}>
-            {t("home.tagline")}
-          </TypographyP>
+          <TypographyP className={`!mt-0 text-center ${TEXT_BASE} text-white/85`}>{t("home.tagline")}</TypographyP>
         </header>
 
-        <div className="mt-6 mx-auto w-full max-w-4xl space-y-4">
+        <div className="mx-auto mt-6 w-full max-w-4xl space-y-4">
           <div className="space-y-2 text-center">
             {!isFirstLandingStep ? (
               <p className={`${TEXT_XS} font-semibold uppercase tracking-wide text-white/65`}>
@@ -316,9 +310,7 @@ export default function Home() {
               {t(`home.onboarding.steps.${currentLandingStep}.title`)}
             </h3>
             {currentLandingStep === "audioMode" || currentLandingStep === "permissions" ? (
-              <p className={`${TEXT_SM} text-white/75`}>
-                {t(`home.onboarding.steps.${currentLandingStep}.subtitle`)}
-              </p>
+              <p className={`${TEXT_SM} text-white/75`}>{t(`home.onboarding.steps.${currentLandingStep}.subtitle`)}</p>
             ) : null}
           </div>
 

@@ -1,18 +1,18 @@
 "use client";
 
-import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 import { useTutorial } from "@/app/tutorial/tutorial-provider";
 import { INTERACTIVE_TUTORIAL_ID, type TutorialStep } from "@/lib/tutorials";
+import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-type BoundingBox = {
+interface BoundingBox {
   selector: string;
   found: boolean;
   left?: number;
   top?: number;
   width?: number;
   height?: number;
-};
+}
 
 function promptLikelyNeedsScreenPointer(userText: string): boolean {
   const t = userText.toLowerCase();
@@ -49,7 +49,7 @@ function promptLikelyNeedsScreenPointer(userText: string): boolean {
 
 function boundingBoxes(selectors: string[]): { boxes: BoundingBox[] } {
   const boxes: BoundingBox[] = selectors.map((selector) => {
-    const el = document.querySelector(selector) as HTMLElement | null;
+    const el = document.querySelector(selector);
     if (!el) return { selector, found: false };
     const r = el.getBoundingClientRect();
     return {

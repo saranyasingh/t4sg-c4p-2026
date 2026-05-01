@@ -35,10 +35,7 @@ export async function POST(req: Request) {
         : null;
 
   if (raw === null) {
-    return Response.json(
-      { error: "Missing string field: text (or assistantText)" },
-      { status: 400 },
-    );
+    return Response.json({ error: "Missing string field: text (or assistantText)" }, { status: 400 });
   }
 
   const text = raw.trim();
@@ -47,10 +44,7 @@ export async function POST(req: Request) {
   }
 
   if (text.length > MAX_INPUT_CHARS) {
-    return Response.json(
-      { error: `Text must be at most ${MAX_INPUT_CHARS} characters` },
-      { status: 400 },
-    );
+    return Response.json({ error: `Text must be at most ${MAX_INPUT_CHARS} characters` }, { status: 400 });
   }
 
   const model = process.env.OPENAI_TTS_MODEL?.trim() || "gpt-4o-mini-tts";

@@ -239,13 +239,7 @@ export default function BoundingBoxOverlay({
               <stop offset="100%" stopColor="rgb(255, 255, 255)" stopOpacity="0" />
             </radialGradient>
           </defs>
-          <ellipse
-            cx={ellipseCx}
-            cy={ellipseCy}
-            rx={glowOuterR}
-            ry={glowOuterR}
-            fill={`url(#${brightGlowGradId})`}
-          />
+          <ellipse cx={ellipseCx} cy={ellipseCy} rx={glowOuterR} ry={glowOuterR} fill={`url(#${brightGlowGradId})`} />
         </svg>
       </>,
       document.body,
@@ -287,19 +281,19 @@ export default function BoundingBoxOverlay({
         <clipPath id={spotClipId} clipPathUnits="userSpaceOnUse">
           <ellipse cx={ellipseCx} cy={ellipseCy} rx={ellipseRx} ry={ellipseRy} />
         </clipPath>
-        <radialGradient id={innerSpotGradId} cx={ellipseCx} cy={ellipseCy} r={innerSpotR} gradientUnits="userSpaceOnUse">
+        <radialGradient
+          id={innerSpotGradId}
+          cx={ellipseCx}
+          cy={ellipseCy}
+          r={innerSpotR}
+          gradientUnits="userSpaceOnUse"
+        >
           <stop offset="0%" stopColor="rgb(0,0,0)" stopOpacity="0" />
           <stop offset="50%" stopColor="rgb(0,0,0)" stopOpacity="0" />
           <stop offset="85%" stopColor="rgb(0,4,12)" stopOpacity="0.12" />
           <stop offset="100%" stopColor="rgb(0,6,18)" stopOpacity="0.2" />
         </radialGradient>
-        <radialGradient
-          id={vignetteGradId}
-          cx={ellipseCx}
-          cy={ellipseCy}
-          r={vignetteR}
-          gradientUnits="userSpaceOnUse"
-        >
+        <radialGradient id={vignetteGradId} cx={ellipseCx} cy={ellipseCy} r={vignetteR} gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="rgb(0,0,0)" stopOpacity="0" />
           <stop offset="18%" stopColor="rgb(0,0,0)" stopOpacity="0.08" />
           <stop offset="36%" stopColor="rgb(0,0,0)" stopOpacity="0.28" />

@@ -2,10 +2,10 @@ import "server-only";
 // Add util functions that should only be run in server components. Importing these in client components will throw an error.
 // For more info on how to avoid poisoning your server/client components: https://www.youtube.com/watch?v=BZlwtR9pDp4
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { isSupabaseConfigured } from "./supabase-config";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { type Database } from "./schema";
+import { isSupabaseConfigured } from "./supabase-config";
 
 /*
  * Note: When developing you may get an error pointing to this file, with the message:
@@ -82,7 +82,7 @@ export async function updateSession(request: NextRequest) {
       headers: request.headers,
     },
   });
-/*
+  /*
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

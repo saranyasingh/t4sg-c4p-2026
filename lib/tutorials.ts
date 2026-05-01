@@ -162,7 +162,7 @@ const googleSearchSteps: TutorialStep[] = [
     title: "tutorials.googleSearch.steps.gs-review.title",
     text: "tutorials.googleSearch.steps.gs-review.body",
     visual: "text",
-  }
+  },
 ];
 
 const gmailSteps: TutorialStep[] = [

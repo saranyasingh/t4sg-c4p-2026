@@ -3,13 +3,13 @@
 import { ThemeProvider } from "next-themes";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import "./i18n";
-import i18n from "./i18n";
-import { TutorialProvider } from "./tutorial/tutorial-provider";
 import { AudioModeProvider } from "./audio-mode-context";
 import { BackgroundOpacityProvider } from "./background-opacity-context";
+import "./i18n";
+import i18n from "./i18n";
 import { LandingProvider } from "./landing-context";
 import { TextSizeProvider } from "./text-size-context";
+import { TutorialProvider } from "./tutorial/tutorial-provider";
 
 function I18nLangSync() {
   useEffect(() => {
