@@ -2,9 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { TypographyH2, TypographyP, TypographySmall } from "@/components/ui/typography";
-import { Message } from "@/app/chat/message";
-import { ScrollContainer } from "@/app/chat/scroll-container";
+import { TypographyH2, TypographySmall } from "@/components/ui/typography";
 import { useEffect, useRef } from "react";
 import { useInteractiveTutorialAgent } from "./interactive-tutorial-workflow";
 
@@ -14,7 +12,7 @@ export function InteractiveTutorialPage() {
     setGoal,
     prompt,
     setPrompt,
-    log,
+    uiHistory,
     isLoading,
     isActive,
     begin,
@@ -61,9 +59,6 @@ export function InteractiveTutorialPage() {
     <div className="interactable flex h-full min-h-0 flex-col gap-4 p-6">
       <header className="space-y-1">
         <TypographyH2>Interactive tutorial</TypographyH2>
-        <TypographyP className="text-sm text-white/80">
-          Ask a question. The assistant will guide you step by step and highlight what to click.
-        </TypographyP>
       </header>
 
       {!isActive ? (
@@ -95,21 +90,7 @@ export function InteractiveTutorialPage() {
           </div>
         </div>
       ) : (
-        <div className="flex flex-1 min-h-0 flex-col gap-4">
-          <section className="min-h-0 flex-1 overflow-hidden">
-            <ScrollContainer>
-              {log.length ? (
-                log.map((m, idx) => <Message key={idx} text={m.text} variant={m.role} />)
-              ) : (
-                <Message
-                  text={`Ask something like “Where is the Tutorials tab?” or “Help me open Gmail.”`}
-                  variant="assistant"
-                />
-              )}
-              {isLoading ? <Message text="Thinking..." variant="assistant" /> : null}
-            </ScrollContainer>
-          </section>
-
+        <div className="flex flex-1 min-h-0 flex-col justify-end">
           <form
             ref={(el) => {
               promptFormRef.current = el;

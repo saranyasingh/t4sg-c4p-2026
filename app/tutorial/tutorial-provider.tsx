@@ -6,6 +6,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -16,12 +17,17 @@ export type TutorialContextValue = {
   /** `tutorialId !== null` means a tutorial is active (tutorial “mode”). */
   tutorialId: string | null;
   currentStepIndex: number;
+  /** Original user goal string while an interactive tutorial is active (empty otherwise). */
+  interactiveGoal: string;
   activeTutorial: Tutorial | null;
   currentStep: TutorialStep | null;
   startTutorial: (id: string) => void;
   startInteractiveTutorial: (goal: string) => void;
   addInteractiveStep: (step: TutorialStep) => void;
+  replaceInteractiveStepAt: (index: number, step: TutorialStep) => void;
   registerInteractiveNextStepGenerator: (fn: (() => Promise<void>) | null) => void;
+  registerInteractivePromptHandler: (fn: ((text: string) => Promise<void>) | null) => void;
+  sendInteractivePrompt: (text: string) => Promise<void>;
   generateNextInteractiveStep: () => Promise<void>;
   isGeneratingInteractiveStep: boolean;
   exitTutorial: () => void;
@@ -42,10 +48,18 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   const [interactiveGoal, setInteractiveGoal] = useState<string>("");
   const [interactiveSteps, setInteractiveSteps] = useState<TutorialStep[]>([]);
   const [interactiveGenerator, setInteractiveGenerator] = useState<(() => Promise<void>) | null>(null);
+  const [interactivePromptHandler, setInteractivePromptHandler] = useState<((text: string) => Promise<void>) | null>(
+    null,
+  );
   const [isGeneratingInteractiveStep, setIsGeneratingInteractiveStep] = useState(false);
   const interactiveStepsLenRef = useRef(0);
+  /** After appending a step, jump only once `interactiveSteps` state includes it (avoids index clamp races). */
+  const pendingJumpToLatestInteractiveStepRef = useRef(false);
+  const tutorialIdRef = useRef<string | null>(tutorialId);
+  tutorialIdRef.current = tutorialId;
 
   useEffect(() => {
+    // Keep this in sync for code paths that replace steps in bulk.
     interactiveStepsLenRef.current = interactiveSteps.length;
   }, [interactiveSteps.length]);
 
@@ -76,12 +90,25 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     }
   }, [tutorialId]);
 
+  // After a new interactive step is committed, move to it (chat prompt or Next-generated).
+  useLayoutEffect(() => {
+    if (tutorialId !== INTERACTIVE_TUTORIAL_ID) return;
+    if (!pendingJumpToLatestInteractiveStepRef.current) return;
+    pendingJumpToLatestInteractiveStepRef.current = false;
+    const len = interactiveSteps.length;
+    if (len === 0) return;
+    setCurrentStepIndex(len - 1);
+  }, [tutorialId, interactiveSteps]);
+
   useEffect(() => {
     if (!activeTutorial || !steps.length) return;
+    // Interactive: do not clamp here — setting index to the new last step before `interactiveSteps`
+    // commits makes currentStepIndex > lastIndex for one tick and this effect would reset it (extra Next).
+    if (tutorialId === INTERACTIVE_TUTORIAL_ID) return;
     if (currentStepIndex > lastIndex) {
       setCurrentStepIndex(lastIndex);
     }
-  }, [activeTutorial, currentStepIndex, lastIndex, steps.length]);
+  }, [activeTutorial, currentStepIndex, lastIndex, steps.length, tutorialId]);
 
   const startTutorial = useCallback((id: string) => {
     setTutorialId((prev) => (prev === id ? null : id));
@@ -90,17 +117,52 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   const startInteractiveTutorial = useCallback((goal: string) => {
     setInteractiveGoal(goal.trim());
     setInteractiveSteps([]);
+    interactiveStepsLenRef.current = 0;
     setTutorialId(INTERACTIVE_TUTORIAL_ID);
     setCurrentStepIndex(0);
   }, []);
 
   const addInteractiveStep = useCallback((step: TutorialStep) => {
-    setInteractiveSteps((prev) => [...prev, step]);
+    // Update the length ref immediately so "Next" can advance right after the
+    // generator finishes, even if React batches the state update.
+    interactiveStepsLenRef.current += 1;
+    if (tutorialIdRef.current === INTERACTIVE_TUTORIAL_ID) {
+      // Ensures chat prompts / Next-generated steps always land on the new step once committed.
+      pendingJumpToLatestInteractiveStepRef.current = true;
+    }
+    setInteractiveSteps((prev) => {
+      const next = [...prev, step];
+      interactiveStepsLenRef.current = next.length;
+      return next;
+    });
+  }, []);
+
+  const replaceInteractiveStepAt = useCallback((index: number, step: TutorialStep) => {
+    setInteractiveSteps((prev) => {
+      if (index < 0 || index >= prev.length) return prev;
+      const next = [...prev];
+      next[index] = step;
+      interactiveStepsLenRef.current = next.length;
+      return next;
+    });
   }, []);
 
   const registerInteractiveNextStepGenerator = useCallback((fn: (() => Promise<void>) | null) => {
     setInteractiveGenerator(() => fn);
   }, []);
+
+  const registerInteractivePromptHandler = useCallback((fn: ((text: string) => Promise<void>) | null) => {
+    setInteractivePromptHandler(() => fn);
+  }, []);
+
+  const sendInteractivePrompt = useCallback(
+    async (text: string) => {
+      if (!interactivePromptHandler) return;
+      await interactivePromptHandler(text);
+      // Jump is scheduled inside addInteractiveStep when a new step is appended.
+    },
+    [interactivePromptHandler],
+  );
 
   const generateNextInteractiveStep = useCallback(async () => {
     if (!interactiveGenerator || isGeneratingInteractiveStep) return;
@@ -109,13 +171,10 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       const before = interactiveStepsLenRef.current;
       await interactiveGenerator();
       const after = interactiveStepsLenRef.current;
-      // If no step was produced, treat that as "we're done".
-      if (after <= before) {
-        setTutorialId(null);
-        return;
-      }
-      // If a step was appended, advance onto it.
-      setCurrentStepIndex((i) => Math.min(i + 1, Math.max(0, after - 1)));
+      // If no step was produced, do NOT auto-exit. The generator might have failed
+      // transiently (model formatting, network) and the user should be able to try again.
+      if (after <= before) return;
+      // Jump is scheduled inside addInteractiveStep when a new step is appended.
     } finally {
       setIsGeneratingInteractiveStep(false);
     }
@@ -145,12 +204,16 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     (): TutorialContextValue => ({
       tutorialId,
       currentStepIndex: safeStepIndex,
+      interactiveGoal: tutorialId === INTERACTIVE_TUTORIAL_ID ? interactiveGoal : "",
       activeTutorial,
       currentStep,
       startTutorial,
       startInteractiveTutorial,
       addInteractiveStep,
+      replaceInteractiveStepAt,
       registerInteractiveNextStepGenerator,
+      registerInteractivePromptHandler,
+      sendInteractivePrompt,
       generateNextInteractiveStep,
       isGeneratingInteractiveStep,
       exitTutorial,
@@ -164,12 +227,16 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     [
       tutorialId,
       safeStepIndex,
+      interactiveGoal,
       activeTutorial,
       currentStep,
       startTutorial,
       startInteractiveTutorial,
       addInteractiveStep,
+      replaceInteractiveStepAt,
       registerInteractiveNextStepGenerator,
+      registerInteractivePromptHandler,
+      sendInteractivePrompt,
       generateNextInteractiveStep,
       isGeneratingInteractiveStep,
       exitTutorial,

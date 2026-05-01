@@ -7,8 +7,11 @@ import { TypographyH4, TypographyP, TypographySmall } from "@/components/ui/typo
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
 import { Search, X } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { INTERACTIVE_TUTORIAL_ID, type ScreenHighlight, type StepVisual } from "@/lib/tutorials";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { INTERACTIVE_TUTORIAL_ID, type ScreenHighlight, type StepVisual, type TutorialStep } from "@/lib/tutorials";
+import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
+import { compressScreenshotForTutorialApi } from "@/lib/interactive-tutorial-screenshot";
+import { extractStepFromAnthropicContent } from "@/lib/interactive-tutorial-step-parse";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import c4pLogo from "../../public/images/c4p.png";
@@ -71,6 +74,10 @@ function visualLabelKey(v: StepVisual): string {
   return "tutorial.visualScreenText";
 }
 
+function isTutorialChromeElement(el: Element): boolean {
+  return Boolean(el.closest("[data-tutorial-chrome]"));
+}
+
 /**
  * Tutorial UI + highlight overlay. Renders inside the shell panel; bounding boxes use fixed positioning for the full window.
  */
@@ -80,6 +87,9 @@ export function TutorialController() {
     tutorialId,
     activeTutorial,
     currentStep,
+    currentStepIndex,
+    interactiveGoal,
+    replaceInteractiveStepAt,
     exitTutorial,
     nextStep,
     previousStep,
@@ -132,19 +142,22 @@ export function TutorialController() {
 
   const [highlightError, setHighlightError] = useState<HighlightErrorState | null>(null);
   const [retryToken, setRetryToken] = useState(0);
+  const lastRevisionStepIdRef = useRef<string | null>(null);
+  const revisionAttemptsRef = useRef(0);
 
   const buildSmartError = useCallback(
     (description: string | undefined, explanation?: string): HighlightErrorState => {
       const target = description ? shortTargetName(description) : undefined;
       const hintKey = description ? smartHintKey(description) : "tutorial.highlightErrorHint";
+      const extraHint = tutorialId === INTERACTIVE_TUTORIAL_ID ? ` ${t("tutorial.highlightErrorHintClosePanel")}` : "";
       return {
         title: t("tutorial.highlightErrorTitle"),
         target,
-        hint: t(hintKey),
+        hint: `${t(hintKey)}${extraHint}`.trim(),
         detail: usefulDetail(explanation),
       };
     },
-    [t],
+    [t, tutorialId],
   );
 
   useEffect(() => {
@@ -165,6 +178,81 @@ export function TutorialController() {
         setIsLoadingHighlight(false);
         setHighlightError(null);
         return;
+      }
+
+      if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
+        if (lastRevisionStepIdRef.current !== currentStep.id) {
+          lastRevisionStepIdRef.current = currentStep.id;
+          revisionAttemptsRef.current = 0;
+        }
+      }
+
+      async function tryReviseStepFromScreenshot(
+        cap: { base64: string; width: number; height: number },
+        stepSnapshot: TutorialStep,
+        locatorHint: string,
+      ): Promise<boolean> {
+        if (tutorialId !== INTERACTIVE_TUTORIAL_ID || cancelled) return false;
+        revisionAttemptsRef.current += 1;
+        if (revisionAttemptsRef.current > 2) return false;
+
+        try {
+          const optimized = await compressScreenshotForTutorialApi(cap.base64);
+          const messages: MessageParam[] = [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: optimized.mediaType,
+                    data: optimized.base64,
+                  },
+                },
+                {
+                  type: "text",
+                  text:
+                    `Original tutorial goal:\n${interactiveGoal || "(unknown)"}\n\n` +
+                    `Current step JSON (may not match the screenshot):\n${JSON.stringify({
+                      id: stepSnapshot.id,
+                      titleRaw: stepSnapshot.titleRaw,
+                      textRaw: stepSnapshot.textRaw,
+                      visual: stepSnapshot.visual,
+                      highlightDescription: stepSnapshot.highlightDescription,
+                      highlightSelector: stepSnapshot.highlightSelector,
+                    })}\n\n` +
+                    `Locator / mismatch note: ${locatorHint}\n\n` +
+                    `Return ONE replacement tutorial step JSON that matches the screenshot and tells the user the correct next action.`,
+                },
+              ] as any,
+            },
+          ];
+
+          const res = await fetch("/api/interactive-tutorial-sync-step", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages }),
+          });
+          if (!res.ok || cancelled) return false;
+          const data = (await res.json()) as { content?: unknown };
+          let revised = extractStepFromAnthropicContent(data.content);
+          if (!revised || cancelled) return false;
+
+          if (revised.highlightSelector && typeof document !== "undefined") {
+            const hit = document.querySelector(revised.highlightSelector);
+            if (!hit || isTutorialChromeElement(hit)) revised = { ...revised, highlightSelector: undefined };
+          }
+
+          replaceInteractiveStepAt(currentStepIndex, revised);
+          revisionAttemptsRef.current = 0;
+          setHighlightError(null);
+          setRetryToken((t) => t + 1);
+          return true;
+        } catch (e) {
+          console.error("Interactive step revision failed:", e);
+          return false;
+        }
       }
 
       // Always capture a screenshot once per step (Electron only).
@@ -192,8 +280,14 @@ export function TutorialController() {
         setPointerTarget(null);
 
         const el = typeof document !== "undefined" ? document.querySelector(currentStep.highlightSelector) : null;
-        if (!el) {
+        if (!el || isTutorialChromeElement(el)) {
           setHighlightPayload(null);
+          if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
+            const cap = captured ?? (await captureScreenToPngBase64());
+            if (cap && !cancelled && (await tryReviseStepFromScreenshot(cap, currentStep, "CSS selector did not match anything in the app panel."))) {
+              return;
+            }
+          }
           setHighlightError({
             title: t("tutorial.highlightErrorTitle"),
             hint: t("tutorial.highlightErrorHint"),
@@ -277,6 +371,19 @@ export function TutorialController() {
           } else {
             setHighlightPayload(null);
             setPointerTarget(null);
+            if (
+              tutorialId === INTERACTIVE_TUTORIAL_ID &&
+              cap &&
+              !cancelled &&
+              (await tryReviseStepFromScreenshot(
+                cap,
+                currentStep,
+                result.explanation ?? result.error ?? "On-screen pointer target was not found.",
+              ))
+            ) {
+              setIsLoadingHighlight(false);
+              return;
+            }
             setHighlightError(
               buildSmartError(currentStep.highlightDescription, result.explanation ?? result.error),
             );
@@ -303,7 +410,11 @@ export function TutorialController() {
         setHighlightError(null);
         if (typeof window === "undefined" || !window.electronAPI?.locateElementComputerUse) {
           setIsLoadingHighlight(false);
-          setHighlightError("Screen analysis is only available in the desktop app.");
+          setHighlightError({
+            title: t("tutorial.highlightErrorTitle"),
+            hint: t("tutorial.highlightErrorHint"),
+            detail: "Screen analysis is only available in the desktop app.",
+          });
           return;
         }
 
@@ -333,18 +444,27 @@ export function TutorialController() {
           } else {
             setHighlightPayload(null);
             setPointerTarget(null);
-            setHighlightError(result.explanation ?? result.error ?? "Element not found on screen.");
+            if (
+              tutorialId === INTERACTIVE_TUTORIAL_ID &&
+              cap &&
+              !cancelled &&
+              (await tryReviseStepFromScreenshot(
+                cap,
+                currentStep,
+                result.explanation ?? result.error ?? "On-screen pointer target was not found.",
+              ))
+            ) {
+              setIsLoadingHighlight(false);
+              return;
+            }
+            setHighlightError(buildSmartError(undefined, result.explanation ?? result.error ?? "Element not found on screen."));
           }
         } catch (err) {
           if (cancelled) return;
           console.error("Interactive pointer vision failed:", err);
           setHighlightPayload(null);
           setPointerTarget(null);
-          setHighlightError(
-            err instanceof Error
-              ? `Something went wrong while locating the target: ${err.message}`
-              : "Something went wrong while locating the target on screen.",
-          );
+          setHighlightError(buildSmartError(undefined, err instanceof Error ? err.message : undefined));
         }
         setIsLoadingHighlight(false);
         return;
@@ -372,7 +492,16 @@ export function TutorialController() {
     return () => {
       cancelled = true;
     };
-  }, [currentStep, retryToken, buildSmartError, t]);
+  }, [
+    currentStep,
+    retryToken,
+    buildSmartError,
+    t,
+    tutorialId,
+    interactiveGoal,
+    replaceInteractiveStepAt,
+    currentStepIndex,
+  ]);
 
   const fallbackW = typeof window !== "undefined" ? window.innerWidth : 1;
   const fallbackH = typeof window !== "undefined" ? window.innerHeight : 1;
@@ -398,8 +527,9 @@ export function TutorialController() {
     return null;
   }
 
-  const shouldWaitForBox = Boolean(currentStep.highlightDescription);
-  const showStepText = !shouldWaitForBox || !isLoadingHighlight;
+  // Keep the step card visible even while highlights/pointers are being located.
+  // Hiding it causes a noticeable flash (title appears, disappears, then reappears).
+  const showStepText = true;
   const hasSpotlight = Boolean(highlightPayload?.coords);
   const hasPointerHighlight = Boolean(pointerTarget);
   // Whether THIS step is intended to have a highlight target. Used to decide
@@ -470,6 +600,7 @@ export function TutorialController() {
       {showStepText
         ? createPortal(
             <div
+              data-tutorial-chrome
               className="pointer-events-none fixed z-[1000003] max-h-[42vh] overflow-y-auto rounded-xl border border-white/35 bg-[hsl(var(--foreground)/0.95)] p-4 text-white shadow-2xl backdrop-blur-sm"
               style={{
                 left: textBoxStyle.left,
@@ -502,21 +633,11 @@ export function TutorialController() {
             </div>,
             document.body,
           )
-        : createPortal(
-            <div
-              className="pointer-events-none fixed inset-0 z-[1000003] flex items-center justify-center px-6"
-              role="status"
-              aria-live="polite"
-            >
-              <TypographySmall className="m-0 rounded-lg border border-white/30 bg-black/70 px-4 py-2 tracking-wide text-white">
-                Loading...
-              </TypographySmall>
-            </div>,
-            document.body,
-          )}
+        : null}
         {highlightError
           ? createPortal(
               <div
+                data-tutorial-chrome
                 className="fixed left-1/2 top-6 z-[999998] w-[90vw] max-w-md -translate-x-1/2"
                 role="alert"
                 aria-live="assertive"
@@ -600,7 +721,7 @@ export function TutorialController() {
 
 
       {createPortal(
-        <div className="fixed bottom-4 left-4 z-[1000004] flex flex-wrap items-center gap-2">
+        <div data-tutorial-chrome className="fixed bottom-4 left-4 z-[1000004] flex flex-wrap items-center gap-2">
           {canGoPrevious ? (
             <Button
               type="button"

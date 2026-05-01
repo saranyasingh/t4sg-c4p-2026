@@ -341,6 +341,7 @@
     "highlightErrorTitle": "We couldn't find that on your screen",
     "highlightErrorTargetLabel": "Looking for: {{target}}",
     "highlightErrorHint": "Bring the right window into view, then try Next again.",
+    "highlightErrorHintClosePanel": "If you still can't see it, try clicking Close on the right-side panel.",
     "highlightErrorHintChrome": "Open Google Chrome so it's visible on your screen, then try Next again.",
     "highlightErrorHintGmail": "Open Gmail in Chrome so it's visible on your screen, then try Next again.",
     "highlightErrorHintBrowser": "Make sure your web browser window is showing, then try Next again.",

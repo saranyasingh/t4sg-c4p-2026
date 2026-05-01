@@ -337,6 +337,7 @@
     "highlightErrorTitle": "No encontramos eso en tu pantalla",
     "highlightErrorTargetLabel": "Buscando: {{target}}",
     "highlightErrorHint": "Pon la ventana correcta a la vista y vuelve a intentar con Siguiente.",
+    "highlightErrorHintClosePanel": "Si todavía no lo ves, prueba hacer clic en Cerrar en el panel de la derecha.",
     "highlightErrorHintChrome": "Abre Google Chrome para que esté visible en tu pantalla y vuelve a intentar con Siguiente.",
     "highlightErrorHintGmail": "Abre Gmail en Chrome para que esté visible en tu pantalla y vuelve a intentar con Siguiente.",
     "highlightErrorHintBrowser": "Asegúrate de que la ventana de tu navegador esté visible y vuelve a intentar con Siguiente.",

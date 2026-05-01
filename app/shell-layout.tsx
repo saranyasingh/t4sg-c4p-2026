@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { TypographySmall } from "@/components/ui/typography";
-import { INTRO_TUTORIAL_ID } from "@/lib/tutorials";
+import { INTERACTIVE_TUTORIAL_ID, INTRO_TUTORIAL_ID } from "@/lib/tutorials";
 import { HelpCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -55,6 +55,7 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
   }, [hasEnteredApp, pathname, router]);
 
   const isIntroActive = tutorialId === INTRO_TUTORIAL_ID;
+  const isInteractiveActive = tutorialId === INTERACTIVE_TUTORIAL_ID;
 
   const panel = (
     <section
