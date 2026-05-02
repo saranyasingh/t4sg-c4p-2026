@@ -32,10 +32,7 @@ export async function getUserProfile(
   supabase: unknown,
   user: User,
 ): Promise<{ profile: Profile; error: null } | { profile: null; error: Error }> {
-  const { data, error } = await (supabase as SupabaseClient<Database>)
-    .from("profiles")
-    .select()
-    .eq("id", user.id);
+  const { data, error } = await (supabase as SupabaseClient<Database>).from("profiles").select().eq("id", user.id);
 
   if (error) {
     return {

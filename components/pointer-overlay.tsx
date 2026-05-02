@@ -250,11 +250,7 @@ export function PointerOverlay({
           </linearGradient>
         </defs>
         {/* Outer soft halo */}
-        <polygon
-          points="0,2 0,18 32,10"
-          fill="hsl(var(--accent) / 0.28)"
-          transform="scale(1.4) translate(-2.5,-1.8)"
-        />
+        <polygon points="0,2 0,18 32,10" fill="hsl(var(--accent) / 0.28)" transform="scale(1.4) translate(-2.5,-1.8)" />
         {/* Main arrow with gradient */}
         <polygon
           points="0,1 0,19 30,10"
@@ -297,8 +293,7 @@ export function PointerOverlay({
               height: 0,
               borderTop: "6px solid transparent",
               borderBottom: "6px solid transparent",
-              [bubbleRight ? "borderLeft" : "borderRight"]:
-                "8px solid hsl(var(--accent) / 0.75)",
+              [bubbleRight ? "borderLeft" : "borderRight"]: "8px solid hsl(var(--accent) / 0.75)",
             }}
           />
         </div>

@@ -13,16 +13,7 @@ interface SettingsSliderProps {
   marks?: string[];
 }
 
-export function SettingsSlider({
-  heading,
-  ariaLabel,
-  min,
-  max,
-  step,
-  value,
-  onChange,
-  marks,
-}: SettingsSliderProps) {
+export function SettingsSlider({ heading, ariaLabel, min, max, step, value, onChange, marks }: SettingsSliderProps) {
   return (
     <div className="space-y-3">
       <TypographyP className="font-semibold text-white">{heading}</TypographyP>

@@ -2,11 +2,11 @@ import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
 export const runtime = "nodejs";
 
-type ClientToolResult = {
+interface ClientToolResult {
   type: "tool_result";
   tool_use_id: string;
   content: string;
-};
+}
 
 // Prefer env override; fall back to a current model.
 const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514";
@@ -139,4 +139,3 @@ export async function POST(req: Request) {
     return Response.json({ error: message }, { status: 502 });
   }
 }
-
