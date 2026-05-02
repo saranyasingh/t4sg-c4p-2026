@@ -27,8 +27,15 @@ export const Message = ({ text, variant = "user", isError = false }: MessageProp
       )}
     >
       <TypographyP className={cn("font-semibold", isError ? "text-red-200" : "text-white/90")}>{sender}</TypographyP>
-      <div className="whitespace-pre-wrap break-words text-[calc(0.875rem*var(--text-scale))] text-white">
-        <ReactMarkdown>{text}</ReactMarkdown>
+      <div
+        className={cn(
+          "text-[calc(0.875rem*var(--text-scale))] text-white",
+          isError
+            ? "whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-normal leading-relaxed"
+            : "whitespace-pre-wrap break-words",
+        )}
+      >
+        {isError ? text : <ReactMarkdown>{text}</ReactMarkdown>}
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { VoiceInput } from "@/app/chat/voice-input";
 import { useAudioMode } from "@/app/audio-mode-context";
 import { INTRO_TUTORIAL_ID } from "@/lib/tutorials";
+import { clientSideRecoveryHint } from "@/lib/chat-assistant-error";
 import { useTutorial } from "./tutorial-provider";
 
 /**
@@ -182,9 +183,10 @@ export function InteractiveChatBar() {
         await askTutorialQuestion(prompt);
       } catch (err) {
         const reason = err instanceof Error ? err.message : "Could not reach the assistant.";
+        const recovery = clientSideRecoveryHint(reason, t) || t("chat.errorRecoveryDefault");
         toast({
           title: t("chat.assistantUnavailable", { status: "interactive" }),
-          description: reason,
+          description: t("chat.errorWithDetail", { detail: reason, recovery }),
           variant: "destructive",
         });
       } finally {
@@ -225,12 +227,13 @@ export function InteractiveChatBar() {
     >
       <form
         onSubmit={handleSubmit}
-        className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-[hsl(var(--foreground)/0.92)] pl-1 pr-2 py-1 shadow-lg backdrop-blur-md"
+        className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-[hsl(var(--foreground)/0.92)] pl-1 pr-2 py-1 text-white shadow-lg backdrop-blur-md"
       >
         <VoiceInput
           onTranscript={(value) => setText(value)}
           onInterimTranscript={(value) => setText(value)}
           disabled={effectiveLoading}
+          className="rounded-lg border border-white/45 bg-[var(--green-1)] text-[var(--black)] shadow-[0_0_0_1px_rgba(255,255,255,0.25)_inset] hover:bg-[color-mix(in_srgb,var(--green-1)_88%,white)] hover:text-[var(--black)]"
         />
         <input
           type="text"

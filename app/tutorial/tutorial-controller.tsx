@@ -23,13 +23,15 @@ import { useTutorial } from "./tutorial-provider";
 interface HighlightErrorState {
   /** Title shown at the top of the card. */
   title: string;
-  /** Short, plain-language target name (the thing we were trying to find). */
-  target?: string;
   /** Smart, target-aware guidance for how to recover. */
   hint: string;
-  /** Optional extra detail from the vision model — only shown when it adds info. */
+  /** Full detail from the vision model or API (scrollable; not truncated). */
   detail?: string;
 }
+
+/** Shown to the interactive step-revision API when the locator could not produce coordinates. */
+const REVISION_LOCATOR_HINT =
+  "Computer Use did not return coordinates for the current step; the control may be off-screen, covered by another window, in the wrong application, or the screenshot does not match the lesson — revise the step so highlightDescription matches what is actually visible.";
 
 /** Map a raw target description to a short, friendly name shown to the user. */
 function shortTargetName(description: string): string {
@@ -62,7 +64,7 @@ function shortTargetName(description: string): string {
   if (lower.includes("chrome")) return "Google Chrome";
   // Final fallback: first sentence/clause, trimmed.
   const firstSentence = d.split(/[.!?]/)[0]?.trim() ?? d;
-  return firstSentence.length > 80 ? `${firstSentence.slice(0, 77)}…` : firstSentence;
+  return firstSentence.length > 120 ? `${firstSentence.slice(0, 117)}…` : firstSentence;
 }
 
 /** Choose a contextual hint based on what the step was looking for. */
@@ -82,15 +84,14 @@ function smartHintKey(description: string): string {
   return "tutorial.highlightErrorHint";
 }
 
-/** Decide whether a model explanation is helpful enough to show to the user. */
-function usefulDetail(explanation: string | undefined): string | undefined {
+/** Normalize vision / IPC explanation for display: full text, no truncation. */
+function normalizeLocateExplanation(explanation: string | undefined): string | undefined {
   if (!explanation) return undefined;
   const trimmed = explanation.trim();
   if (!trimmed) return undefined;
-  // Filter out the boilerplate "not found" string from the API.
   if (/^element not found on screen\.?$/i.test(trimmed)) return undefined;
-  if (trimmed.length < 8) return undefined;
-  return trimmed.length > 200 ? `${trimmed.slice(0, 197)}…` : trimmed;
+  if (trimmed.length < 2) return undefined;
+  return trimmed;
 }
 
 /**
@@ -162,16 +163,63 @@ export function TutorialController() {
 
   const buildSmartError = useCallback(
     (description: string | undefined, explanation?: string): HighlightErrorState => {
-      const target = description ? shortTargetName(description) : undefined;
+      const friendlyTarget = description ? shortTargetName(description) : undefined;
       const hintKey = description ? smartHintKey(description) : "tutorial.highlightErrorHint";
-      // Interactive tutorials no longer occupy a side panel — the GransonAI
-      // overlay is collapsed off-screen during a run, leaving only the lesson
-      // card + chat box. So we don't append the legacy "close the panel" hint.
+      const normalized = normalizeLocateExplanation(explanation);
+      const detail = normalized ?? (explanation?.trim() ? explanation.trim() : undefined);
       return {
-        title: t("tutorial.highlightErrorTitle"),
-        target,
+        title: friendlyTarget
+          ? t("tutorial.highlightErrorTitleWithTarget", { target: friendlyTarget })
+          : t("tutorial.highlightErrorTitle"),
         hint: t(hintKey).trim(),
-        detail: usefulDetail(explanation),
+        detail,
+      };
+    },
+    [t],
+  );
+
+  const buildLocateHighlightError = useCallback(
+    (
+      description: string | undefined,
+      result: {
+        success: boolean;
+        found?: boolean;
+        explanation?: string;
+        error?: string;
+        hint?: string;
+        reason?: string;
+      },
+    ): HighlightErrorState => {
+      const hintKey = description ? smartHintKey(description) : "tutorial.highlightErrorHint";
+      const contextualHint = t(hintKey).trim();
+      const friendlyTarget = description ? shortTargetName(description) : undefined;
+      const title = friendlyTarget
+        ? t("tutorial.highlightErrorTitleWithTarget", { target: friendlyTarget })
+        : t("tutorial.highlightErrorTitle");
+
+      if (result.reason === "anthropic_not_configured") {
+        return {
+          title: t("tutorial.highlightErrorTitle"),
+          hint: t("tutorial.highlightErrorAnthropicNotConfigured"),
+        };
+      }
+
+      if (!result.success) {
+        const detailParts = [result.error, result.hint].filter((x) => typeof x === "string" && x.trim());
+        return {
+          title,
+          hint: contextualHint,
+          detail: detailParts.length ? detailParts.join("\n\n") : t("tutorial.highlightErrorFallbackDetail"),
+        };
+      }
+
+      const exp = result.explanation ?? result.error;
+      const normalized = normalizeLocateExplanation(exp);
+      const detail = normalized ?? t("tutorial.highlightErrorFallbackDetail");
+      return {
+        title,
+        hint: contextualHint,
+        detail,
       };
     },
     [t],
@@ -331,10 +379,14 @@ export function TutorialController() {
           setHighlightError({
             title: t("tutorial.highlightErrorTitle"),
             hint: t("tutorial.highlightErrorHint"),
-            detail: "Screen analysis is only available in the desktop app.",
+            detail: t("tutorial.highlightErrorDesktopOnly"),
           });
           return;
         }
+
+        const locateTargetDescription = currentStep.highlightDescription
+          ? currentStep.highlightDescription
+          : buildInteractivePointerDescription(currentStep);
 
         try {
           const cap = captured ?? (await captureScreenToPngBase64());
@@ -343,12 +395,9 @@ export function TutorialController() {
             return;
           }
 
-          const target = currentStep.highlightDescription
-            ? currentStep.highlightDescription
-            : buildInteractivePointerDescription(currentStep);
           const result = await window.electronAPI.locateElementComputerUse(
             cap.base64,
-            target,
+            locateTargetDescription,
             cap.width,
             cap.height,
           );
@@ -368,30 +417,29 @@ export function TutorialController() {
           } else {
             setPointerTarget(null);
             if (
+              result.success &&
               cap &&
               !cancelled &&
               (await tryReviseStepFromScreenshot(
                 cap,
                 currentStep,
-                result.explanation ?? result.error ?? "On-screen pointer target was not found.",
+                result.explanation ?? result.error ?? REVISION_LOCATOR_HINT,
               ))
             ) {
               setIsLoadingHighlight(false);
               return;
             }
-            setHighlightError(
-              buildSmartError(
-                currentStep.highlightDescription,
-                result.explanation ?? result.error ?? "Element not found on screen.",
-              ),
-            );
+            setHighlightError(buildLocateHighlightError(locateTargetDescription, result));
           }
         } catch (err) {
           if (cancelled) return;
           console.error("Interactive pointer vision failed:", err);
           setPointerTarget(null);
           setHighlightError(
-            buildSmartError(currentStep.highlightDescription, err instanceof Error ? err.message : undefined),
+            buildSmartError(
+              locateTargetDescription,
+              err instanceof Error ? err.message : undefined,
+            ),
           );
         }
         setIsLoadingHighlight(false);
@@ -415,7 +463,7 @@ export function TutorialController() {
           setHighlightError({
             title: t("tutorial.highlightErrorTitle"),
             hint: t("tutorial.highlightErrorHint"),
-            detail: "Screen analysis is only available in the desktop app.",
+            detail: t("tutorial.highlightErrorDesktopOnly"),
           });
           return;
         }
@@ -450,9 +498,7 @@ export function TutorialController() {
           } else {
             setHighlightPayload(null);
             setPointerTarget(null);
-            setHighlightError(
-              buildSmartError(currentStep.highlightDescription, result.explanation ?? result.error),
-            );
+            setHighlightError(buildLocateHighlightError(currentStep.highlightDescription, result));
           }
         } catch (err) {
           if (cancelled) return;
@@ -482,6 +528,7 @@ export function TutorialController() {
     currentStep,
     retryToken,
     buildSmartError,
+    buildLocateHighlightError,
     t,
     tutorialId,
     interactiveGoal,
@@ -658,71 +705,76 @@ export function TutorialController() {
           ? createPortal(
               <div
                 data-tutorial-chrome
-                className="fixed left-1/2 top-6 z-[999998] w-[90vw] max-w-md -translate-x-1/2"
+                className="fixed left-1/2 top-6 z-[999998] flex max-h-[85vh] w-[92vw] max-w-lg -translate-x-1/2 flex-col overflow-hidden rounded-lg border border-white/15 shadow-[0_12px_40px_rgba(0,20,7,0.55)]"
+                style={{ background: "var(--green-5)" }}
                 role="alert"
                 aria-live="assertive"
               >
                 <div
-                  className="h-1.5 w-full"
+                  className="h-1.5 w-full shrink-0"
                   style={{
                     background: "linear-gradient(90deg, var(--green-1) 0%, var(--green-2) 50%, var(--green-3) 100%)",
                   }}
                   aria-hidden="true"
                 />
-                <div className="flex items-start gap-3 px-5 py-4">
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Image
-                      src={c4pLogo}
-                      alt="Computers 4 People"
-                      width={32}
-                      height={32}
-                      className="rounded-md bg-white/10 p-1"
-                    />
-                    <span
-                      className="flex h-8 w-8 items-center justify-center rounded-full"
-                      style={{ background: "hsl(var(--primary) / 0.18)", color: "var(--green-1)" }}
-                      aria-hidden="true"
-                    >
-                      <Search className="h-4 w-4" />
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold leading-tight tracking-wide" style={{ color: "var(--green-1)" }}>
-                      {highlightError.title}
-                    </p>
-                    {highlightError.target ? (
-                      <p className="mt-1 text-xs font-medium uppercase tracking-wide text-white/65">
-                        {t("tutorial.highlightErrorTargetLabel", { target: highlightError.target })}
-                      </p>
-                    ) : null}
-                    <p className="mt-2 text-sm leading-snug text-white/95">{highlightError.hint}</p>
-                    {highlightError.detail ? (
-                      <p className="mt-2 text-xs leading-snug text-white/65">{highlightError.detail}</p>
-                    ) : null}
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="interactable h-8 rounded-full px-3 text-xs font-semibold"
-                        style={{
-                          background: "var(--green-1)",
-                          color: "var(--black)",
-                        }}
-                        onClick={() => setRetryToken((n) => n + 1)}
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <div className="flex shrink-0 items-start gap-3 px-5 pb-2 pt-4">
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Image
+                        src={c4pLogo}
+                        alt="Computers 4 People"
+                        width={32}
+                        height={32}
+                        className="rounded-md bg-white/10 p-1"
+                      />
+                      <span
+                        className="flex h-8 w-8 items-center justify-center rounded-full"
+                        style={{ background: "hsl(var(--primary) / 0.18)", color: "var(--green-1)" }}
+                        aria-hidden="true"
                       >
-                        {t("tutorial.highlightErrorRetry")}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="interactable h-8 rounded-full border border-white/25 bg-white/5 px-3 text-xs font-semibold text-white/85 hover:bg-white/15"
-                        onClick={() => setHighlightError(null)}
-                      >
-                        <X className="mr-1 h-3.5 w-3.5" />
-                        {t("tutorial.highlightErrorDismiss")}
-                      </Button>
+                        <Search className="h-4 w-4" />
+                      </span>
                     </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold leading-tight tracking-wide" style={{ color: "var(--green-1)" }}>
+                        {highlightError.title}
+                      </p>
+                      <p className="mt-2 text-sm leading-snug text-white/95">{highlightError.hint}</p>
+                    </div>
+                  </div>
+                  {highlightError.detail ? (
+                    <div className="mx-5 mb-1 min-h-0 max-h-[min(50vh,22rem)] overflow-y-auto rounded-md border border-white/10 bg-black/15 px-3 py-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-white/50">
+                        {t("tutorial.highlightErrorDetected")}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-snug text-white/80">
+                        {highlightError.detail}
+                      </p>
+                    </div>
+                  ) : null}
+                  <div className="flex shrink-0 flex-wrap items-center gap-2 px-5 pb-4 pt-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="interactable h-8 rounded-full px-3 text-xs font-semibold"
+                      style={{
+                        background: "var(--green-1)",
+                        color: "var(--black)",
+                      }}
+                      onClick={() => setRetryToken((n) => n + 1)}
+                    >
+                      {t("tutorial.highlightErrorRetry")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="interactable h-8 rounded-full border border-white/25 bg-white/5 px-3 text-xs font-semibold text-white/85 hover:bg-white/15"
+                      onClick={() => setHighlightError(null)}
+                    >
+                      <X className="mr-1 h-3.5 w-3.5" />
+                      {t("tutorial.highlightErrorDismiss")}
+                    </Button>
                   </div>
                 </div>
               </div>,

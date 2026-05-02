@@ -14,6 +14,7 @@ import { ScrollContainer } from "./scroll-container";
 import { VoiceInput } from "./voice-input"; // ← NEW
 import { useTutorial } from "../tutorial/tutorial-provider";
 import { INTERACTIVE_TUTORIAL_ID } from "@/lib/tutorials";
+import { clientSideRecoveryHint } from "@/lib/chat-assistant-error";
 
 type MessageWithId = MessageProps & { id: string; variant: "user" | "assistant" };
 interface ChatHistoryItem {
@@ -22,6 +23,23 @@ interface ChatHistoryItem {
 }
 
 const CHAT_STORAGE_KEY = "t4sg-c4p-chat-messages-v2";
+
+async function parseChatErrorResponse(response: Response): Promise<{ error: string; hint?: string }> {
+  let error = `Request failed (${response.status})`;
+  let hint: string | undefined;
+  const ct = response.headers.get("content-type") ?? "";
+  if (ct.includes("application/json")) {
+    try {
+      const data = (await response.json()) as { error?: string; hint?: string; model?: string };
+      if (data.error) error = data.error;
+      if (data.hint) hint = data.hint;
+      if (data.model) error = `${error} [model: ${data.model}]`;
+    } catch {
+      /* ignore */
+    }
+  }
+  return { error, hint };
+}
 
 function parseStoredMessages(raw: unknown): MessageWithId[] {
   if (!Array.isArray(raw)) return [];
@@ -224,22 +242,6 @@ export function Chat({ showHeader = true }: ChatProps) {
     textareaRef.current?.focus();
   };
 
-  const parseChatError = async (response: Response): Promise<string> => {
-    let detail = `Request failed (${response.status})`;
-    const ct = response.headers.get("content-type") ?? "";
-    if (ct.includes("application/json")) {
-      try {
-        const data = (await response.json()) as { error?: string; hint?: string; model?: string };
-        if (data.error) detail = data.error;
-        if (data.hint) detail += ` — ${data.hint}`;
-        if (data.model) detail += ` [model: ${data.model}]`;
-      } catch {
-        /* ignore */
-      }
-    }
-    return detail;
-  };
-
   const readTextStream = async (response: Response): Promise<string> => {
     if (!response.body) throw new Error("No response body");
     const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
@@ -260,7 +262,7 @@ export function Chat({ showHeader = true }: ChatProps) {
   type InitialNdjsonResult =
     | { ok: true; action: "capture_screen"; assistantContent: unknown }
     | { ok: true; action: null; reply: string }
-    | { ok: false; i18nKey: string; values?: Record<string, string> };
+    | { ok: false; i18nKey: string; values?: Record<string, string | undefined> };
 
   /** First-turn assistant: NDJSON lines `{type:"token"}`, then `{type:"done"}` or `{type:"error"}`. */
   const readNdjsonInitialStream = async (
@@ -313,7 +315,7 @@ export function Chat({ showHeader = true }: ChatProps) {
           return {
             ok: false,
             i18nKey: "chat.errorWithDetail",
-            values: { detail: hint ? `${err} — ${hint}` : err },
+            values: { detail: err, recovery: hint },
           };
         }
       }
@@ -338,7 +340,7 @@ export function Chat({ showHeader = true }: ChatProps) {
             return {
               ok: false,
               i18nKey: "chat.errorWithDetail",
-              values: { detail: hint ? `${err} — ${hint}` : err },
+              values: { detail: err, recovery: hint },
             };
           }
         }
@@ -365,9 +367,10 @@ export function Chat({ showHeader = true }: ChatProps) {
         await sendInteractivePrompt(prompt);
       } catch (err) {
         const reason = err instanceof Error ? err.message : t("chat.unknownError");
+        const recovery = clientSideRecoveryHint(reason, t) || t("chat.errorRecoveryDefault");
         toast({
           title: t("chat.assistantUnavailable", { status: "interactive" }),
-          description: reason,
+          description: t("chat.errorWithDetail", { detail: reason, recovery }),
           variant: "destructive",
         });
       } finally {
@@ -421,6 +424,17 @@ export function Chat({ showHeader = true }: ChatProps) {
       }
     };
 
+    const assistantErrorText = (detail: string, serverHint?: string) => {
+      const recovery =
+        serverHint?.trim() || clientSideRecoveryHint(detail, t) || t("chat.errorRecoveryDefault");
+      return t("chat.errorWithDetail", { detail, recovery });
+    };
+
+    const failFromApiResponse = async (response: Response) => {
+      const { error, hint } = await parseChatErrorResponse(response);
+      failAssistant(assistantErrorText(error, hint));
+    };
+
     try {
       let response = await fetch("/api/chat", {
         method: "POST",
@@ -438,7 +452,19 @@ export function Chat({ showHeader = true }: ChatProps) {
         });
 
         if (!streamResult.ok) {
-          failAssistant(t(streamResult.i18nKey, streamResult.values ?? {}));
+          if (
+            streamResult.i18nKey === "chat.errorWithDetail" &&
+            streamResult.values &&
+            typeof streamResult.values.detail === "string"
+          ) {
+            const serverHint =
+              typeof streamResult.values.recovery === "string" && streamResult.values.recovery.trim()
+                ? streamResult.values.recovery
+                : undefined;
+            failAssistant(assistantErrorText(streamResult.values.detail, serverHint));
+          } else {
+            failAssistant(t(streamResult.i18nKey, streamResult.values ?? {}));
+          }
           return;
         }
 
@@ -463,7 +489,7 @@ export function Chat({ showHeader = true }: ChatProps) {
           });
 
           if (!response.ok) {
-            failAssistant(t("chat.errorWithDetail", { detail: await parseChatError(response) }));
+            await failFromApiResponse(response);
             return;
           }
 
@@ -486,20 +512,28 @@ export function Chat({ showHeader = true }: ChatProps) {
 
       if (ct.includes("application/json")) {
         const data = (await response.json()) as
-          | { error?: string; reply?: string; action?: string; assistantContent?: unknown }
+          | {
+              error?: string;
+              hint?: string;
+              reply?: string;
+              action?: string;
+              assistantContent?: unknown;
+            }
           | Record<string, unknown>;
 
         if (!response.ok) {
-          const msg =
-            typeof data.error === "string"
-              ? t("chat.errorWithDetail", { detail: data.error })
-              : t("chat.assistantUnavailable", { status: String(response.status) });
-          failAssistant(msg);
+          if (typeof data.error === "string") {
+            const hint = typeof data.hint === "string" ? data.hint : undefined;
+            failAssistant(assistantErrorText(data.error, hint));
+          } else {
+            failAssistant(t("chat.assistantUnavailable", { status: String(response.status) }));
+          }
           return;
         }
 
         if ("error" in data && typeof data.error === "string") {
-          failAssistant(t("chat.errorWithDetail", { detail: data.error }));
+          const hint = typeof data.hint === "string" ? data.hint : undefined;
+          failAssistant(assistantErrorText(data.error, hint));
           return;
         }
 
@@ -529,7 +563,7 @@ export function Chat({ showHeader = true }: ChatProps) {
           });
 
           if (!response.ok) {
-            failAssistant(t("chat.errorWithDetail", { detail: await parseChatError(response) }));
+            await failFromApiResponse(response);
             return;
           }
 
@@ -550,7 +584,7 @@ export function Chat({ showHeader = true }: ChatProps) {
       }
 
       if (!response.ok) {
-        failAssistant(t("chat.errorWithDetail", { detail: await parseChatError(response) }));
+        await failFromApiResponse(response);
         return;
       }
 
@@ -562,7 +596,7 @@ export function Chat({ showHeader = true }: ChatProps) {
       finishAssistant(fullResponse);
     } catch (err) {
       const reason = err instanceof Error ? err.message : t("chat.unknownError");
-      failAssistant(t("chat.errorWithDetail", { detail: reason }));
+      failAssistant(assistantErrorText(reason));
     } finally {
       setIsLoading(false);
     }

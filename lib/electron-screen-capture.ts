@@ -21,6 +21,10 @@ declare global {
         y?: number;
         explanation?: string;
         error?: string;
+        /** Actionable English hint when `success` is false (Anthropic/network errors). */
+        hint?: string;
+        /** Set when the desktop app has no API key configured for Computer Use. */
+        reason?: string;
       }>;
     };
   }
