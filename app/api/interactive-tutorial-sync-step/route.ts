@@ -21,16 +21,15 @@ Return exactly one JSON object in a TEXT block:
   "titleRaw": "Short title (<= 8 words)",
   "textRaw": "Friendly instructions (2-5 short sentences).",
   "visual": "text" | "screen" | "screen_text",
-  "highlightSelector": "[optional, only if target is inside the Granson side panel]",
-  "highlightDescription": "English phrase for something outside the panel (preferred for Chrome, Gmail, OS UI)"
+  "highlightDescription": "English phrase describing the on-screen target (Chrome icon, button label, field, etc.)"
 }
 
-Tutorial chrome (ignore for targets): bottom-left lesson card, bottom-left tutorial Back/Next/Exit, and highlight-error banners — these are NOT the product being taught. Never aim highlights or instructions at them when the user needs in-app or browser navigation; say explicitly “app/form/browser back” vs tutorial buttons.
+Tutorial chrome (ignore for targets): the small lesson card, the slim chat box under it, the tutorial Back/Next/Exit buttons, and highlight-error banners — these are NOT the product being taught. Never aim highlights or instructions at them when the user needs in-app or browser navigation; say explicitly "app/form/browser back" vs tutorial buttons.
 
 Rules:
-- Prefer visual "screen" or "screen_text" when the next click is outside the Granson panel.
+- Prefer visual "screen" or "screen_text" whenever there is an on-screen target. Err on the side of including highlightDescription.
 - highlightDescription must name something clearly visible in the screenshot (label, color, position).
-- Use highlightSelector only for elements inside the Granson app panel.
+- highlightDescription is the ONE AND ONLY targeting field. The Claude Computer Use API uses it to locate the element and draw an arrow. Do not emit any other targeting key — only the JSON shape shown above is understood by the client.
 - Reuse the same "id" when the step is still the same beat; otherwise pick a new id with prefix it-.
 - Third grade reading level.
 - Do NOT call tools. Output JSON only.`;

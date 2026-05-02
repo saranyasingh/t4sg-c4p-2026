@@ -12,7 +12,6 @@ export function InteractiveTutorialPage() {
     setGoal,
     prompt,
     setPrompt,
-    uiHistory,
     isLoading,
     isActive,
     begin,
@@ -55,84 +54,57 @@ export function InteractiveTutorialPage() {
     return () => window.removeEventListener("keydown", onKeyDown, { capture: true } as any);
   }, [begin, goal, isActive, isLoading, prompt]);
 
+  // Once an interactive tutorial is active, the GransonAI side panel is
+  // collapsed off-screen and all user interaction happens through the
+  // floating lesson card + the slim chat box that sits under it. We render
+  // an empty container here so the workflow hook (which owns the message
+  // history and registers the prompt/next-step handlers with the provider)
+  // stays mounted, but no visual UI leaks behind the hidden panel.
+  if (isActive) {
+    // Suppress unused-variable warnings for fields the active branch no
+    // longer consumes — they're owned by the floating chat box now.
+    void prompt;
+    void promptRef;
+    void promptFormRef;
+    void setPrompt;
+    void sendUserMessage;
+    void exitInteractiveTutorial;
+    return <div aria-hidden="true" className="hidden" />;
+  }
+
   return (
     <div className="interactable flex h-full min-h-0 flex-col gap-4 p-6">
       <header className="space-y-1">
         <TypographyH2>Interactive tutorial</TypographyH2>
       </header>
 
-      {!isActive ? (
-        <div className="flex flex-1 items-center justify-center">
-          <div className="w-full max-w-xl rounded-2xl border border-white/15 bg-white/5 p-6">
-            <TypographySmall className="mb-2 text-white/80">What do you want to learn?</TypographySmall>
-            <Textarea
-              ref={(el) => {
-                goalRef.current = el;
-              }}
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              rows={3}
-              className="interactable resize-none text-white"
-              placeholder="Example: how to send an email in Gmail"
-            />
-            <div className="mt-4 flex items-center gap-2">
-              <Button
-                type="button"
-                className="interactable bg-white text-black hover:bg-white/90"
-                disabled={!goal.trim() || isLoading}
-                onClick={() => {
-                  void begin(goal.trim());
-                }}
-              >
-                {isLoading ? "Starting..." : "Start"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-1 min-h-0 flex-col justify-end">
-          <form
+      <div className="flex flex-1 items-center justify-center">
+        <div className="w-full max-w-xl rounded-2xl border border-white/15 bg-white/5 p-6">
+          <TypographySmall className="mb-2 text-white/80">What do you want to learn?</TypographySmall>
+          <Textarea
             ref={(el) => {
-              promptFormRef.current = el;
+              goalRef.current = el;
             }}
-            className="flex items-end gap-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!prompt.trim() || isLoading) return;
-              const p = prompt.trim();
-              setPrompt("");
-              void sendUserMessage(p);
-            }}
-          >
-            <div className="relative flex-1">
-              <Textarea
-                ref={(el) => {
-                  promptRef.current = el;
-                }}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                disabled={isLoading}
-                rows={2}
-                className="interactable resize-none text-white"
-                placeholder="Ask a question…"
-              />
-            </div>
-            <Button type="submit" disabled={isLoading || !prompt.trim()} className="interactable">
-              Send
-            </Button>
+            value={goal}
+            onChange={(e) => setGoal(e.target.value)}
+            rows={3}
+            className="interactable resize-none text-white"
+            placeholder="Example: how to send an email in Gmail"
+          />
+          <div className="mt-4 flex items-center gap-2">
             <Button
               type="button"
-              variant="outline"
-              className="interactable border-white/30 bg-black/30 text-white"
+              className="interactable bg-white text-black hover:bg-white/90"
+              disabled={!goal.trim() || isLoading}
               onClick={() => {
-                exitInteractiveTutorial();
+                void begin(goal.trim());
               }}
             >
-              Exit tutorial
+              {isLoading ? "Starting..." : "Start"}
             </Button>
-          </form>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

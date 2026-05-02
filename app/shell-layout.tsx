@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { TypographySmall } from "@/components/ui/typography";
-import { INTERACTIVE_TUTORIAL_ID, INTRO_TUTORIAL_ID } from "@/lib/tutorials";
+import { INTRO_TUTORIAL_ID } from "@/lib/tutorials";
 import { HelpCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -12,6 +12,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import c4pLogo from "../public/images/c4p.png";
 import { useLanding } from "./landing-context";
+import { InteractiveChatBar } from "./tutorial/interactive-chat-bar";
 import { TutorialController } from "./tutorial/tutorial-controller";
 import { useTutorial } from "./tutorial/tutorial-provider";
 
@@ -23,6 +24,21 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
   const { hasEnteredApp } = useLanding();
   const pathname = usePathname();
   const router = useRouter();
+
+  // CONTENT tutorials (Gmail, Google Search, interactive AI): collapse the
+  // GransonAI panel off-screen so the lesson step card + the slim chat box
+  // beneath it are the only on-screen UI.
+  //
+  // The APP TOUR (intro) is the exception — it teaches the GransonAI panel
+  // itself, so the chatbot stays "on the side" (in the panel) and there is
+  // no floating chat box. The lesson step card sits at its standard bottom
+  // anchor and points at panel features by name in plain text.
+  //
+  // We KEEP the panel mounted (translated off-screen + opacity-0 +
+  // pointer-events-none) so the InteractiveTutorialPage's workflow hook —
+  // which owns the interactive AI tutorial's message history — stays alive
+  // across the tutorial.
+  const isContentTutorialRunning = tutorialId != null && tutorialId !== INTRO_TUTORIAL_ID;
 
   // The intro tour highlights elements that only exist on the home page (chat,
   // voice, audio-mode, language). Make sure we route there before kicking off
@@ -55,13 +71,20 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
   }, [hasEnteredApp, pathname, router]);
 
   const isIntroActive = tutorialId === INTRO_TUTORIAL_ID;
-  const isInteractiveActive = tutorialId === INTERACTIVE_TUTORIAL_ID;
+
+  // Translate fully off-screen during any content tutorial. The panel stays
+  // visible during the App Tour (and when no tutorial is active).
+  const panelHidden = isContentTutorialRunning;
+  const panelTranslateClass = panelHidden
+    ? "translate-x-[calc(100%+2rem)] pointer-events-none opacity-0"
+    : isCollapsed
+      ? "translate-x-[calc(100%-3rem)]"
+      : "translate-x-0";
 
   const panel = (
     <section
-      className={`interactable fixed right-6 top-0 z-[999999] flex h-full min-h-0 w-[420px] max-w-[92vw] transform-gpu flex-col rounded-2xl border border-white/45 bg-[hsl(var(--foreground)/var(--shell-bg-opacity))] text-white shadow-xl backdrop-blur-lg transition-transform duration-300 ease-out will-change-transform ${
-        isCollapsed ? "translate-x-[calc(100%-3rem)]" : "translate-x-0"
-      }`}
+      aria-hidden={panelHidden ? true : undefined}
+      className={`interactable fixed right-6 top-0 z-[999999] flex h-full min-h-0 w-[420px] max-w-[92vw] transform-gpu flex-col rounded-2xl border border-white/45 bg-[hsl(var(--foreground)/var(--shell-bg-opacity))] text-white shadow-xl backdrop-blur-lg transition-[transform,opacity] duration-300 ease-out will-change-transform ${panelTranslateClass}`}
     >
       <Button
         type="button"
@@ -138,5 +161,10 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
   if (!mounted || !hasEnteredApp) {
     return <>{children}</>;
   }
-  return createPortal(panel, document.body);
+  return (
+    <>
+      {createPortal(panel, document.body)}
+      <InteractiveChatBar />
+    </>
+  );
 }

@@ -12,36 +12,6 @@ import {
 import { extractStepFromAnthropicContent } from "@/lib/interactive-tutorial-step-parse";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-type BoundingBox = {
-  selector: string;
-  found: boolean;
-  left?: number;
-  top?: number;
-  width?: number;
-  height?: number;
-};
-
-function isTutorialChromeElement(el: HTMLElement): boolean {
-  return Boolean(el.closest("[data-tutorial-chrome]"));
-}
-
-function boundingBoxes(selectors: string[]): { boxes: BoundingBox[] } {
-  const boxes: BoundingBox[] = selectors.map((selector) => {
-    const el = document.querySelector(selector) as HTMLElement | null;
-    if (!el || isTutorialChromeElement(el)) return { selector, found: false };
-    const r = el.getBoundingClientRect();
-    return {
-      selector,
-      found: true,
-      left: r.left,
-      top: r.top,
-      width: r.width,
-      height: r.height,
-    };
-  });
-  return { boxes };
-}
-
 export function useInteractiveTutorialAgent() {
   const {
     startInteractiveTutorial,
@@ -176,8 +146,9 @@ export function useInteractiveTutorialAgent() {
       // Append assistant content to message history.
       messagesRef.current = [...messagesRef.current, { role: "assistant", content: content as any }];
 
-      // If there are tool_use blocks, we MUST respond with tool_result blocks immediately
-      // in the next message, otherwise the next API call will be rejected.
+      // The model should never call any tools — it's instructed to emit step JSON only.
+      // If it does call a tool (legacy behavior), respond with an error tool_result so
+      // history stays valid, then continue the loop to give the model a chance to recover.
       const toolUses: any[] = Array.isArray(content)
         ? (content.filter((b) => b && typeof b === "object" && (b as any).type === "tool_use") as any[])
         : [];
@@ -185,27 +156,14 @@ export function useInteractiveTutorialAgent() {
         const results = toolUses
           .map((tu) => {
             const id = tu?.id ? String(tu.id) : null;
-            const name = typeof tu?.name === "string" ? tu.name : "";
             if (!id) return null;
-
-            // Known tool: bounding_boxes
-            if (name === "bounding_boxes") {
-              const selectors = Array.isArray(tu?.input?.selectors)
-                ? tu.input.selectors.filter((s: unknown) => typeof s === "string")
-                : [];
-              const result = boundingBoxes(selectors);
-              return {
-                type: "tool_result",
-                tool_use_id: id,
-                content: JSON.stringify(result),
-              };
-            }
-
-            // Unknown / malformed tool call: still respond so history stays valid.
             return {
               type: "tool_result",
               tool_use_id: id,
-              content: JSON.stringify({ error: `Unknown tool: ${name || "(missing name)"}` }),
+              content: JSON.stringify({
+                error:
+                  "No tools are available. Emit step JSON only with highlightDescription for any on-screen target.",
+              }),
             };
           })
           .filter(Boolean);
@@ -227,19 +185,12 @@ export function useInteractiveTutorialAgent() {
         continue;
       }
 
-      // Otherwise we expect a step JSON in text.
+      // Otherwise we expect a step JSON in text. The parser already accepts
+      // only `highlightDescription` and silently drops any other targeting
+      // field, so the step we hand back is guaranteed to use the Claude
+      // Computer Use API pointer exclusively.
       const step = extractStepFromAnthropicContent(content);
-      if (step) {
-        // Validate in-app selector highlights before accepting them.
-        if (step.highlightSelector) {
-          const check = boundingBoxes([step.highlightSelector]);
-          const found = check.boxes[0]?.found === true;
-          if (!found) {
-            return { ...step, highlightSelector: undefined };
-          }
-        }
-        return step;
-      }
+      if (step) return step;
 
       // If no step and no tool_use, stop.
       return null;
@@ -286,7 +237,6 @@ export function useInteractiveTutorialAgent() {
                 textRaw: cur.textRaw,
                 visual: cur.visual,
                 highlightDescription: cur.highlightDescription,
-                highlightSelector: cur.highlightSelector,
               })
             : "(none)";
         const step = await runAgentTurn(
@@ -330,7 +280,6 @@ export function useInteractiveTutorialAgent() {
                 textRaw: cur.textRaw,
                 visual: cur.visual,
                 highlightDescription: cur.highlightDescription,
-                highlightSelector: cur.highlightSelector,
               })
             : "(none)";
         const step = await runAgentTurn(

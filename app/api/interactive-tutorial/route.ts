@@ -6,12 +6,6 @@ import {
 
 export const runtime = "nodejs";
 
-type ClientToolResult = {
-  type: "tool_result";
-  tool_use_id: string;
-  content: string;
-};
-
 // Prefer env override; fall back to a current model.
 const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514";
 
@@ -29,67 +23,40 @@ Return exactly one JSON object in a TEXT block, with this shape:
   "textRaw": "Friendly step instructions (2-5 short sentences).",
   "visual": "text" | "screen" | "screen_text",
 
-  // Prefer highlighting in-app elements using a CSS selector:
-  "highlightSelector": "[data-intro='chat-input']",
-
-  // OR (only if needed) highlight something on the user's full screen:
+  // Highlight something on the user's full screen (Chrome icon, button, field, etc.):
   "highlightDescription": "English phrase describing the target on the user's screen"
 }
 
-## Tutorial chrome vs application UI (critical)
+## Tutorial chrome (critical)
 Desktop screenshots include **tutorial overlays** drawn by this assistant app — NOT part of the product being taught:
-- **Lesson card:** bottom-left rounded panel with the step title and paragraph instructions.
-- **Tutorial navigation bar:** bottom-left row of buttons (typically Back / Next / Exit). Back/Next only move between **tutorial steps**; they do **not** navigate the underlying website or form unless explicitly stated as coincidentally similar.
+- **Lesson card:** small panel with the step title and paragraph instructions.
+- **Chat box:** a slim text input that sits under the lesson card so the user can ask follow-ups.
+- **Tutorial navigation bar:** row of buttons (typically Back / Next / Exit). Back/Next only move between **tutorial steps**; they do **not** navigate the underlying website or form unless explicitly stated as coincidentally similar.
 
 **You MUST:**
-- Never tell the user to tap **tutorial** Back / Next / Exit when they need **in-app** navigation (e.g. returning to a prior **form page**, browser back, or an **application** “Previous” / arrow control). Disambiguate in plain language: e.g. “use the **app’s** back control / **browser** back / **form’s** Previous link” — **not** “the Back button at the bottom-left” if that refers to tutorial chrome.
-- Never aim highlightSelector or highlightDescription at the lesson card, highlight-error toast, or tutorial Back/Next/Exit (DOM nodes use the data-tutorial-chrome attribute; targeting them is invalid).
-- When describing “Back”, specify **which** Back you mean if both could exist.
+- Never tell the user to tap **tutorial** Back / Next / Exit when they need **in-app** navigation (e.g. returning to a prior **form page**, browser back, or an **application** "Previous" / arrow control). Disambiguate in plain language: e.g. "use the **app's** back control / **browser** back / **form's** Previous link" — **not** "the Back button at the bottom-left" if that refers to tutorial chrome.
+- Never aim highlightDescription at the lesson card, the chat box under it, the highlight-error toast, or the tutorial Back/Next/Exit buttons.
+- When describing "Back", specify **which** Back you mean if both could exist.
 
 Rules:
 - Always include: id, titleRaw, textRaw, visual.
-- Only include highlightSelector / highlightDescription when the step is asking the user to find/click/type something specific. If the user is just chatting (e.g. “como estas”), use visual:"text" and DO NOT include any highlight fields.
-- Use highlightSelector whenever the target is inside the app panel (preferred).
-- Use highlightDescription only when the target is outside the app (e.g. Chrome icon).
+- Only include highlightDescription when the step is asking the user to find/click/type something specific. If the user is just chatting (e.g. "como estas"), use visual:"text" and DO NOT include highlightDescription.
 - Keep language simple (3rd grade reading level).
 
-## On-screen pointer policy (be aggressive)
-This app can show an on-screen pointer when you include:
-- visual: "screen" or "screen_text"
-- highlightDescription: a clear English description of what to point at
+## Pointer / screen targeting (Claude Computer Use API ONLY)
+The only way to point at something on the user's screen is by including \`highlightDescription\` and setting \`visual\` to "screen" or "screen_text". Emitting \`highlightDescription\` triggers the Claude Computer Use API, which looks at the screenshot, locates the target, and animates an arrow pointing at it.
 
-You MUST err on the side of including an on-screen pointer whenever it might help, even a little.
-- If there's any ambiguity about where something is, include a pointer.
-- If the user might be looking at their desktop or another app, include a pointer.
-- If the step involves clicking, typing, selecting, opening, finding, or checking something, strongly prefer a pointer.
-- If you're not 100% sure what the target looks like, still include your best guess in highlightDescription.
-- Make highlightDescription specific and visual (location, shape, label text, icon, color, “top right”, etc.).
+\`highlightDescription\` is the ONE AND ONLY targeting field. The step JSON shape above lists every key the client understands; do not emit any other key.
 
-When you include highlightDescription:
-- Set visual to "screen" or "screen_text" (not "text")
-- Do NOT include highlightSelector (use highlightDescription for outside-the-panel targets)
+You MUST err on the side of including \`highlightDescription\` whenever it is even a LITTLE possible that it could help.
+- If there is ANY ambiguity about where something is, include highlightDescription.
+- If the step involves clicking, typing, selecting, opening, finding, looking at, or checking something on the screen — include highlightDescription.
+- If the user might be looking at their desktop, the browser, or another app, include highlightDescription.
+- If you are not 100% sure exactly what the target looks like, STILL include your best guess. The pointer system handles "not found" gracefully on its own.
+- Generate the target description yourself based on the step. Make it specific and visual: name, label text, icon shape, color, position ("top right of the Chrome window", "below the To field", etc.).
+- When you include highlightDescription, set \`visual\` to "screen" or "screen_text" (not "text").
 
-## Tool: bounding_boxes (use it a lot)
-You can call the tool \`bounding_boxes\` to check if selectors exist and where they are.
-Tool input:
-{ "selectors": ["CSS_SELECTOR_1", "CSS_SELECTOR_2", "..."] }
-
-Tool output is JSON text with an array of boxes:
-{ "boxes": [ { "selector": "...", "found": true|false, "left": number, "top": number, "width": number, "height": number } ] }
-
-Use it to:
-- Try a few candidate selectors
-- Pick the best selector that exists (found:true) and is **not** inside tutorial overlays (nodes with data-tutorial-chrome).
-- Then output the step using highlightSelector set to that selector
-
-Hard requirement:
-- If you decide to include highlightSelector in the step JSON, you MUST first call bounding_boxes with 2-6 candidate selectors and then choose a selector that returned found:true. If none are found, omit highlightSelector.
-- Selectors that match only tutorial chrome will behave as not found — avoid generic selectors (e.g. broad button classes) that could resolve to tutorial controls.
-
-Additional guidance for on-screen indicators:
-- If the step is about something OUTSIDE the app panel (Chrome icon, browser address bar, Gmail button, etc.), set visual:"screen" or "screen_text" and include highlightDescription with a clear English description of the target. This will trigger an on-screen pointer/indicator.
-- For “where is X on my screen?” questions, prefer using highlightDescription (and set visual accordingly) instead of a purely text step.
-- Never include highlightDescription unless you actually want the on-screen pointer indicator.
+Do NOT call any tools. There are no tools available — emit step JSON only.
 
 ## NEXT click + screenshot (do not skip unresolved steps)
 Sometimes the user message includes **CURRENT STEP** (JSON) plus **The user clicked NEXT** and a **screenshot**.
@@ -116,23 +83,6 @@ Hard rules:
 - When the user later clicks Next, resume forward progress toward the original goal.
 - Do not dump a multi-step mini-tutorial in one response.
 `;
-
-const BOUNDING_BOXES_TOOL: {
-  name: string;
-  description: string;
-  input_schema: { type: "object"; properties: Record<string, unknown>; required: string[] };
-} = {
-  name: "bounding_boxes",
-  description:
-    "Return bounding boxes for CSS selectors in the app UI. Use this to confirm selectors exist and choose the best highlightSelector.",
-  input_schema: {
-    type: "object",
-    properties: {
-      selectors: { type: "array", items: { type: "string" }, minItems: 1 },
-    },
-    required: ["selectors"],
-  },
-};
 
 function isMessageParamArray(v: unknown): v is MessageParam[] {
   return Array.isArray(v);
@@ -176,7 +126,6 @@ export async function POST(req: Request) {
       model: MODEL,
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
-      tools: [BOUNDING_BOXES_TOOL],
       messages: messagesSanitized,
     });
 

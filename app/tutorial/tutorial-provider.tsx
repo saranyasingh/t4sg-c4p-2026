@@ -1,6 +1,7 @@
 "use client";
 
 import { getTutorialById, INTERACTIVE_TUTORIAL_ID, type Tutorial, type TutorialStep } from "@/lib/tutorials";
+import { useTranslation } from "react-i18next";
 import {
   createContext,
   useCallback,
@@ -12,6 +13,18 @@ import {
   useState,
   type ReactNode,
 } from "react";
+
+/**
+ * When the user asks the chat box a question during a non-interactive tutorial
+ * (intro, Google Search, Gmail), the AI answer is stored here and overlays the
+ * lesson card content for the matching step. It auto-clears when the user
+ * navigates to a different step.
+ */
+export interface TutorialChatOverride {
+  stepId: string;
+  titleRaw: string;
+  textRaw: string;
+}
 
 export type TutorialContextValue = {
   /** `tutorialId !== null` means a tutorial is active (tutorial “mode”). */
@@ -30,6 +43,17 @@ export type TutorialContextValue = {
   sendInteractivePrompt: (text: string) => Promise<void>;
   generateNextInteractiveStep: () => Promise<void>;
   isGeneratingInteractiveStep: boolean;
+  /**
+   * Q&A answer overlay for non-interactive tutorials. Set when the user asks
+   * a question via the floating chat box; null otherwise.
+   */
+  tutorialChatOverride: TutorialChatOverride | null;
+  /** Submit a chat question. Routes to the interactive flow for the AI tutorial,
+   *  or to /api/tutorial-chat (overlay) for hand-authored tutorials. */
+  askTutorialQuestion: (text: string) => Promise<void>;
+  isAskingTutorialQuestion: boolean;
+  /** Manually clear any chat-answer overlay. Also clears automatically on step change. */
+  clearTutorialChatOverride: () => void;
   exitTutorial: () => void;
   nextStep: () => void;
   previousStep: () => void;
@@ -42,6 +66,7 @@ export type TutorialContextValue = {
 const TutorialContext = createContext<TutorialContextValue | null>(null);
 
 export function TutorialProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [tutorialId, setTutorialId] = useState<string | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
@@ -52,6 +77,10 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     null,
   );
   const [isGeneratingInteractiveStep, setIsGeneratingInteractiveStep] = useState(false);
+
+  /** Q&A overlay state for non-interactive tutorials (see TutorialChatOverride docs). */
+  const [tutorialChatOverride, setTutorialChatOverride] = useState<TutorialChatOverride | null>(null);
+  const [isAskingTutorialQuestion, setIsAskingTutorialQuestion] = useState(false);
   const interactiveStepsLenRef = useRef(0);
   /** After appending a step, jump only once `interactiveSteps` state includes it (avoids index clamp races). */
   const pendingJumpToLatestInteractiveStepRef = useRef(false);
@@ -164,6 +193,100 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     [interactivePromptHandler],
   );
 
+  const clearTutorialChatOverride = useCallback(() => {
+    setTutorialChatOverride(null);
+  }, []);
+
+  /**
+   * Submit a chat question while a tutorial is active.
+   * - For the interactive AI tutorial, route through `sendInteractivePrompt`
+   *   so the model's response becomes the next tutorial step.
+   * - For hand-authored tutorials (intro / Google Search / Gmail), call the
+   *   simple /api/tutorial-chat endpoint and overlay the answer onto the
+   *   current step's lesson card. The overlay clears as soon as the user
+   *   navigates to a different step.
+   */
+  const askTutorialQuestion = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+
+      if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
+        await sendInteractivePrompt(trimmed);
+        return;
+      }
+
+      // Resolve current tutorial / step so we can give the model context.
+      const activeT = tutorialId ? getTutorialById(tutorialId) : null;
+      if (!activeT) return;
+      const steps = activeT.steps;
+      if (!steps.length) return;
+      const idx = Math.min(Math.max(currentStepIndex, 0), steps.length - 1);
+      const cur = steps[idx];
+      if (!cur) return;
+
+      const tutorialName = (() => {
+        try {
+          return t(activeT.title);
+        } catch {
+          return activeT.title;
+        }
+      })();
+      const stepTitle = cur.titleRaw
+        ? cur.titleRaw
+        : cur.title
+          ? (() => {
+              try {
+                return t(cur.title);
+              } catch {
+                return cur.title;
+              }
+            })()
+          : "";
+      const stepBody = cur.textRaw
+        ? cur.textRaw
+        : cur.text
+          ? (() => {
+              try {
+                return t(cur.text);
+              } catch {
+                return cur.text;
+              }
+            })()
+          : "";
+
+      setIsAskingTutorialQuestion(true);
+      try {
+        const res = await fetch("/api/tutorial-chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: trimmed,
+            tutorialName,
+            currentStepTitle: stepTitle,
+            currentStepBody: stepBody,
+          }),
+        });
+        if (!res.ok) {
+          const errBody = (await res.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(errBody?.error ?? `HTTP ${res.status}`);
+        }
+        const data = (await res.json()) as { titleRaw?: string; textRaw?: string };
+        if (typeof data.textRaw !== "string" || !data.textRaw.trim()) {
+          throw new Error("Empty answer from assistant");
+        }
+        setTutorialChatOverride({
+          stepId: cur.id,
+          titleRaw: data.titleRaw && data.titleRaw.trim() ? data.titleRaw.trim() : "Quick answer",
+          textRaw: data.textRaw,
+        });
+      } finally {
+        setIsAskingTutorialQuestion(false);
+      }
+    },
+    [currentStepIndex, sendInteractivePrompt, t, tutorialId],
+  );
+
   const generateNextInteractiveStep = useCallback(async () => {
     if (!interactiveGenerator || isGeneratingInteractiveStep) return;
     setIsGeneratingInteractiveStep(true);
@@ -182,7 +305,31 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
   const exitTutorial = useCallback(() => {
     setTutorialId(null);
+    setTutorialChatOverride(null);
   }, []);
+
+  // Auto-clear the chat-answer overlay whenever the user moves to a different
+  // step. This way navigating Back/Next during a tutorial always brings them
+  // back to the original tutorial content, not their old Q&A answer.
+  const currentStepIdForCleanup = (() => {
+    if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
+      const len = interactiveSteps.length;
+      if (!len) return null;
+      const idx = Math.min(Math.max(currentStepIndex, 0), len - 1);
+      return interactiveSteps[idx]?.id ?? null;
+    }
+    if (!tutorialId) return null;
+    const tut = getTutorialById(tutorialId);
+    if (!tut?.steps.length) return null;
+    const idx = Math.min(Math.max(currentStepIndex, 0), tut.steps.length - 1);
+    return tut.steps[idx]?.id ?? null;
+  })();
+  useEffect(() => {
+    if (!tutorialChatOverride) return;
+    if (tutorialChatOverride.stepId !== currentStepIdForCleanup) {
+      setTutorialChatOverride(null);
+    }
+  }, [currentStepIdForCleanup, tutorialChatOverride]);
 
   const nextStep = useCallback(() => {
     setCurrentStepIndex((i) => {
@@ -216,6 +363,10 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       sendInteractivePrompt,
       generateNextInteractiveStep,
       isGeneratingInteractiveStep,
+      tutorialChatOverride,
+      askTutorialQuestion,
+      isAskingTutorialQuestion,
+      clearTutorialChatOverride,
       exitTutorial,
       nextStep,
       previousStep,
@@ -239,6 +390,10 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       sendInteractivePrompt,
       generateNextInteractiveStep,
       isGeneratingInteractiveStep,
+      tutorialChatOverride,
+      askTutorialQuestion,
+      isAskingTutorialQuestion,
+      clearTutorialChatOverride,
       exitTutorial,
       nextStep,
       previousStep,

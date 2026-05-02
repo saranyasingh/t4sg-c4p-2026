@@ -19,7 +19,10 @@ export function extractStepFromAnthropicContent(content: unknown): TutorialStep 
     if (visual !== "text" && visual !== "screen" && visual !== "screen_text") return null;
     const textRaw = typeof parsed.textRaw === "string" ? parsed.textRaw : null;
     if (!textRaw) return null;
-    const highlightSelector = typeof parsed.highlightSelector === "string" ? parsed.highlightSelector : undefined;
+    // The ONLY supported targeting field is `highlightDescription`, which
+    // routes through the Claude Computer Use API. Any other targeting key
+    // the model might emit (CSS selector, fixed coordinates, etc.) is
+    // silently ignored at parse time.
     const highlightDescription =
       typeof parsed.highlightDescription === "string" ? parsed.highlightDescription : undefined;
 
@@ -31,9 +34,7 @@ export function extractStepFromAnthropicContent(content: unknown): TutorialStep 
       text: "interactive.step",
       textRaw,
       visual,
-      highlightSelector: allowHighlight ? highlightSelector : undefined,
       highlightDescription: allowHighlight ? highlightDescription : undefined,
-      highlightBright: Boolean((parsed as any).highlightBright),
     };
   } catch {
     return null;
