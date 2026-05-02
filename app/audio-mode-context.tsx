@@ -13,9 +13,7 @@ export function AudioModeProvider({ children }: { children: React.ReactNode }) {
   const [audioModeEnabled, setAudioModeEnabled] = useState(true);
 
   return (
-    <AudioModeContext.Provider value={{ audioModeEnabled, setAudioModeEnabled }}>
-      {children}
-    </AudioModeContext.Provider>
+    <AudioModeContext.Provider value={{ audioModeEnabled, setAudioModeEnabled }}>{children}</AudioModeContext.Provider>
   );
 }
 

@@ -4,6 +4,7 @@ import { PointerOverlay } from "@/components/pointer-overlay";
 import { Button } from "@/components/ui/button";
 import { TypographyH4, TypographyP, TypographySmall } from "@/components/ui/typography";
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
+import { INTERACTIVE_TUTORIAL_ID, type ScreenHighlight, type StepVisual } from "@/lib/tutorials";
 import { Search, X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -31,8 +32,10 @@ interface HighlightErrorState {
 function shortTargetName(description: string): string {
   const d = description.trim();
   const lower = d.toLowerCase();
-  if (lower.includes("chrome")) return "Google Chrome";
-  if (lower.includes("gmail")) return "Gmail";
+  // Check specific subjects FIRST. Tutorial descriptions often mention
+  // "Chrome" or "Gmail" as surrounding context (e.g. "the address bar at the
+  // top of Google Chrome…"), so a naive `includes("chrome")` check would
+  // wrongly label every step as targeting Chrome itself.
   if (lower.includes("address bar")) return "the address bar";
   if (lower.includes("compose")) return "the Compose button";
   if (lower.includes("inbox")) return "the Gmail inbox";
@@ -40,7 +43,21 @@ function shortTargetName(description: string): string {
   if (lower.includes("bookmark")) return "the bookmark icon";
   if (lower.includes("tabs") || lower.includes("new tab")) return "the browser tabs";
   if (lower.includes("send button")) return "the Send button";
-  // Fall back to the first sentence/clause, trimmed.
+  if (lower.includes("refresh") || lower.includes("back arrow") || lower.includes("forward arrow")) {
+    return "the navigation buttons";
+  }
+  if (lower.includes("profile picture") || lower.includes("account") || lower.includes("user")) {
+    return "the Chrome user icon";
+  }
+  if (lower.includes("three") && (lower.includes("dots") || lower.includes("menu"))) {
+    return "the Chrome menu";
+  }
+  // Fall back to the app-level subject (Chrome / Gmail) only if nothing more
+  // specific matched — this matches the case where the step is genuinely
+  // pointing at the app icon itself.
+  if (lower.includes("gmail")) return "Gmail";
+  if (lower.includes("chrome")) return "Google Chrome";
+  // Final fallback: first sentence/clause, trimmed.
   const firstSentence = d.split(/[.!?]/)[0]?.trim() ?? d;
   return firstSentence.length > 80 ? `${firstSentence.slice(0, 77)}…` : firstSentence;
 }
@@ -48,11 +65,17 @@ function shortTargetName(description: string): string {
 /** Choose a contextual hint based on what the step was looking for. */
 function smartHintKey(description: string): string {
   const lower = description.toLowerCase();
-  if (lower.includes("gmail")) return "tutorial.highlightErrorHintGmail";
-  if (lower.includes("chrome")) return "tutorial.highlightErrorHintChrome";
-  if (lower.includes("browser") || lower.includes("address bar") || lower.includes("tab")) {
+  // Check specific in-browser surfaces BEFORE Chrome/Gmail, since most step
+  // descriptions mention those apps as ambient context (see shortTargetName).
+  if (lower.includes("address bar") || lower.includes("tab") || lower.includes("bookmark")) {
     return "tutorial.highlightErrorHintBrowser";
   }
+  if (lower.includes("inbox") || lower.includes("compose") || lower.includes("reply") || lower.includes("forward")) {
+    return "tutorial.highlightErrorHintGmail";
+  }
+  if (lower.includes("gmail")) return "tutorial.highlightErrorHintGmail";
+  if (lower.includes("chrome")) return "tutorial.highlightErrorHintChrome";
+  if (lower.includes("browser")) return "tutorial.highlightErrorHintBrowser";
   return "tutorial.highlightErrorHint";
 }
 
@@ -142,7 +165,7 @@ export function TutorialController() {
       // overlay is collapsed off-screen during a run, leaving only the lesson
       // card + chat box. So we don't append the legacy "close the panel" hint.
       return {
-        title: t("tutorial.highlightErrorTitle"),
+        title,
         target,
         hint: t(hintKey).trim(),
         detail: usefulDetail(explanation),
@@ -150,6 +173,22 @@ export function TutorialController() {
     },
     [t],
   );
+
+  // Synchronously flip into the loading state when the active step changes
+  // and that step needs an async on-screen location lookup. Without this,
+  // the new step renders for one frame with the previous step's resolved
+  // (non-loading) state, so the user sees: step → "Loading..." → step. The
+  // layout effect commits before paint so the first frame is "Loading..."
+  // for steps that wait on a highlightDescription resolve.
+  useLayoutEffect(() => {
+    if (!currentStep) return;
+    if (currentStep.highlightDescription) {
+      setIsLoadingHighlight(true);
+      setHighlightPayload(null);
+      setPointerTarget(null);
+      setHighlightError(null);
+    }
+  }, [currentStep, retryToken]);
 
   useEffect(() => {
     let cancelled = false;
@@ -452,8 +491,15 @@ export function TutorialController() {
 
   const textBoxStyle = useMemo(() => {
     const vw = viewport.w;
-    const margin = 16;
-    const maxW = Math.min(420, vw - margin * 2);
+    const vh = viewport.h;
+    const margin = 24;
+    const maxW = Math.min(620, vw - margin * 2);
+    const left = Math.max(margin, (vw - maxW) / 2);
+    // Sit just above true vertical center so the step card is the visual
+    // focus of the screen, while leaving room for the bottom navigation
+    // (back / next / exit) and any pointer arrival underneath.
+    const approxH = Math.min(vh * 0.6, 460);
+    const top = Math.max(margin, Math.round(vh / 2 - approxH / 2));
 
     // Anchor the step card to the bottom-left on every step. We intentionally
     // do not reposition it relative to the pointer target — a consistent
@@ -524,7 +570,7 @@ export function TutorialController() {
           typeof textBoxStyle.bottom === "number"
             ? viewport.h - textBoxStyle.bottom - 30
             : typeof textBoxStyle.top === "number"
-              ? textBoxStyle.top + 30
+              ? textBoxStyle.top + textBoxStyle.approxHeight - 24
               : viewport.h - 130
         }
       />
@@ -539,7 +585,7 @@ export function TutorialController() {
                 top: textBoxStyle.top,
                 bottom: textBoxStyle.bottom,
                 width: textBoxStyle.width,
-                maxHeight: textBoxStyle.bottom ? "calc(100vh - 96px)" : undefined,
+                maxHeight: "calc(100vh - 160px)",
               }}
               role="dialog"
               aria-labelledby="tutorial-step-title"
@@ -616,82 +662,73 @@ export function TutorialController() {
                 aria-live="assertive"
               >
                 <div
-                  className="overflow-hidden rounded-2xl border border-white/40 bg-[hsl(var(--foreground)/0.96)] text-white shadow-2xl backdrop-blur-md"
+                  className="h-1.5 w-full"
                   style={{
-                    boxShadow:
-                      "0 18px 40px rgba(0, 20, 7, 0.45), 0 0 0 1px hsl(var(--primary) / 0.35)",
+                    background: "linear-gradient(90deg, var(--green-1) 0%, var(--green-2) 50%, var(--green-3) 100%)",
                   }}
-                >
-                  <div
-                    className="h-1.5 w-full"
-                    style={{
-                      background:
-                        "linear-gradient(90deg, var(--green-1) 0%, var(--green-2) 50%, var(--green-3) 100%)",
-                    }}
-                    aria-hidden="true"
-                  />
-                  <div className="flex items-start gap-3 px-5 py-4">
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Image
-                        src={c4pLogo}
-                        alt="Computers 4 People"
-                        width={32}
-                        height={32}
-                        className="rounded-md bg-white/10 p-1"
-                      />
-                      <span
-                        className="flex h-8 w-8 items-center justify-center rounded-full"
-                        style={{ background: "hsl(var(--primary) / 0.18)", color: "var(--green-1)" }}
-                        aria-hidden="true"
-                      >
-                        <Search className="h-4 w-4" />
-                      </span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold leading-tight tracking-wide" style={{ color: "var(--green-1)" }}>
-                        {highlightError.title}
+                  aria-hidden="true"
+                />
+                <div className="flex items-start gap-3 px-5 py-4">
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Image
+                      src={c4pLogo}
+                      alt="Computers 4 People"
+                      width={32}
+                      height={32}
+                      className="rounded-md bg-white/10 p-1"
+                    />
+                    <span
+                      className="flex h-8 w-8 items-center justify-center rounded-full"
+                      style={{ background: "hsl(var(--primary) / 0.18)", color: "var(--green-1)" }}
+                      aria-hidden="true"
+                    >
+                      <Search className="h-4 w-4" />
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold leading-tight tracking-wide" style={{ color: "var(--green-1)" }}>
+                      {highlightError.title}
+                    </p>
+                    {highlightError.target ? (
+                      <p className="mt-1 text-xs font-medium uppercase tracking-wide text-white/65">
+                        {t("tutorial.highlightErrorTargetLabel", { target: highlightError.target })}
                       </p>
-                      {highlightError.target ? (
-                        <p className="mt-1 text-xs font-medium uppercase tracking-wide text-white/65">
-                          {t("tutorial.highlightErrorTargetLabel", { target: highlightError.target })}
-                        </p>
-                      ) : null}
-                      <p className="mt-2 text-sm leading-snug text-white/95">{highlightError.hint}</p>
-                      {highlightError.detail ? (
-                        <p className="mt-2 text-xs leading-snug text-white/65">{highlightError.detail}</p>
-                      ) : null}
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="interactable h-8 rounded-full px-3 text-xs font-semibold"
-                          style={{
-                            background: "var(--green-1)",
-                            color: "var(--black)",
-                          }}
-                          onClick={() => setRetryToken((n) => n + 1)}
-                        >
-                          {t("tutorial.highlightErrorRetry")}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="interactable h-8 rounded-full border border-white/25 bg-white/5 px-3 text-xs font-semibold text-white/85 hover:bg-white/15"
-                          onClick={() => setHighlightError(null)}
-                        >
-                          <X className="mr-1 h-3.5 w-3.5" />
-                          {t("tutorial.highlightErrorDismiss")}
-                        </Button>
-                      </div>
+                    ) : null}
+                    <p className="mt-2 text-sm leading-snug text-white/95">{highlightError.hint}</p>
+                    {highlightError.detail ? (
+                      <p className="mt-2 text-xs leading-snug text-white/65">{highlightError.detail}</p>
+                    ) : null}
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="interactable h-8 rounded-full px-3 text-xs font-semibold"
+                        style={{
+                          background: "var(--green-1)",
+                          color: "var(--black)",
+                        }}
+                        onClick={() => setRetryToken((n) => n + 1)}
+                      >
+                        {t("tutorial.highlightErrorRetry")}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="interactable h-8 rounded-full border border-white/25 bg-white/5 px-3 text-xs font-semibold text-white/85 hover:bg-white/15"
+                        onClick={() => setHighlightError(null)}
+                      >
+                        <X className="mr-1 h-3.5 w-3.5" />
+                        {t("tutorial.highlightErrorDismiss")}
+                      </Button>
                     </div>
                   </div>
                 </div>
-              </div>,
-              document.body,
-            )
-          : null}
-
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {createPortal(
         <div data-tutorial-chrome className="fixed bottom-4 left-4 z-[1000004] flex flex-wrap items-center gap-2">
@@ -710,6 +747,7 @@ export function TutorialController() {
           {canGoNext ? (
             <Button
               type="button"
+              data-intro={isLastStep ? "tutorial-finish" : undefined}
               className="interactable bg-white text-black hover:bg-white/90"
               onClick={() => {
                 if (isLastStep) {
@@ -733,6 +771,7 @@ export function TutorialController() {
           ) : null}
           <Button
             type="button"
+            data-intro="tutorial-exit"
             variant="ghost"
             className="interactable border border-white/25 bg-black/45 text-white/95 hover:bg-accent hover:text-accent-foreground"
             onClick={exitTutorial}

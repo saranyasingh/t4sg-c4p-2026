@@ -1,7 +1,7 @@
-import type React from "react";
-import { isSupabaseConfigured } from "@/lib/supabase-config";
 import { createServerSupabaseClient } from "@/lib/server-utils";
+import { isSupabaseConfigured } from "@/lib/supabase-config";
 import { redirect } from "next/navigation";
+import type React from "react";
 import SettingsLayoutClient from "./settings-layout-client";
 
 interface SettingsLayoutProps {

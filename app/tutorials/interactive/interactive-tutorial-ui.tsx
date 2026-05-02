@@ -1,5 +1,7 @@
 "use client";
 
+import { Message } from "@/app/chat/message";
+import { ScrollContainer } from "@/app/chat/scroll-container";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TypographyH2, TypographySmall } from "@/components/ui/typography";

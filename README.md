@@ -85,7 +85,6 @@ git clone git@github.com:hcs-t4sg/starter-project-2023-v2.git
 2. Open a terminal in the project folder by dragging up from the bottom of the code window or by going to `Terminal > New Terminal` in the menu bar.
 
 3. Run: `npm install` (`npm i` for short)
-
    - If you get something like "command not found", you might not have `npm` installed.
 
 - If successful you should see something like:
@@ -106,11 +105,9 @@ git clone git@github.com:hcs-t4sg/starter-project-2023-v2.git
 #### (3) Supabase Connection Setup
 
 1. Visit the Supabase website, create an account (or login if you already have one), and create a new project. You will be prompted to set a **Database Password; remember it**. Wait for your database provisioning and setup to finish.
-
    - Try to avoid using special characters like `?`, `$`, etc. in your password.
 
 2. There is a `.env.example` file in your local project directory (e.g. in VSCode). Duplicate it (into the same directory) and rename to `.env`. Inside `.env`, set the following variables according to your Supabase project settings:
-
    - `NEXT_PUBLIC_SUPABASE_URL`: Paste from Project Settings > API > Project URL.
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Paste from Project Settings > API > Project API Keys > `anon` `public`.
    - `SECRET_SUPABASE_CONNECTION_STRING`: Paste from Project Settings > Database > Connection String > Nodejs, then replace `[YOUR-PASSWORD]` with your database password.
@@ -227,7 +224,6 @@ This folder contains the main application code, including pages, some components
 - `(components-navbar)`
 
   The `(components-navbar)` folder contains components related to the navigation bar, including user authentication status, login functionality, and theme toggling.
-
   - `auth-status.tsx`: Checks the user's authentication status using Supabase, and either displays the `UserNav` component or the `LoginButton` component.
   - `login-button.tsx`: Provides a button for users to login using Google OAuth and handles the sign-in process.
   - `mode-toggle.tsx`: Provides a dropdown menu component that allows users to toggle between light, dark, and system themes.
@@ -245,7 +241,6 @@ This folder contains the main application code, including pages, some components
 - `settings`
 
   The `settings` folder contains components and pages related to user settings and profile management. It provides a basic template for the developer to allow users to edit both general and profile settings.
-
   - `general/page.tsx`: Renders the general settings page. Edit this file to allow users to edit general settings.
   - `profile`:
     - `page.tsx`: Renders the profile settings page for authenticated users, using the `ProfileForm` component.
@@ -519,7 +514,6 @@ For SSWEs, you should protect your `main` branch from unprotected pushes using a
 The project contains workspace-specific VSCode settings in `.vscode/settings.json`. These settings (which only apply when inside the project workspace) set the editor to:
 
 - Format with `prettier`, then lint with `eslint` on save (this is the quickest way)
-
   - (Note that we use an extension, [Format Code Action](https://marketplace.visualstudio.com/items?itemName=rohit-gohri.format-code-action&ssr=false#review-details), to achieve this specific order)
 
 - Use `prettier` as the default formatter

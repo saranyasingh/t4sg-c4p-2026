@@ -37,8 +37,6 @@ function easeInOut(t: number) {
 }
 
 const FLIGHT_MS = 900;
-const HOLD_MS = 3000;
-const FADE_MS = 500;
 
 export interface PointerOverlayProps {
   /** Target center in CSS viewport pixels. Null = hidden. */
@@ -53,7 +51,7 @@ export interface PointerOverlayProps {
   onDone?: () => void;
 }
 
-type Phase = "idle" | "flying" | "arrived" | "fading";
+type Phase = "idle" | "flying" | "arrived";
 
 export function PointerOverlay({
   targetX,
@@ -67,10 +65,8 @@ export function PointerOverlay({
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [angle, setAngle] = useState(0);
   const [scale, setScale] = useState(1);
-  const [opacity, setOpacity] = useState(1);
   const [mounted, setMounted] = useState(false);
   const rafRef = useRef<number | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -81,10 +77,6 @@ export function PointerOverlay({
     if (rafRef.current != null) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
-    }
-    if (timerRef.current != null) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
     }
 
     if (targetX === null || targetY === null) {
@@ -115,7 +107,6 @@ export function PointerOverlay({
     const p1 = { x: midX + perpX * arcHeight, y: midY + perpY * arcHeight };
     const p2 = { x: tx, y: ty };
 
-    setOpacity(1);
     setPhase("flying");
 
     const startTime = performance.now();
@@ -138,29 +129,14 @@ export function PointerOverlay({
       if (raw < 1) {
         rafRef.current = requestAnimationFrame(animateFlight);
       } else {
-        // Snap to exact target and show speech bubble
+        // Snap to exact target and show speech bubble. The pointer now
+        // persists in the "arrived" state until the target changes (i.e.
+        // the user advances to the next step) — no auto-fade.
         setPos(p2);
         setAngle(Math.atan2(ty - sy, tx - sx) * (180 / Math.PI));
         setScale(1);
         setPhase("arrived");
-
-        timerRef.current = setTimeout(() => {
-          timerRef.current = null;
-          const fadeStart = performance.now();
-
-          function animateFade(now: number) {
-            const elapsed = now - fadeStart;
-            const t = Math.min(elapsed / FADE_MS, 1);
-            setOpacity(1 - t);
-            if (t < 1) {
-              rafRef.current = requestAnimationFrame(animateFade);
-            } else {
-              setPhase("idle");
-              onDone?.();
-            }
-          }
-          rafRef.current = requestAnimationFrame(animateFade);
-        }, HOLD_MS);
+        onDone?.();
       }
     }
 
@@ -170,10 +146,6 @@ export function PointerOverlay({
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
-      }
-      if (timerRef.current != null) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -198,8 +170,11 @@ export function PointerOverlay({
         position: "fixed",
         inset: 0,
         pointerEvents: "none",
-        zIndex: 1000000,
-        opacity,
+        // Sit above the shell panel (z-[999999]), the bounding-box dim
+        // (1000002), step card (1000003), tour controls (1000004), and the
+        // bright-mode glow (1000005) so the pointer is never hidden behind
+        // the Granson app or any tutorial UI layered on top of the screen.
+        zIndex: 1000010,
       }}
       aria-hidden="true"
     >
@@ -250,11 +225,7 @@ export function PointerOverlay({
           </linearGradient>
         </defs>
         {/* Outer soft halo */}
-        <polygon
-          points="0,2 0,18 32,10"
-          fill="hsl(var(--accent) / 0.28)"
-          transform="scale(1.4) translate(-2.5,-1.8)"
-        />
+        <polygon points="0,2 0,18 32,10" fill="hsl(var(--accent) / 0.28)" transform="scale(1.4) translate(-2.5,-1.8)" />
         {/* Main arrow with gradient */}
         <polygon
           points="0,1 0,19 30,10"
@@ -297,8 +268,7 @@ export function PointerOverlay({
               height: 0,
               borderTop: "6px solid transparent",
               borderBottom: "6px solid transparent",
-              [bubbleRight ? "borderLeft" : "borderRight"]:
-                "8px solid hsl(var(--accent) / 0.75)",
+              [bubbleRight ? "borderLeft" : "borderRight"]: "8px solid hsl(var(--accent) / 0.75)",
             }}
           />
         </div>

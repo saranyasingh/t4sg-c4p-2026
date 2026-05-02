@@ -1,6 +1,5 @@
 "use client";
 
-import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 import { useTutorial } from "@/app/tutorial/tutorial-provider";
 import { INTERACTIVE_TUTORIAL_ID, type TutorialStep } from "@/lib/tutorials";
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";

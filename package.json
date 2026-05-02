@@ -11,7 +11,9 @@
     "start": "electron .",
     "dev": "concurrently -k \"npx --yes kill-port 3000 && cross-env NEXT_DISABLE_VERSION_CHECK=1 WATCHPACK_POLLING=true next dev\" \"wait-on http://localhost:3000 && electron .\"",
     "dev:fast": "concurrently -k \"npx --yes kill-port 3000 && cross-env NEXT_DISABLE_VERSION_CHECK=1 next dev\" \"wait-on http://localhost:3000 && electron .\"",
-    "dev:web": "cross-env NEXT_DISABLE_VERSION_CHECK=1 next dev"
+    "dev:web": "cross-env NEXT_DISABLE_VERSION_CHECK=1 next dev",
+    "prettier:fix": "prettier --write .",
+    "lint:fix": "next lint --fix"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 export const TEXT_SIZE_PRESETS = [1, 1.25, 1.5, 1.75] as const;
 export type TextSizeScale = (typeof TEXT_SIZE_PRESETS)[number];
 
-const DEFAULT_TEXT_SIZE_SCALE: TextSizeScale = 1;
+const DEFAULT_TEXT_SIZE_SCALE: TextSizeScale = 1.5;
 
 interface TextSizeContextType {
   scale: TextSizeScale;
@@ -16,7 +16,7 @@ const TextSizeContext = createContext<TextSizeContextType | undefined>(undefined
 
 export function TextSizeProvider({ children }: { children: React.ReactNode }) {
   // Always start at the default on every fresh load — we intentionally do not
-  // restore from localStorage so Small is the default each time the app opens.
+  // restore from localStorage. Large is the default for readability.
   const [scale, setScale] = useState<TextSizeScale>(DEFAULT_TEXT_SIZE_SCALE);
 
   useEffect(() => {

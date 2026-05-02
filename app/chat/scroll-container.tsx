@@ -91,7 +91,9 @@ export const ScrollContainer = ({ children }: ScrollContainerProps) => {
         }}
         onClick={handleScrollButtonClick}
       >
-        <TypographySmall className="m-0 font-semibold leading-none text-inherit">{t("chat.newMessage")}</TypographySmall>
+        <TypographySmall className="m-0 font-semibold leading-none text-inherit">
+          {t("chat.newMessage")}
+        </TypographySmall>
       </Button>
     </div>
   );

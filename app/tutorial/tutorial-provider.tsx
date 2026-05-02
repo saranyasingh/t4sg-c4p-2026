@@ -61,7 +61,7 @@ export type TutorialContextValue = {
   canGoPrevious: boolean;
   isFirstStep: boolean;
   isLastStep: boolean;
-};
+}
 
 const TutorialContext = createContext<TutorialContextValue | null>(null);
 
@@ -100,7 +100,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
           steps: interactiveSteps,
         } satisfies Tutorial)
       : tutorialId
-        ? getTutorialById(tutorialId) ?? null
+        ? (getTutorialById(tutorialId) ?? null)
         : null;
 
   const steps = activeTutorial?.steps ?? [];
