@@ -1,10 +1,10 @@
 "use client";
 
+import { Message } from "@/app/chat/message";
+import { ScrollContainer } from "@/app/chat/scroll-container";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TypographyH2, TypographyP, TypographySmall } from "@/components/ui/typography";
-import { Message } from "@/app/chat/message";
-import { ScrollContainer } from "@/app/chat/scroll-container";
 import { useEffect, useRef } from "react";
 import { useInteractiveTutorialAgent } from "./interactive-tutorial-workflow";
 
@@ -95,7 +95,7 @@ export function InteractiveTutorialPage() {
           </div>
         </div>
       ) : (
-        <div className="flex flex-1 min-h-0 flex-col gap-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-4">
           <section className="min-h-0 flex-1 overflow-hidden">
             <ScrollContainer>
               {log.length ? (

@@ -1,9 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMemo, useState, type BaseSyntheticEvent, type MouseEvent } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { useMemo, useState, type BaseSyntheticEvent, type MouseEvent } from "react";
 import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -112,9 +112,7 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
               <FormControl>
                 <Input readOnly={!isEditing} placeholder={t("profileForm.usernameLabel")} {...field} />
               </FormControl>
-              <FormDescription>
-                {t("profileForm.usernameDescription")}
-              </FormDescription>
+              <FormDescription>{t("profileForm.usernameDescription")}</FormDescription>
               <FormMessage />
             </FormItem>
           )}

@@ -3,7 +3,7 @@
     "welcome": "Welcome",
     "getStarted": "Ask questions to the assistant. For example, \"How do I send an email?\"",
     "brandTitle": "Granson AI",
-    "tagline": "Your friendly computer helper. Ask questions, show your screen, and learn at your own pace.",
+    "tagline": "Ask questions, get help, and learn at your own pace.",
     "letsGetStarted": "Let's get started!",
     "startIntroCta": "Start the app tour",
     "featuresHeading": "What you can do",
@@ -17,10 +17,48 @@
     "opacityFull": "Full",
     "textSizeHeading": "Text size",
     "screenCaptureHeading": "Show the assistant your screen",
-    "screenCaptureBody": "The assistant can look at your screen to help answer questions about what you see. Click the button below to allow screen capture. You'll only have to give permission once — after that, the assistant can capture your screen whenever you ask.",
+    "screenCaptureBody": "Allow screen capture so the assistant can help with what you see. You only need to allow this once.",
     "screenCaptureAllow": "Allow screen capture",
     "screenCaptureGranted": "Screen capture allowed",
     "screenCaptureRequesting": "Asking for permission...",
+    "onboarding": {
+      "progress": "Step {{current}} of {{total}}",
+      "back": "Back",
+      "start": "Start",
+      "next": "Next",
+      "getStarted": "Get started",
+      "audioOn": "On",
+      "audioOff": "Off",
+      "steps": {
+        "welcome": {
+          "title": "Quick setup",
+          "body": "Let's do a quick setup to make Granson AI comfortable for you."
+        },
+        "language": {
+          "title": "Choose your language",
+          "body": "Pick your language. You can change it later in Options."
+        },
+        "audioMode": {
+          "title": "Voice mode",
+          "subtitle": "Choose if you want Granson AI to speak out loud",
+          "body": "Choose if the assistant reads replies out loud. Change it anytime in Options.",
+          "hint": "Tip: You can always switch this later from the Options tab."
+        },
+        "textSize": {
+          "title": "Adjust text size",
+          "body": "Choose a text size that feels comfortable for you."
+        },
+        "permissions": {
+          "title": "Capture screen",
+          "subtitle": "Granson AI needs to see your screen to help you",
+          "body": "Allow screen capture so the assistant can help with what is on your screen."
+        },
+        "features": {
+          "title": "Explore key features",
+          "body": "Here's what Granson AI can help with."
+        }
+      }
+    },
     "features": {
       "chat": {
         "title": "Chat with the assistant",
@@ -43,7 +81,7 @@
         "body": "Open a tutorial to learn things like using Google Search or sending Gmail. Each step guides you on the screen."
       },
       "help": {
-        "title": "Help is always close",
+        "title": "Help is always available",
         "body": "Press the Help button in the top right to replay this tour whenever you need a reminder."
       }
     }

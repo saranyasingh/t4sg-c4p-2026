@@ -1,5 +1,5 @@
-import { C4P_KNOWLEDGE_BASE } from "./c4p-knowledge-base";
 import OpenAI from "openai";
+import { C4P_KNOWLEDGE_BASE } from "./c4p-knowledge-base";
 
 export const runtime = "nodejs";
 

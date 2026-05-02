@@ -1,6 +1,6 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { execSync } from "child_process";
 import "dotenv/config";
-import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
 const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514";

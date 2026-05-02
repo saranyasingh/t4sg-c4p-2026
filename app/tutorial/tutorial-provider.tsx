@@ -1,18 +1,9 @@
 "use client";
 
 import { getTutorialById, INTERACTIVE_TUTORIAL_ID, type Tutorial, type TutorialStep } from "@/lib/tutorials";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-export type TutorialContextValue = {
+export interface TutorialContextValue {
   /** `tutorialId !== null` means a tutorial is active (tutorial “mode”). */
   tutorialId: string | null;
   currentStepIndex: number;
@@ -31,7 +22,7 @@ export type TutorialContextValue = {
   canGoPrevious: boolean;
   isFirstStep: boolean;
   isLastStep: boolean;
-};
+}
 
 const TutorialContext = createContext<TutorialContextValue | null>(null);
 
@@ -57,7 +48,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
           steps: interactiveSteps,
         } satisfies Tutorial)
       : tutorialId
-        ? getTutorialById(tutorialId) ?? null
+        ? (getTutorialById(tutorialId) ?? null)
         : null;
 
   const steps = activeTutorial?.steps ?? [];

@@ -162,7 +162,7 @@ const googleSearchSteps: TutorialStep[] = [
     title: "tutorials.googleSearch.steps.gs-review.title",
     text: "tutorials.googleSearch.steps.gs-review.body",
     visual: "text",
-  }
+  },
 ];
 
 const gmailSteps: TutorialStep[] = [
@@ -513,7 +513,7 @@ const introSteps: TutorialStep[] = [
     title: "tutorials.intro.intro-exit.title",
     text: "tutorials.intro.intro-exit.text",
     visual: "screen_text",
-    highlightSelector: "#tutorial-exit-button",
+    highlightSelector: "[data-intro='tutorial-exit']",
     highlightExpandFactor: 1.08,
     highlightMinPadding: 10,
     highlightBright: true,
@@ -532,7 +532,7 @@ const introSteps: TutorialStep[] = [
     title: "tutorials.intro.intro-finish.title",
     text: "tutorials.intro.intro-finish.text",
     visual: "screen_text",
-    highlightSelector: "#tutorial-finish-button",
+    highlightSelector: "[data-intro='tutorial-finish']",
     highlightExpandFactor: 1.0,
     highlightMinPadding: 6,
     highlightBright: true,

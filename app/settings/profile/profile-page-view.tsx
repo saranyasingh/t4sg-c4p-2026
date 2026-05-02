@@ -1,8 +1,8 @@
 "use client";
 
 import { Separator } from "@/components/ui/separator";
-import { useTranslation } from "react-i18next";
 import { type Database } from "@/lib/schema";
+import { useTranslation } from "react-i18next";
 import ProfileForm from "./profile-form";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];

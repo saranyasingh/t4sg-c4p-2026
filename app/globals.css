@@ -95,7 +95,10 @@
     background: hsl(var(--primary));
     box-shadow: 0 0 0 2px hsl(var(--foreground) / 0.25);
     cursor: pointer;
-    transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease,
+    transition:
+      transform 120ms ease,
+      box-shadow 120ms ease,
+      border-color 120ms ease,
       background-color 120ms ease;
   }
 
@@ -114,7 +117,10 @@
     background: hsl(var(--primary));
     box-shadow: 0 0 0 2px hsl(var(--foreground) / 0.25);
     cursor: pointer;
-    transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease,
+    transition:
+      transform 120ms ease,
+      box-shadow 120ms ease,
+      border-color 120ms ease,
       background-color 120ms ease;
   }
 
