@@ -2,123 +2,40 @@
 
 import { useTutorial } from "@/app/tutorial/tutorial-provider";
 import { INTERACTIVE_TUTORIAL_ID, type TutorialStep } from "@/lib/tutorials";
-import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
+import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
+import { compressScreenshotForTutorialApi } from "@/lib/interactive-tutorial-screenshot";
+import {
+  isInteractiveTutorialToolPairingError,
+  sanitizeInteractiveTutorialMessagesDeep,
+} from "@/lib/interactive-tutorial-messages";
+import { extractStepFromAnthropicContent } from "@/lib/interactive-tutorial-step-parse";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-interface BoundingBox {
-  selector: string;
-  found: boolean;
-  left?: number;
-  top?: number;
-  width?: number;
-  height?: number;
-}
-
-function promptLikelyNeedsScreenPointer(userText: string): boolean {
-  const t = userText.toLowerCase();
-  const keywords = [
-    "chrome",
-    "browser",
-    "address bar",
-    "url",
-    "gmail",
-    "inbox",
-    "tab",
-    "desktop",
-    "dock",
-    "taskbar",
-    "start menu",
-    "google",
-    "icon",
-    "open",
-    "click",
-    "word",
-    "microsoft word",
-    "excel",
-    "powerpoint",
-    "outlook",
-    "application",
-    "app",
-    "program",
-    "windows",
-    "spotlight",
-    "launchpad",
-  ];
-  return keywords.some((k) => t.includes(k));
-}
-
-function boundingBoxes(selectors: string[]): { boxes: BoundingBox[] } {
-  const boxes: BoundingBox[] = selectors.map((selector) => {
-    const el = document.querySelector(selector);
-    if (!el) return { selector, found: false };
-    const r = el.getBoundingClientRect();
-    return {
-      selector,
-      found: true,
-      left: r.left,
-      top: r.top,
-      width: r.width,
-      height: r.height,
-    };
-  });
-  return { boxes };
-}
-
-function extractStepFromContent(content: unknown): TutorialStep | null {
-  if (!Array.isArray(content)) return null;
-  const textBlocks = content
-    .filter((b) => b && typeof b === "object" && (b as any).type === "text" && typeof (b as any).text === "string")
-    .map((b) => (b as any).text as string);
-  const joined = textBlocks.join("\n").trim();
-  if (!joined) return null;
-
-  // Try to find the first JSON object in the text.
-  const m = joined.match(/\{[\s\S]*\}/);
-  if (!m) return null;
-  try {
-    const parsed = JSON.parse(m[0]) as Partial<TutorialStep> & { titleRaw?: string; textRaw?: string };
-    if (!parsed || typeof parsed !== "object") return null;
-    if (typeof parsed.id !== "string") return null;
-    const visual = parsed.visual;
-    if (visual !== "text" && visual !== "screen" && visual !== "screen_text") return null;
-    const textRaw = typeof parsed.textRaw === "string" ? parsed.textRaw : null;
-    if (!textRaw) return null;
-    const highlightSelector = typeof parsed.highlightSelector === "string" ? parsed.highlightSelector : undefined;
-    const highlightDescription =
-      typeof parsed.highlightDescription === "string" ? parsed.highlightDescription : undefined;
-
-    // Guardrails: don't allow "random" highlights for pure text steps.
-    const allowHighlight = visual !== "text";
-
-    return {
-      id: parsed.id,
-      titleRaw: typeof parsed.titleRaw === "string" ? parsed.titleRaw : undefined,
-      text: "interactive.step", // unused when textRaw present
-      textRaw,
-      visual,
-      highlightSelector: allowHighlight ? highlightSelector : undefined,
-      highlightDescription: allowHighlight ? highlightDescription : undefined,
-      highlightBright: Boolean((parsed as any).highlightBright),
-    };
-  } catch {
-    return null;
-  }
-}
 
 export function useInteractiveTutorialAgent() {
   const {
     startInteractiveTutorial,
     addInteractiveStep,
+    replaceInteractiveStepAt,
     registerInteractiveNextStepGenerator,
+    registerInteractivePromptHandler,
     tutorialId,
     exitTutorial,
+    currentStep,
+    currentStepIndex,
   } = useTutorial();
 
   const [goal, setGoal] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [log, setLog] = useState<{ role: "user" | "assistant"; text: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesRef = useRef<MessageParam[]>([]);
+  const goalRef = useRef<string>("");
+  const currentStepRef = useRef(currentStep);
+  const currentStepIndexRef = useRef(currentStepIndex);
+
+  useEffect(() => {
+    currentStepRef.current = currentStep;
+    currentStepIndexRef.current = currentStepIndex;
+  }, [currentStep, currentStepIndex]);
 
   const isActive = tutorialId === INTERACTIVE_TUTORIAL_ID;
 
@@ -137,25 +54,89 @@ export function useInteractiveTutorialAgent() {
     messagesRef.current = initialMessages;
   }, [initialMessages]);
 
-  const runAgentTurn = async (
-    userText: string,
-    opts?: { forceScreenPointer?: boolean; attempt?: number },
-  ): Promise<TutorialStep | null> => {
-    const userMsg: MessageParam = { role: "user", content: userText };
+  type TurnKind = "initial" | "user_prompt" | "next_click";
+
+  const pushUserText = (text: string) => {
+    const userMsg: MessageParam = { role: "user", content: text };
     messagesRef.current = [...messagesRef.current, userMsg];
+  };
+
+  const pushUserScreenshotContext = async (contextText: string) => {
+    const cap = await captureScreenToPngBase64();
+    if (!cap) {
+      pushUserText(
+        `${contextText}\n\n(Screenshot unavailable in this environment. Continue using best effort based on tutorial history.)`,
+      );
+      return;
+    }
+
+    const optimized = await compressScreenshotForTutorialApi(cap.base64);
+    const userMsg: MessageParam = {
+      role: "user",
+      content: [
+        {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: optimized.mediaType,
+            data: optimized.base64,
+          },
+        },
+        { type: "text", text: contextText },
+      ] as any,
+    };
+    messagesRef.current = [...messagesRef.current, userMsg];
+  };
+
+  const runAgentTurn = async (kind: TurnKind, userText: string): Promise<TutorialStep | null> => {
+    if (kind === "next_click" || kind === "user_prompt") {
+      await pushUserScreenshotContext(userText);
+    } else {
+      pushUserText(userText);
+    }
+
+    messagesRef.current = sanitizeInteractiveTutorialMessagesDeep(messagesRef.current);
 
     let loops = 0;
     while (loops < 6) {
       loops += 1;
-      const res = await fetch("/api/interactive-tutorial", {
+      let res = await fetch("/api/interactive-tutorial", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: messagesRef.current }),
       });
 
       if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(data?.error ?? `HTTP ${res.status}`);
+        let errBody = (await res.json().catch(() => null)) as {
+          error?: string;
+          hint?: string;
+        } | null;
+        let errMsg = errBody?.error ?? `HTTP ${res.status}`;
+
+        const pairing = isInteractiveTutorialToolPairingError(errMsg);
+        if (pairing || res.status === 400) {
+          for (let attempt = 0; attempt < 4; attempt += 1) {
+            messagesRef.current = sanitizeInteractiveTutorialMessagesDeep(messagesRef.current);
+            res = await fetch("/api/interactive-tutorial", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ messages: messagesRef.current }),
+            });
+            if (res.ok) break;
+            errBody = (await res.json().catch(() => null)) as {
+              error?: string;
+              hint?: string;
+            } | null;
+            errMsg = errBody?.error ?? `HTTP ${res.status}`;
+            if (!isInteractiveTutorialToolPairingError(errMsg)) {
+              throw new Error(errBody?.hint ? `${errMsg} — ${errBody.hint}` : errMsg);
+            }
+          }
+        }
+
+        if (!res.ok) {
+          throw new Error(errBody?.hint ? `${errMsg} — ${errBody.hint}` : errMsg);
+        }
       }
 
       const data = (await res.json()) as { content: unknown };
@@ -164,61 +145,51 @@ export function useInteractiveTutorialAgent() {
       // Append assistant content to message history.
       messagesRef.current = [...messagesRef.current, { role: "assistant", content: content as any }];
 
-      // If there is a tool_use, execute it and continue.
-      const toolUse = Array.isArray(content)
-        ? (content.find((b) => b && typeof b === "object" && (b as any).type === "tool_use") as any)
-        : null;
-      if (toolUse && toolUse.name === "bounding_boxes" && toolUse.id && toolUse.input?.selectors) {
-        const selectors = Array.isArray(toolUse.input.selectors)
-          ? toolUse.input.selectors.filter((s: unknown) => typeof s === "string")
-          : [];
-        const result = boundingBoxes(selectors);
+      // The model should never call any tools — it's instructed to emit step JSON only.
+      // If it does call a tool (legacy behavior), respond with an error tool_result so
+      // history stays valid, then continue the loop to give the model a chance to recover.
+      const toolUses: any[] = Array.isArray(content)
+        ? (content.filter((b) => b && typeof b === "object" && (b as any).type === "tool_use") as any[])
+        : [];
+      if (toolUses.length) {
+        const results = toolUses
+          .map((tu) => {
+            const id = tu?.id ? String(tu.id) : null;
+            if (!id) return null;
+            return {
+              type: "tool_result",
+              tool_use_id: id,
+              content: JSON.stringify({
+                error:
+                  "No tools are available. Emit step JSON only with highlightDescription for any on-screen target.",
+              }),
+            };
+          })
+          .filter(Boolean);
+
         const toolResult: MessageParam = {
           role: "user",
-          content: [
-            {
-              type: "tool_result",
-              tool_use_id: String(toolUse.id),
-              content: JSON.stringify(result),
-            },
-          ],
+          content: results.length
+            ? (results as any)
+            : [
+                {
+                  type: "tool_result",
+                  tool_use_id: "tool_use_missing_id",
+                  content: JSON.stringify({ error: "tool_use missing id" }),
+                },
+              ],
         };
+
         messagesRef.current = [...messagesRef.current, toolResult];
         continue;
       }
 
-      // Otherwise we expect a step JSON in text.
-      const step = extractStepFromContent(content);
-      if (step) {
-        // Validate in-app selector highlights before accepting them.
-        if (step.highlightSelector) {
-          const check = boundingBoxes([step.highlightSelector]);
-          const found = check.boxes[0]?.found === true;
-          if (!found) {
-            return { ...step, highlightSelector: undefined };
-          }
-        }
-
-        if (opts?.forceScreenPointer) {
-          const hasPointer = Boolean(step.highlightDescription);
-          const isScreenStep = step.visual === "screen" || step.visual === "screen_text";
-          if (!hasPointer || !isScreenStep) {
-            const attempt = opts.attempt ?? 0;
-            if (attempt < 1) {
-              return runAgentTurn(
-                `Regenerate the step with an on-screen pointer.\n` +
-                  `Requirements:\n` +
-                  `- visual MUST be "screen" or "screen_text"\n` +
-                  `- include highlightDescription (clear English description)\n` +
-                  `- do NOT include highlightSelector\n\n` +
-                  `Original user message: ${userText}`,
-                { forceScreenPointer: true, attempt: attempt + 1 },
-              );
-            }
-          }
-        }
-        return step;
-      }
+      // Otherwise we expect a step JSON in text. The parser already accepts
+      // only `highlightDescription` and silently drops any other targeting
+      // field, so the step we hand back is guaranteed to use the Claude
+      // Computer Use API pointer exclusively.
+      const step = extractStepFromAnthropicContent(content);
+      if (step) return step;
 
       // If no step and no tool_use, stop.
       return null;
@@ -230,45 +201,67 @@ export function useInteractiveTutorialAgent() {
     const first = firstPrompt.trim();
     if (!first) return;
     setIsLoading(true);
-    setLog([{ role: "user", text: first }]);
     try {
-      startInteractiveTutorial(goal || first);
-      const forcePointer = promptLikelyNeedsScreenPointer(first);
+      const resolvedGoal = (goal || first).trim();
+      goalRef.current = resolvedGoal;
+      startInteractiveTutorial(resolvedGoal);
+
       const step = await runAgentTurn(
-        `User goal: ${goal || first}\nUser message: ${first}\nNow generate the next tutorial step JSON.`,
-        { forceScreenPointer: forcePointer },
+        "initial",
+        `Original goal: ${resolvedGoal}\n` +
+          `User message: ${first}\n\n` +
+          `Now generate exactly ONE next tutorial step JSON. Decide whether to include an on-screen pointer.`,
       );
       if (step) {
         addInteractiveStep(step);
       }
-      setLog((prev) => [...prev, { role: "assistant", text: step?.textRaw ?? "Okay." }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const sendUserMessage = async (p: string) => {
-    const trimmed = p.trim();
-    if (!trimmed) return;
-    setLog((prev) => [...prev, { role: "user", text: trimmed }]);
-    setIsLoading(true);
-    try {
-      const forcePointer = promptLikelyNeedsScreenPointer(trimmed);
-      const step = await runAgentTurn(`User message: ${trimmed}\nGenerate the next tutorial step JSON.`, {
-        forceScreenPointer: forcePointer,
-      });
-      if (step) addInteractiveStep(step);
-      setLog((prev) => [...prev, { role: "assistant", text: step?.textRaw ?? "Okay." }]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const sendUserMessage = useCallback(
+    async (p: string) => {
+      const trimmed = p.trim();
+      if (!trimmed) return;
+      setIsLoading(true);
+      try {
+        const resolvedGoal = goalRef.current || goal.trim();
+        const cur = currentStepRef.current;
+        const currentStepJson =
+          cur != null
+            ? JSON.stringify({
+                id: cur.id,
+                titleRaw: cur.titleRaw,
+                textRaw: cur.textRaw,
+                visual: cur.visual,
+                highlightDescription: cur.highlightDescription,
+              })
+            : "(none)";
+        const step = await runAgentTurn(
+          "user_prompt",
+          `Original goal: ${resolvedGoal}\n` +
+            `User question: ${trimmed}\n\n` +
+            `CURRENT OFFICIAL STEP (narrative context only — the screenshot shows where the user actually is):\n${currentStepJson}\n\n` +
+            `You MUST follow the system rules for user chat mid-tutorial.\n` +
+            `Use the screenshot as ground truth. Address the user's question first.\n` +
+            `If their request needs a different screen than the screenshot shows, guide navigation (Back, links, etc.) before any steps about fields that are not visible.\n` +
+            `Do not fill out or advance tasks on the visible page when the user asked to fix or revisit an earlier screen unless the screenshot already shows that earlier screen.\n` +
+            `Generate exactly ONE tutorial step JSON. Decide whether to include an on-screen pointer.`,
+        );
+        if (step) addInteractiveStep(step);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [goal, addInteractiveStep],
+  );
 
   const exitInteractiveTutorial = useCallback(() => {
     setGoal("");
     setPrompt("");
-    setLog([]);
     messagesRef.current = initialMessages;
+    goalRef.current = "";
     exitTutorial();
   }, [exitTutorial, initialMessages]);
 
@@ -276,22 +269,59 @@ export function useInteractiveTutorialAgent() {
     registerInteractiveNextStepGenerator(async () => {
       setIsLoading(true);
       try {
-        const step = await runAgentTurn("No new user message. Generate the next tutorial step JSON.");
-        if (step) addInteractiveStep(step);
+        const resolvedGoal = goalRef.current || goal.trim();
+        const cur = currentStepRef.current;
+        const currentStepJson =
+          cur != null
+            ? JSON.stringify({
+                id: cur.id,
+                titleRaw: cur.titleRaw,
+                textRaw: cur.textRaw,
+                visual: cur.visual,
+                highlightDescription: cur.highlightDescription,
+              })
+            : "(none)";
+        const step = await runAgentTurn(
+          "next_click",
+          `Original goal: ${resolvedGoal}\n` +
+            `The user clicked NEXT.\n\n` +
+            `CURRENT STEP (verify the screenshot matches this before advancing the lesson):\n${currentStepJson}\n\n` +
+            `You MUST use the screenshot.\n` +
+            `- If the screen does NOT match what CURRENT STEP expects, return ONE step JSON with the SAME "id" as CURRENT STEP and guide the user until they reach the right place for this step.\n` +
+            `- If the screen DOES match CURRENT STEP, return ONE NEW step JSON with a NEW id continuing toward the goal.\n` +
+            `Decide whether to include an on-screen pointer.`,
+        );
+        if (!step) return;
+        const curId = currentStepRef.current?.id;
+        const idx = currentStepIndexRef.current;
+        if (curId && step.id === curId && typeof idx === "number") {
+          replaceInteractiveStepAt(idx, step);
+        } else {
+          addInteractiveStep(step);
+        }
       } finally {
         setIsLoading(false);
       }
     });
     return () => registerInteractiveNextStepGenerator(null);
-  }, [addInteractiveStep, registerInteractiveNextStepGenerator]);
+  }, [addInteractiveStep, replaceInteractiveStepAt, registerInteractiveNextStepGenerator]);
+
+  useEffect(() => {
+    registerInteractivePromptHandler(async (text: string) => {
+      const trimmed = String(text ?? "").trim();
+      if (!trimmed) return;
+      await sendUserMessage(trimmed);
+    });
+    return () => registerInteractivePromptHandler(null);
+  }, [registerInteractivePromptHandler, sendUserMessage]);
 
   // Clear chat input/log when tutorial exits.
   useEffect(() => {
     if (!isActive) {
       setGoal("");
       setPrompt("");
-      setLog([]);
       messagesRef.current = initialMessages;
+      goalRef.current = "";
     }
   }, [initialMessages, isActive]);
 
@@ -300,7 +330,6 @@ export function useInteractiveTutorialAgent() {
     setGoal,
     prompt,
     setPrompt,
-    log,
     isLoading,
     isActive,
     begin,

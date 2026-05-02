@@ -1,14 +1,20 @@
 "use client";
 
-import BoundingBoxOverlay from "@/app/bounding-box-overlay";
 import { PointerOverlay } from "@/components/pointer-overlay";
 import { Button } from "@/components/ui/button";
 import { TypographyH4, TypographyP, TypographySmall } from "@/components/ui/typography";
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
-import { INTERACTIVE_TUTORIAL_ID, type ScreenHighlight, type StepVisual } from "@/lib/tutorials";
+import {
+  INTERACTIVE_TUTORIAL_ID,
+  INTRO_TUTORIAL_ID,
+  type TutorialStep,
+} from "@/lib/tutorials";
 import { Search, X } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
+import { compressScreenshotForTutorialApi } from "@/lib/interactive-tutorial-screenshot";
+import { extractStepFromAnthropicContent } from "@/lib/interactive-tutorial-step-parse";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import c4pLogo from "../../public/images/c4p.png";
@@ -87,14 +93,10 @@ function usefulDetail(explanation: string | undefined): string | undefined {
   return trimmed.length > 200 ? `${trimmed.slice(0, 197)}…` : trimmed;
 }
 
-function visualLabelKey(v: StepVisual): string {
-  if (v === "text") return "tutorial.visualText";
-  if (v === "screen") return "tutorial.visualScreen";
-  return "tutorial.visualScreenText";
-}
-
 /**
- * Tutorial UI + highlight overlay. Renders inside the shell panel; bounding boxes use fixed positioning for the full window.
+ * Tutorial UI + Claude Computer Use API pointer overlay. Renders the lesson
+ * card, the navigation buttons, and the animated arrow that points at the
+ * vision-located target on the user's screen.
  */
 export function TutorialController() {
   const { t } = useTranslation();
@@ -102,6 +104,9 @@ export function TutorialController() {
     tutorialId,
     activeTutorial,
     currentStep,
+    currentStepIndex,
+    interactiveGoal,
+    replaceInteractiveStepAt,
     exitTutorial,
     nextStep,
     previousStep,
@@ -110,23 +115,21 @@ export function TutorialController() {
     isLastStep,
     generateNextInteractiveStep,
     isGeneratingInteractiveStep,
+    tutorialChatOverride,
+    isAskingTutorialQuestion,
   } = useTutorial();
 
-  const [highlightPayload, setHighlightPayload] = useState<{
-    coords: ScreenHighlight;
-    screenshotWidth: number;
-    screenshotHeight: number;
-    useCssCoords?: boolean;
-  } | null>(null);
-  const [isLoadingHighlight, setIsLoadingHighlight] = useState(false);
-  const [spotlightRect, setSpotlightRect] = useState<{
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-    centerX: number;
-    centerY: number;
-  } | null>(null);
+  // Highlights are rendered exclusively via the Claude Computer Use API
+  // pointer (`PointerOverlay`). The two callbacks below are no-op sinks so
+  // the existing `syncHighlight` effect can still call them without
+  // TypeScript errors — every call is a dead-end and nothing in the render
+  // tree reads the values.
+  const setHighlightPayload = useCallback((_v: unknown) => {
+    /* no-op */
+  }, []);
+  const setIsLoadingHighlight = useCallback((_v: boolean) => {
+    /* no-op */
+  }, []);
   // Pointer animation target in CSS viewport pixels
   const [pointerTarget, setPointerTarget] = useState<{ x: number; y: number } | null>(null);
   const [viewport, setViewport] = useState(() => ({
@@ -154,18 +157,20 @@ export function TutorialController() {
 
   const [highlightError, setHighlightError] = useState<HighlightErrorState | null>(null);
   const [retryToken, setRetryToken] = useState(0);
+  const lastRevisionStepIdRef = useRef<string | null>(null);
+  const revisionAttemptsRef = useRef(0);
 
   const buildSmartError = useCallback(
     (description: string | undefined, explanation?: string): HighlightErrorState => {
       const target = description ? shortTargetName(description) : undefined;
       const hintKey = description ? smartHintKey(description) : "tutorial.highlightErrorHint";
-      const title = target
-        ? t("tutorial.highlightErrorTitleWithTarget", { target })
-        : t("tutorial.highlightErrorTitle");
+      // Interactive tutorials no longer occupy a side panel — the GransonAI
+      // overlay is collapsed off-screen during a run, leaving only the lesson
+      // card + chat box. So we don't append the legacy "close the panel" hint.
       return {
-        title,
+        title: t("tutorial.highlightErrorTitle"),
         target,
-        hint: t(hintKey),
+        hint: t(hintKey).trim(),
         detail: usefulDetail(explanation),
       };
     },
@@ -208,6 +213,79 @@ export function TutorialController() {
         return;
       }
 
+      if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
+        if (lastRevisionStepIdRef.current !== currentStep.id) {
+          lastRevisionStepIdRef.current = currentStep.id;
+          revisionAttemptsRef.current = 0;
+        }
+      }
+
+      async function tryReviseStepFromScreenshot(
+        cap: { base64: string; width: number; height: number },
+        stepSnapshot: TutorialStep,
+        locatorHint: string,
+      ): Promise<boolean> {
+        if (tutorialId !== INTERACTIVE_TUTORIAL_ID || cancelled) return false;
+        revisionAttemptsRef.current += 1;
+        if (revisionAttemptsRef.current > 2) return false;
+
+        try {
+          const optimized = await compressScreenshotForTutorialApi(cap.base64);
+          const messages: MessageParam[] = [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: optimized.mediaType,
+                    data: optimized.base64,
+                  },
+                },
+                {
+                  type: "text",
+                  text:
+                    `Original tutorial goal:\n${interactiveGoal || "(unknown)"}\n\n` +
+                    `Current step JSON (may not match the screenshot):\n${JSON.stringify({
+                      id: stepSnapshot.id,
+                      titleRaw: stepSnapshot.titleRaw,
+                      textRaw: stepSnapshot.textRaw,
+                      visual: stepSnapshot.visual,
+                      highlightDescription: stepSnapshot.highlightDescription,
+                    })}\n\n` +
+                    `Locator / mismatch note: ${locatorHint}\n\n` +
+                    `Return ONE replacement tutorial step JSON that matches the screenshot and tells the user the correct next action.`,
+                },
+              ] as any,
+            },
+          ];
+
+          const res = await fetch("/api/interactive-tutorial-sync-step", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages }),
+          });
+          if (!res.ok || cancelled) return false;
+          const data = (await res.json()) as { content?: unknown };
+          let revised = extractStepFromAnthropicContent(data.content);
+          if (!revised || cancelled) return false;
+
+          // The step parser already strips every targeting field except
+          // `highlightDescription`, so the revised step is guaranteed to use
+          // the Claude Computer Use API pointer exclusively.
+
+          replaceInteractiveStepAt(currentStepIndex, revised);
+          revisionAttemptsRef.current = 0;
+          setHighlightError(null);
+          setRetryToken((t) => t + 1);
+          return true;
+        } catch (e) {
+          console.error("Interactive step revision failed:", e);
+          return false;
+        }
+      }
+
       // Always capture a screenshot once per step (Electron only).
       // This supports consistent “computer help” context even for text-only steps.
       let captured:
@@ -227,74 +305,106 @@ export function TutorialController() {
       }
       if (cancelled) return;
 
-      if (currentStep.highlightSelector) {
-        setIsLoadingHighlight(false);
-        setHighlightError(null);
-        setPointerTarget(null);
+      // ====================================================================
+      // INTERACTIVE TUTORIAL: Claude Computer Use API ONLY.
+      //
+      // The only supported targeting field is `highlightDescription`, which
+      // is resolved by the Claude Computer Use API. There is no other path.
+      // ====================================================================
+      if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
+        setHighlightPayload(null);
 
-        const findElementWithRetry = async (selector: string): Promise<Element | null> => {
-          if (typeof document === "undefined") {
-            return null;
-          }
-
-          const attempts = 6;
-          const delayMs = 80;
-          for (let i = 0; i < attempts; i += 1) {
-            const match = document.querySelector(selector);
-            if (match) {
-              return match;
-            }
-            if (i < attempts - 1) {
-              await new Promise((resolve) => window.setTimeout(resolve, delayMs));
-            }
-          }
-          return null;
-        };
-
-        const el = await findElementWithRetry(currentStep.highlightSelector);
-        if (cancelled) {
+        // Text-only steps: no on-screen pointer, no highlight. Done.
+        if (currentStep.visual === "text" && !currentStep.highlightDescription) {
+          setPointerTarget(null);
+          setIsLoadingHighlight(false);
+          setHighlightError(null);
           return;
         }
-        if (!el) {
-          setHighlightPayload(null);
+
+        setPointerTarget(null);
+        setIsLoadingHighlight(true);
+        setHighlightError(null);
+
+        if (typeof window === "undefined" || !window.electronAPI?.locateElementComputerUse) {
+          setIsLoadingHighlight(false);
           setHighlightError({
             title: t("tutorial.highlightErrorTitle"),
             hint: t("tutorial.highlightErrorHint"),
+            detail: "Screen analysis is only available in the desktop app.",
           });
           return;
         }
 
-        const rect = el.getBoundingClientRect();
-        const expand = currentStep.highlightExpandFactor ?? 1.0;
-        const minPad = currentStep.highlightMinPadding ?? 10;
-        const offsetX = currentStep.highlightOffsetX ?? 0;
-        const offsetY = currentStep.highlightOffsetY ?? 0;
+        try {
+          const cap = captured ?? (await captureScreenToPngBase64());
+          if (cancelled || !cap) {
+            setIsLoadingHighlight(false);
+            return;
+          }
 
-        const w = Math.max(rect.width * expand, rect.width + minPad * 2);
-        const h = Math.max(rect.height * expand, rect.height + minPad * 2);
-        const cx = rect.left + rect.width / 2 + offsetX;
-        const cy = rect.top + rect.height / 2 + offsetY;
+          const target = currentStep.highlightDescription
+            ? currentStep.highlightDescription
+            : buildInteractivePointerDescription(currentStep);
+          const result = await window.electronAPI.locateElementComputerUse(
+            cap.base64,
+            target,
+            cap.width,
+            cap.height,
+          );
+          if (cancelled) {
+            setIsLoadingHighlight(false);
+            return;
+          }
 
-        setHighlightPayload({
-          coords: {
-            x: cx - w / 2,
-            y: cy - h / 2,
-            width: w,
-            height: h,
-            confidence: 1,
-          },
-          screenshotWidth: window.innerWidth,
-          screenshotHeight: window.innerHeight,
-          useCssCoords: true,
-        });
-
-        // Interactive tutorials should still show the “yellow arrow” style pointer, even for in-app selector highlights.
-        if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
-          setPointerTarget({ x: cx, y: cy });
+          if (result.success && result.found && result.x != null && result.y != null) {
+            setHighlightError(null);
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            setPointerTarget({
+              x: result.x * (vw / cap.width),
+              y: result.y * (vh / cap.height),
+            });
+          } else {
+            setPointerTarget(null);
+            if (
+              cap &&
+              !cancelled &&
+              (await tryReviseStepFromScreenshot(
+                cap,
+                currentStep,
+                result.explanation ?? result.error ?? "On-screen pointer target was not found.",
+              ))
+            ) {
+              setIsLoadingHighlight(false);
+              return;
+            }
+            setHighlightError(
+              buildSmartError(
+                currentStep.highlightDescription,
+                result.explanation ?? result.error ?? "Element not found on screen.",
+              ),
+            );
+          }
+        } catch (err) {
+          if (cancelled) return;
+          console.error("Interactive pointer vision failed:", err);
+          setPointerTarget(null);
+          setHighlightError(
+            buildSmartError(currentStep.highlightDescription, err instanceof Error ? err.message : undefined),
+          );
         }
+        setIsLoadingHighlight(false);
         return;
       }
 
+      // ====================================================================
+      // NON-INTERACTIVE TUTORIALS (App Tour / Gmail / Google Search).
+      //
+      // Steps with `highlightDescription` get a vision-located arrow drawn by
+      // `PointerOverlay` (Claude Computer Use API). Text-only steps render no
+      // pointer at all. There is no other targeting path.
+      // ====================================================================
       if (currentStep.highlightDescription) {
         setHighlightPayload(null);
         setPointerTarget(null);
@@ -340,7 +450,9 @@ export function TutorialController() {
           } else {
             setHighlightPayload(null);
             setPointerTarget(null);
-            setHighlightError(buildSmartError(currentStep.highlightDescription, result.explanation ?? result.error));
+            setHighlightError(
+              buildSmartError(currentStep.highlightDescription, result.explanation ?? result.error),
+            );
           }
         } catch (err) {
           if (cancelled) return;
@@ -355,74 +467,7 @@ export function TutorialController() {
         return;
       }
 
-      // Interactive tutorial: always attempt an on-screen pointer after capturing a screenshot,
-      // even if the model forgot to include highlightDescription.
-      if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
-        setHighlightPayload(null);
-        setPointerTarget(null);
-        setIsLoadingHighlight(true);
-        setHighlightError(null);
-        if (typeof window === "undefined" || !window.electronAPI?.locateElementComputerUse) {
-          setIsLoadingHighlight(false);
-          setHighlightError("Screen analysis is only available in the desktop app.");
-          return;
-        }
-
-        try {
-          const cap = captured ?? (await captureScreenToPngBase64());
-          if (cancelled || !cap) {
-            setIsLoadingHighlight(false);
-            return;
-          }
-
-          const target = buildInteractivePointerDescription(currentStep);
-          const result = await window.electronAPI.locateElementComputerUse(cap.base64, target, cap.width, cap.height);
-          if (cancelled) {
-            setIsLoadingHighlight(false);
-            return;
-          }
-
-          if (result.success && result.found && result.x != null && result.y != null) {
-            setHighlightError(null);
-            setHighlightPayload(null);
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
-            setPointerTarget({
-              x: result.x * (vw / cap.width),
-              y: result.y * (vh / cap.height),
-            });
-          } else {
-            setHighlightPayload(null);
-            setPointerTarget(null);
-            setHighlightError(result.explanation ?? result.error ?? "Element not found on screen.");
-          }
-        } catch (err) {
-          if (cancelled) return;
-          console.error("Interactive pointer vision failed:", err);
-          setHighlightPayload(null);
-          setPointerTarget(null);
-          setHighlightError(
-            err instanceof Error
-              ? `Something went wrong while locating the target: ${err.message}`
-              : "Something went wrong while locating the target on screen.",
-          );
-        }
-        setIsLoadingHighlight(false);
-        return;
-      }
-
-      if (currentStep.highlight) {
-        setIsLoadingHighlight(false);
-        setHighlightError(null);
-        setPointerTarget(null);
-        setHighlightPayload({
-          coords: currentStep.highlight,
-          screenshotWidth: typeof window !== "undefined" ? window.innerWidth : 1,
-          screenshotHeight: typeof window !== "undefined" ? window.innerHeight : 1,
-        });
-        return;
-      }
-
+      // Text-only step (or stray legacy fields) — no spotlight, no arrow.
       setIsLoadingHighlight(false);
       setHighlightPayload(null);
       setPointerTarget(null);
@@ -433,7 +478,16 @@ export function TutorialController() {
     return () => {
       cancelled = true;
     };
-  }, [currentStep, retryToken, buildSmartError, t]);
+  }, [
+    currentStep,
+    retryToken,
+    buildSmartError,
+    t,
+    tutorialId,
+    interactiveGoal,
+    replaceInteractiveStepAt,
+    currentStepIndex,
+  ]);
 
   const fallbackW = typeof window !== "undefined" ? window.innerWidth : 1;
   const fallbackH = typeof window !== "undefined" ? window.innerHeight : 1;
@@ -450,66 +504,64 @@ export function TutorialController() {
     const approxH = Math.min(vh * 0.6, 460);
     const top = Math.max(margin, Math.round(vh / 2 - approxH / 2));
 
+    // Anchor the step card to the bottom-left on every step. We intentionally
+    // do not reposition it relative to the pointer target — a consistent
+    // location is easier to scan.
+    //
+    // For CONTENT tutorials (Gmail / Google Search / interactive AI), the
+    // lesson card is paired with the slim chat box. The chat box is anchored
+    // at bottom: 64 and is ~44px tall (top edge ≈ 108). We push the card to
+    // bottom: 144 to leave a clear ~36px gap so the two read as a vertical
+    // stack with breathing room and never visually collide:
+    //     [ lesson step card  ]
+    //     [ Ask a question…   ]
+    //     [ Back · Next · Exit ]
+    //
+    // For the App Tour the chat box is NOT shown (the chatbot lives in the
+    // visible side panel), so the card uses the lower `standardBottom`.
+    const isContentTutorial = tutorialId != null && tutorialId !== INTRO_TUTORIAL_ID;
+    const stackedWithChatBottom = 144;
+    const standardBottom = 64;
     return {
       width: maxW,
-      left,
-      top,
-      bottom: undefined as number | undefined,
+      left: margin,
+      top: undefined as number | undefined,
+      bottom: isContentTutorial ? stackedWithChatBottom : standardBottom,
       approxHeight: approxH,
     };
-  }, [viewport.w, viewport.h]);
+  }, [tutorialId, viewport.w, viewport.h]);
 
-  if (!mounted || !tutorialId || !activeTutorial || !currentStep) {
+  const isInteractive = tutorialId === INTERACTIVE_TUTORIAL_ID;
+  // For non-interactive tutorials we keep the previous behavior: nothing
+  // renders until the step is ready. For interactive tutorials we render a
+  // placeholder lesson card during the brief "Setting up your tutorial..."
+  // window (between the user clicking Start and the first step arriving) so
+  // the user has something to look at while the panel is hidden off-screen.
+  if (!mounted || !tutorialId || !activeTutorial) {
+    return null;
+  }
+  if (!currentStep && !isInteractive) {
     return null;
   }
 
-  const shouldWaitForBox = Boolean(currentStep.highlightDescription);
-  const showStepText = !shouldWaitForBox || !isLoadingHighlight;
-  const hasSpotlight = Boolean(highlightPayload?.coords);
-  const hasPointerHighlight = Boolean(pointerTarget);
-  // Whether THIS step is intended to have a highlight target. Used to decide
-  // if the no-spotlight dim should render — checking step properties is more
-  // reliable than checking `hasSpotlight`, which can briefly be stale during
-  // step transitions and would make the dim flicker on/off.
-  const stepHasHighlightTarget = Boolean(
-    currentStep.highlightSelector ||
-    currentStep.highlightDescription ||
-    currentStep.highlight ||
-    currentStep.highlightBright,
-  );
+  // Keep the step card visible even while highlights/pointers are being located.
+  // Hiding it causes a noticeable flash (title appears, disappears, then reappears).
+  const showStepText = true;
+
+  // Placeholder copy shown in the lesson card while the first interactive
+  // tutorial step is still being generated. Mirrors the lesson card style so
+  // the transition into the real step feels seamless.
+  const placeholderTitle = "Setting up your tutorial…";
+  const placeholderBody = interactiveGoal
+    ? `Looking at your screen and figuring out where to begin for: ${interactiveGoal}.`
+    : "Looking at your screen and figuring out where to begin.";
+
+  // Whether the GransonAI panel has been collapsed off-screen. Mirrors the
+  // logic in shell-layout.tsx: panel hides for content tutorials (Gmail /
+  // Google Search / interactive AI) and stays visible for the App Tour.
 
   return (
     <>
-      {/* Dim when a tour step has no spotlight target (e.g. the welcome
-          step). Matches the dim level used OUTSIDE the spotlight on regular
-          tutorial steps so all tour pages feel consistent. Spans the full
-          viewport — including behind the (semi-transparent) shell panel —
-          so the whole screen feels dimmed. Tour controls (z-[999998]) and
-          step card (z-[999997]) stay on top via z-index. */}
-      {!stepHasHighlightTarget
-        ? createPortal(
-            <div
-              className="pointer-events-none fixed inset-0"
-              style={{ zIndex: 999990 }}
-              aria-hidden="true"
-            >
-              <div className="absolute inset-0" style={{ background: "rgba(0, 0, 0, 0.82)" }} />
-              <div className="absolute inset-0" style={{ background: "rgba(0, 3, 10, 0.32)" }} />
-            </div>,
-            document.body,
-          )
-        : null}
-
-      <BoundingBoxOverlay
-        coords={highlightPayload?.coords ?? null}
-        screenshotWidth={highlightPayload?.screenshotWidth ?? fallbackW}
-        screenshotHeight={highlightPayload?.screenshotHeight ?? fallbackH}
-        expandFactor={2.5}
-        useCssCoords={Boolean(highlightPayload?.useCssCoords)}
-        brightMode={Boolean(currentStep.highlightBright)}
-        onSpotlightRectChange={setSpotlightRect}
-      />
-
       <PointerOverlay
         targetX={pointerTarget?.x ?? null}
         targetY={pointerTarget?.y ?? null}
@@ -524,10 +576,11 @@ export function TutorialController() {
         }
       />
 
-      {showStepText
+    {showStepText
         ? createPortal(
             <div
-              className="pointer-events-none fixed z-[1000003] max-h-[60vh] overflow-y-auto rounded-2xl border border-white/40 bg-[hsl(var(--foreground)/0.95)] p-7 text-white shadow-2xl backdrop-blur-sm"
+              data-tutorial-chrome
+              className="pointer-events-none fixed z-[1000003] max-h-[42vh] overflow-y-auto rounded-xl border border-white/35 bg-[hsl(var(--foreground)/0.95)] p-4 text-white shadow-2xl backdrop-blur-sm"
               style={{
                 left: textBoxStyle.left,
                 top: textBoxStyle.top,
@@ -539,56 +592,75 @@ export function TutorialController() {
               aria-labelledby="tutorial-step-title"
               aria-describedby="tutorial-step-body"
             >
-              <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0 space-y-1">
-                  <TypographySmall className="m-0 text-sm font-semibold uppercase tracking-wide text-white/65">
-                    {t(activeTutorial.title)}
-                  </TypographySmall>
-                  <TypographyH4
-                    id="tutorial-step-title"
-                    className="m-0 border-none pb-0 text-3xl leading-tight text-white"
-                  >
-                    {currentStep.titleRaw
+              {/* When the user asks the chat box a question during a hand-authored
+                  tutorial, `tutorialChatOverride` is set and we display the AI's
+                  answer here instead of the original step content. The overlay is
+                  pinned to the step's id, so navigating Back/Next clears it
+                  automatically and the lesson resumes. */}
+              {(() => {
+                const overlayActive =
+                  tutorialChatOverride && currentStep && tutorialChatOverride.stepId === currentStep.id
+                    ? tutorialChatOverride
+                    : null;
+                const askingForCurrentStep = isAskingTutorialQuestion && !overlayActive;
+
+                const headerLabel = overlayActive
+                  ? "Answer"
+                  : isInteractive && !currentStep
+                    ? "Setting up"
+                    : t(activeTutorial.title);
+
+                const titleText = overlayActive
+                  ? overlayActive.titleRaw
+                  : askingForCurrentStep
+                    ? "Thinking…"
+                    : currentStep?.titleRaw
                       ? currentStep.titleRaw
-                      : currentStep.title
+                      : currentStep?.title
                         ? t(currentStep.title)
-                        : t(activeTutorial.title)}
-                  </TypographyH4>
-                </div>
-              </div>
-              <TypographyP
-                id="tutorial-step-body"
-                className="mt-0 whitespace-pre-wrap text-lg leading-relaxed"
-              >
-                {currentStep.textRaw ? currentStep.textRaw : t(currentStep.text)}
-              </TypographyP>
+                        : isInteractive && !currentStep
+                          ? placeholderTitle
+                          : t(activeTutorial.title);
+
+                const bodyText = overlayActive
+                  ? overlayActive.textRaw
+                  : askingForCurrentStep
+                    ? "One moment — looking up an answer to your question."
+                    : currentStep?.textRaw
+                      ? currentStep.textRaw
+                      : currentStep
+                        ? t(currentStep.text)
+                        : placeholderBody;
+
+                return (
+                  <>
+                    <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0 space-y-0.5">
+                        <TypographySmall className="m-0 font-semibold uppercase tracking-wide text-white/60">
+                          {headerLabel}
+                        </TypographySmall>
+                        <TypographyH4 id="tutorial-step-title" className="m-0 border-none pb-0 leading-snug text-white">
+                          {titleText}
+                        </TypographyH4>
+                      </div>
+                    </div>
+                    <TypographyP id="tutorial-step-body" className="mt-0 whitespace-pre-wrap leading-relaxed">
+                      {bodyText}
+                    </TypographyP>
+                  </>
+                );
+              })()}
             </div>,
             document.body,
           )
-        : createPortal(
-            <div
-              className="pointer-events-none fixed inset-0 z-[1000003] flex items-center justify-center px-6"
-              role="status"
-              aria-live="polite"
-            >
-              <TypographySmall className="m-0 rounded-lg border border-white/30 bg-black/70 px-4 py-2 tracking-wide text-white">
-                Loading...
-              </TypographySmall>
-            </div>,
-            document.body,
-          )}
+        : null}
       {highlightError
-        ? createPortal(
-            <div
-              className="fixed left-1/2 top-6 z-[999998] w-[90vw] max-w-md -translate-x-1/2"
-              role="alert"
-              aria-live="assertive"
-            >
+          ? createPortal(
               <div
-                className="overflow-hidden rounded-2xl border border-white/40 bg-[hsl(var(--foreground)/0.96)] text-white shadow-2xl backdrop-blur-md"
-                style={{
-                  boxShadow: "0 18px 40px rgba(0, 20, 7, 0.45), 0 0 0 1px hsl(var(--primary) / 0.35)",
-                }}
+                data-tutorial-chrome
+                className="fixed left-1/2 top-6 z-[999998] w-[90vw] max-w-md -translate-x-1/2"
+                role="alert"
+                aria-live="assertive"
               >
                 <div
                   className="h-1.5 w-full"
@@ -653,14 +725,13 @@ export function TutorialController() {
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>,
+              </div>,
             document.body,
           )
         : null}
 
       {createPortal(
-        <div className="fixed bottom-4 left-4 z-[1000004] flex flex-wrap items-center gap-2">
+        <div data-tutorial-chrome className="fixed bottom-4 left-4 z-[1000004] flex flex-wrap items-center gap-2">
           {canGoPrevious ? (
             <Button
               type="button"

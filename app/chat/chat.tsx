@@ -12,6 +12,8 @@ import { useAudioMode } from "../audio-mode-context";
 import { Message, type MessageProps } from "./message";
 import { ScrollContainer } from "./scroll-container";
 import { VoiceInput } from "./voice-input"; // ← NEW
+import { useTutorial } from "../tutorial/tutorial-provider";
+import { INTERACTIVE_TUTORIAL_ID } from "@/lib/tutorials";
 
 type MessageWithId = MessageProps & { id: string; variant: "user" | "assistant" };
 interface ChatHistoryItem {
@@ -45,6 +47,7 @@ export function Chat({ showHeader = true }: ChatProps) {
   const [incomingMessage, setIncomingMessage] = useState("");
   const [, setIsSpeechPlaying] = useState(false);
   const { audioModeEnabled } = useAudioMode();
+  const { tutorialId, sendInteractivePrompt } = useTutorial();
   const audioModeEnabledRef = useRef(audioModeEnabled);
   const speechObjectUrlRef = useRef<string | null>(null);
   const speechAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -351,6 +354,28 @@ export function Chat({ showHeader = true }: ChatProps) {
     if (!message.trim() || isLoading) return;
 
     const prompt = message.trim();
+
+    // If an interactive tutorial is active, the "chat" box is just an input
+    // surface: all assistant output becomes tutorial steps (no chat transcript).
+    if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
+      setMessage("");
+      setIsLoading(true);
+      setIncomingMessage("");
+      try {
+        await sendInteractivePrompt(prompt);
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : t("chat.unknownError");
+        toast({
+          title: t("chat.assistantUnavailable", { status: "interactive" }),
+          description: reason,
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
     const history: ChatHistoryItem[] = messages
       .map((m) => ({
         role: m.variant,

@@ -1,23 +1,15 @@
-/**
- * Screen region for step highlights (same shape as `Coordinates` from screenshot analysis).
- * x,y are the top-left corner of the rectangle in screenshot / overlay pixel space.
- */
-export interface ScreenHighlight {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  confidence: number;
-}
-
 /** Mirrors lesson tags: TEXT-only, SCREEN demo, or both. */
 export type StepVisual = "text" | "screen" | "screen_text";
 
 /**
  * One screen in a tutorial.
+ *
  * - `title` / `text`: i18n keys under `tutorials.googleSearch` (see lib/translations).
- * - `highlightDescription`: English phrase for vision API (not translated).
- * - `highlight`: optional fixed coordinates when not using the API.
+ * - `titleRaw` / `textRaw`: non-i18n strings used for AI-generated steps.
+ * - `highlightDescription`: a natural-language description of the on-screen
+ *   target. The Claude Computer Use API uses this to locate the element on
+ *   the user's full screen and an animated arrow points at it. This is the
+ *   only supported targeting field.
  */
 export interface TutorialStep {
   id: string;
@@ -30,28 +22,8 @@ export interface TutorialStep {
   /** Raw (non-i18n) step body, used for AI-generated steps. */
   textRaw?: string;
   visual: StepVisual;
-  /** Natural-language target for vision (English). */
+  /** Natural-language target for the Claude Computer Use API (English). */
   highlightDescription?: string;
-  highlight?: ScreenHighlight | null;
-  /**
-   * CSS selector for in-app elements to spotlight (resolved at runtime via
-   * getBoundingClientRect). Preferred over `highlight` for tutorials that
-   * target elements inside the Granson panel, since it follows resizes.
-   */
-  highlightSelector?: string;
-  /** Optional per-step spotlight growth factor; lower values create tighter highlights. */
-  highlightExpandFactor?: number;
-  /** Optional per-step minimum spotlight padding in CSS pixels. */
-  highlightMinPadding?: number;
-  /** Optional per-step selector highlight offset in CSS pixels. */
-  highlightOffsetX?: number;
-  highlightOffsetY?: number;
-  /**
-   * When true, render the spotlight with a bright, glowing treatment instead of
-   * dimming the rest of the screen. Useful when the surrounding UI should stay
-   * visible (e.g. exit/finish steps where we want the chat to remain readable).
-   */
-  highlightBright?: boolean;
 }
 
 export interface Tutorial {
@@ -110,7 +82,7 @@ const googleSearchSteps: TutorialStep[] = [
     text: "tutorials.googleSearch.steps.gs-open-chrome.body",
     visual: "screen",
     highlightDescription:
-      "The Google Chrome application icon on the desktop, taskbar, Windows Start menu. Return a larger bounding box than necessary. ",
+      "The Google Chrome application icon on the desktop, taskbar, or Windows Start menu.",
   },
   {
     id: "gs-tabs",
@@ -464,78 +436,74 @@ const wifiSteps: TutorialStep[] = [
 ];
 
 /**
- * Introductory tour of the Granson AI app itself. Targets elements inside the
- * panel using CSS selectors (`data-intro="…"`) so the spotlight tracks layout
- * changes. Each step should be short and welcoming — this is the first thing a
- * new user sees via the HELP button.
+ * App Tour (Help). The right-hand GransonAI panel stays visible; each step
+ * uses `highlightDescription` so the Claude Computer Use API can point at the
+ * relevant in-panel control (same path as Gmail / Google Search screen steps).
  */
 const introSteps: TutorialStep[] = [
   {
     id: "intro-welcome",
     title: "tutorials.intro.intro-welcome.title",
     text: "tutorials.intro.intro-welcome.text",
-    visual: "text",
+    visual: "screen_text",
+    highlightDescription:
+      "The white Next button in the bottom-left tutorial navigation bar on the screen, next to darker Back and Exit tutorial buttons.",
   },
   {
     id: "intro-chat",
     title: "tutorials.intro.intro-chat.title",
     text: "tutorials.intro.intro-chat.text",
     visual: "screen_text",
-    highlightSelector: "[data-intro='chat-input']",
+    highlightDescription:
+      "The scrollable chat message area in the right-hand Granson AI side panel, above the text field and microphone.",
   },
   {
     id: "intro-screen",
     title: "tutorials.intro.intro-screen.title",
     text: "tutorials.intro.intro-screen.text",
     visual: "screen_text",
-    highlightSelector: "[data-intro='chat-box']",
+    highlightDescription:
+      "The chat text input or textarea at the bottom of the right-hand side panel where the user types messages to the assistant, next to the send button.",
   },
   {
     id: "intro-voice",
     title: "tutorials.intro.intro-voice.title",
     text: "tutorials.intro.intro-voice.text",
     visual: "screen_text",
-    highlightSelector: "[data-intro='voice']",
-    highlightExpandFactor: 1.25,
-    highlightMinPadding: 10,
+    highlightDescription:
+      "The circular microphone button to the left of the chat text field in the right-hand Granson AI panel.",
   },
   {
     id: "intro-tutorials",
     title: "tutorials.intro.intro-tutorials.title",
     text: "tutorials.intro.intro-tutorials.text",
     visual: "screen_text",
-    highlightSelector: "[data-intro='tutorials']",
-    highlightExpandFactor: 1.0,
-    highlightMinPadding: 4,
+    highlightDescription:
+      "The Tutorials tab in the row of three tabs (Home, Tutorials, Options) below the logo in the right-hand side panel.",
   },
   {
     id: "intro-exit",
     title: "tutorials.intro.intro-exit.title",
     text: "tutorials.intro.intro-exit.text",
     visual: "screen_text",
-    highlightSelector: "[data-intro='tutorial-exit']",
-    highlightExpandFactor: 1.08,
-    highlightMinPadding: 10,
-    highlightBright: true,
+    highlightDescription:
+      "The Exit tutorial button with ghost outline styling in the bottom-left tutorial control bar.",
   },
   {
     id: "intro-help",
     title: "tutorials.intro.intro-help.title",
     text: "tutorials.intro.intro-help.text",
     visual: "screen_text",
-    highlightSelector: "[data-intro='help']",
-    highlightExpandFactor: 1.0,
-    highlightMinPadding: 4,
+    highlightDescription:
+      "The Help button with a help-circle icon in the top-right corner of the right-hand side panel.",
   },
   {
     id: "intro-finish",
     title: "tutorials.intro.intro-finish.title",
     text: "tutorials.intro.intro-finish.text",
     visual: "screen_text",
-    highlightSelector: "[data-intro='tutorial-finish']",
-    highlightExpandFactor: 1.0,
-    highlightMinPadding: 6,
-    highlightBright: true,
+    highlightDescription:
+      "The rightmost light-on-dark primary button in the bottom-left tutorial controls (Next or Finish), beside Exit tutorial.",
   },
 ];
 
