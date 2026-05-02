@@ -323,6 +323,64 @@
         "title": "Enviar correo electrónico",
         "text": "Cuando termines, haz clic en el botón \"Enviar\".\n\n¡Tu correo ha sido enviado! Verás una notificación de \"Mensaje enviado\" aparecer en la esquina inferior izquierda de la pantalla."
       }
+    },
+
+    "wifi": {
+      "title": "Conectarse al WiFi",
+      "steps": {
+        "wifi-intro": {
+          "title": "Lección: Conectarse al WiFi",
+          "body": "Una introducción para conectar tu computadora a Internet.\n\nQué aprenderás hoy:\n• Qué es el WiFi\n• Qué hace un router\n• Nombres de red y contraseñas\n• Encontrar el ícono de WiFi\n• Elegir una red y conectarte\n• Qué hacer si no funciona"
+        },
+        "wifi-what": {
+          "title": "¿Qué es el WiFi?",
+          "body": "El WiFi permite que tu computadora se conecte a Internet sin cables.\n\nUsa señales de radio entre tu computadora y una pequeña caja llamada router."
+        },
+        "wifi-router": {
+          "title": "¿Qué es un router?",
+          "body": "Un router es la caja que te da tu proveedor de Internet.\n\nEnvía la señal de WiFi a la que se conectan tu computadora, teléfono y televisor."
+        },
+        "wifi-network-name": {
+          "title": "Nombre y contraseña de la red",
+          "body": "Cada red WiFi tiene un nombre (a veces llamado \"SSID\") y normalmente una contraseña.\n\nMuchas veces puedes encontrar ambos en una etiqueta detrás o debajo del router."
+        },
+        "wifi-find-icon": {
+          "title": "Encontrar el ícono de WiFi",
+          "body": "Mira en la esquina inferior derecha de tu pantalla — la bandeja del sistema.\n\nEl ícono de WiFi parece ondas de radio o un pequeño globo.\n\nHaz clic en él una vez."
+        },
+        "wifi-open-quick-settings": {
+          "title": "Abrir la Configuración rápida",
+          "body": "Aparece un pequeño panel con casillas para WiFi, Bluetooth y otras opciones.\n\nSi no ves este panel, vuelve a hacer clic en el ícono de WiFi."
+        },
+        "wifi-open-network-list": {
+          "title": "Mostrar las redes disponibles",
+          "body": "Haz clic en la pequeña flecha (>) junto a la casilla de WiFi.\n\nAparecerá una lista de redes WiFi cercanas."
+        },
+        "wifi-pick-network": {
+          "title": "Elige tu red",
+          "body": "Busca el nombre de tu red en la lista.\n\nHaz clic una vez sobre ella para seleccionarla."
+        },
+        "wifi-connect": {
+          "title": "Haz clic en Conectar",
+          "body": "Después de hacer clic en tu red, aparecerá un botón de Conectar.\n\nHaz clic en \"Conectar\".\n\nConsejo: marca \"Conectar automáticamente\" si es tu red de casa, así no tienes que hacer esto cada vez."
+        },
+        "wifi-password": {
+          "title": "Ingresa la contraseña",
+          "body": "Si la red está protegida, Windows te pedirá la contraseña.\n\nEscríbela con cuidado — distingue mayúsculas y minúsculas — y haz clic en \"Siguiente\"."
+        },
+        "wifi-connected": {
+          "title": "¡Ya estás conectado!",
+          "body": "Si todo funcionó, verás \"Conectado, asegurado\" debajo del nombre de la red.\n\nEl ícono de WiFi en la bandeja del sistema también se llenará para mostrar señal completa."
+        },
+        "wifi-troubleshoot": {
+          "title": "Si no funciona",
+          "body": "Algunas cosas que puedes intentar:\n• Revisa la contraseña (cuidado con mayúsculas y con el número 0 frente a la letra O).\n• Acércate al router.\n• Desactiva el Modo avión en Configuración rápida.\n• Reinicia el router desconectándolo durante 30 segundos.\n• Olvida la red e intenta de nuevo."
+        },
+        "wifi-review": {
+          "title": "Repasemos",
+          "body": "Piensa en estas preguntas:\n1. ¿En qué parte de la pantalla está el ícono de WiFi?\n2. ¿Qué es un router?\n3. ¿Dónde se suele encontrar la contraseña del WiFi?\n4. ¿Qué significa \"Conectado, asegurado\"?\n5. Nombra una cosa que puedes intentar si tu computadora no se conecta."
+        }
+      }
     }
   },
   "tutorial": {
@@ -335,6 +393,7 @@
     "visualScreenText": "Texto + pantalla",
     "visualBadgeHint": "Formato de la lección: solo texto, demo en pantalla, o ambos",
     "highlightErrorTitle": "No encontramos eso en tu pantalla",
+    "highlightErrorTitleWithTarget": "No encontramos {{target}} en tu pantalla",
     "highlightErrorTargetLabel": "Buscando: {{target}}",
     "highlightErrorHint": "Pon la ventana correcta a la vista y vuelve a intentar con Siguiente.",
     "highlightErrorHintChrome": "Abre Google Chrome para que esté visible en tu pantalla y vuelve a intentar con Siguiente.",
@@ -344,7 +403,8 @@
     "highlightErrorDismiss": "Cerrar",
     "courseTitles": {
       "intro": "Recorrido de la app",
-      "google-search": "Búsqueda de Google"
+      "google-search": "Búsqueda de Google",
+      "wifi": "Conectarse al WiFi"
     }
   },
   "nav": {

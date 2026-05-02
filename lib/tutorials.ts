@@ -368,6 +368,101 @@ const gmailSteps: TutorialStep[] = [
   },
 ];
 
+const wifiSteps: TutorialStep[] = [
+  {
+    id: "wifi-intro",
+    title: "tutorials.wifi.steps.wifi-intro.title",
+    text: "tutorials.wifi.steps.wifi-intro.body",
+    visual: "text",
+  },
+  {
+    id: "wifi-what",
+    title: "tutorials.wifi.steps.wifi-what.title",
+    text: "tutorials.wifi.steps.wifi-what.body",
+    visual: "text",
+  },
+  {
+    id: "wifi-router",
+    title: "tutorials.wifi.steps.wifi-router.title",
+    text: "tutorials.wifi.steps.wifi-router.body",
+    visual: "text",
+  },
+  {
+    id: "wifi-network-name",
+    title: "tutorials.wifi.steps.wifi-network-name.title",
+    text: "tutorials.wifi.steps.wifi-network-name.body",
+    visual: "text",
+  },
+  {
+    id: "wifi-find-icon",
+    title: "tutorials.wifi.steps.wifi-find-icon.title",
+    text: "tutorials.wifi.steps.wifi-find-icon.body",
+    visual: "screen_text",
+    highlightDescription:
+      "The WiFi or network status icon in the system tray at the bottom-right of the Windows taskbar (looks like radio waves, a globe, or a small monitor with a cable).",
+  },
+  {
+    id: "wifi-open-quick-settings",
+    title: "tutorials.wifi.steps.wifi-open-quick-settings.title",
+    text: "tutorials.wifi.steps.wifi-open-quick-settings.body",
+    visual: "screen_text",
+    highlightDescription:
+      "The Windows quick settings flyout that opens from the system tray, showing the WiFi, Bluetooth, and Airplane mode toggle tiles.",
+  },
+  {
+    id: "wifi-open-network-list",
+    title: "tutorials.wifi.steps.wifi-open-network-list.title",
+    text: "tutorials.wifi.steps.wifi-open-network-list.body",
+    visual: "screen_text",
+    highlightDescription:
+      "The small arrow (chevron) button next to the WiFi tile inside the Windows quick settings flyout that opens the list of available WiFi networks.",
+  },
+  {
+    id: "wifi-pick-network",
+    title: "tutorials.wifi.steps.wifi-pick-network.title",
+    text: "tutorials.wifi.steps.wifi-pick-network.body",
+    visual: "screen_text",
+    highlightDescription:
+      "The list of available WiFi network names shown in the Windows network flyout, each row showing a network name and a signal strength icon.",
+  },
+  {
+    id: "wifi-connect",
+    title: "tutorials.wifi.steps.wifi-connect.title",
+    text: "tutorials.wifi.steps.wifi-connect.body",
+    visual: "screen_text",
+    highlightDescription:
+      "The blue Connect button shown under the selected WiFi network row in the Windows network flyout.",
+  },
+  {
+    id: "wifi-password",
+    title: "tutorials.wifi.steps.wifi-password.title",
+    text: "tutorials.wifi.steps.wifi-password.body",
+    visual: "screen_text",
+    highlightDescription:
+      "The password input field for joining a WiFi network in Windows, with the Next button below it.",
+  },
+  {
+    id: "wifi-connected",
+    title: "tutorials.wifi.steps.wifi-connected.title",
+    text: "tutorials.wifi.steps.wifi-connected.body",
+    visual: "screen_text",
+    highlightDescription:
+      "The connected WiFi network at the top of the Windows network flyout, showing 'Connected, secured' beneath the network name.",
+  },
+  {
+    id: "wifi-troubleshoot",
+    title: "tutorials.wifi.steps.wifi-troubleshoot.title",
+    text: "tutorials.wifi.steps.wifi-troubleshoot.body",
+    visual: "text",
+  },
+  {
+    id: "wifi-review",
+    title: "tutorials.wifi.steps.wifi-review.title",
+    text: "tutorials.wifi.steps.wifi-review.body",
+    visual: "text",
+  },
+];
+
 /**
  * Introductory tour of the Granson AI app itself. Targets elements inside the
  * panel using CSS selectors (`data-intro="…"`) so the spotlight tracks layout
@@ -464,6 +559,11 @@ export const TUTORIALS: readonly Tutorial[] = [
     id: "gmail",
     title: "Gmail",
     steps: gmailSteps,
+  },
+  {
+    id: "wifi",
+    title: "tutorials.wifi.title",
+    steps: wifiSteps,
   },
 ] as const;
 
