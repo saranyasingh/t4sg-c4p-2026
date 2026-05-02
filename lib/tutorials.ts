@@ -436,59 +436,74 @@ const wifiSteps: TutorialStep[] = [
 ];
 
 /**
- * Introductory App Tour. Each step is text-only — the GransonAI panel is
- * collapsed off-screen during a tutorial, so we no longer spotlight in-panel
- * elements via CSS selectors. The user can ask follow-up questions through
- * the floating chat box that sits under the lesson card.
+ * App Tour (Help). The right-hand GransonAI panel stays visible; each step
+ * uses `highlightDescription` so the Claude Computer Use API can point at the
+ * relevant in-panel control (same path as Gmail / Google Search screen steps).
  */
 const introSteps: TutorialStep[] = [
   {
     id: "intro-welcome",
     title: "tutorials.intro.intro-welcome.title",
     text: "tutorials.intro.intro-welcome.text",
-    visual: "text",
+    visual: "screen_text",
+    highlightDescription:
+      "The white Next button in the bottom-left tutorial navigation bar on the screen, next to darker Back and Exit tutorial buttons.",
   },
   {
     id: "intro-chat",
     title: "tutorials.intro.intro-chat.title",
     text: "tutorials.intro.intro-chat.text",
-    visual: "text",
+    visual: "screen_text",
+    highlightDescription:
+      "The scrollable chat message area in the right-hand Granson AI side panel, above the text field and microphone.",
   },
   {
     id: "intro-screen",
     title: "tutorials.intro.intro-screen.title",
     text: "tutorials.intro.intro-screen.text",
-    visual: "text",
+    visual: "screen_text",
+    highlightDescription:
+      "The chat text input or textarea at the bottom of the right-hand side panel where the user types messages to the assistant, next to the send button.",
   },
   {
     id: "intro-voice",
     title: "tutorials.intro.intro-voice.title",
     text: "tutorials.intro.intro-voice.text",
-    visual: "text",
+    visual: "screen_text",
+    highlightDescription:
+      "The circular microphone button to the left of the chat text field in the right-hand Granson AI panel.",
   },
   {
     id: "intro-tutorials",
     title: "tutorials.intro.intro-tutorials.title",
     text: "tutorials.intro.intro-tutorials.text",
-    visual: "text",
+    visual: "screen_text",
+    highlightDescription:
+      "The Tutorials tab in the row of three tabs (Home, Tutorials, Options) below the logo in the right-hand side panel.",
   },
   {
     id: "intro-exit",
     title: "tutorials.intro.intro-exit.title",
     text: "tutorials.intro.intro-exit.text",
-    visual: "text",
+    visual: "screen_text",
+    highlightDescription:
+      "The Exit tutorial button with ghost outline styling in the bottom-left tutorial control bar.",
   },
   {
     id: "intro-help",
     title: "tutorials.intro.intro-help.title",
     text: "tutorials.intro.intro-help.text",
-    visual: "text",
+    visual: "screen_text",
+    highlightDescription:
+      "The Help button with a help-circle icon in the top-right corner of the right-hand side panel.",
   },
   {
     id: "intro-finish",
     title: "tutorials.intro.intro-finish.title",
     text: "tutorials.intro.intro-finish.text",
-    visual: "text",
+    visual: "screen_text",
+    highlightDescription:
+      "The rightmost light-on-dark primary button in the bottom-left tutorial controls (Next or Finish), beside Exit tutorial.",
   },
 ];
 

@@ -4,11 +4,14 @@ import { PointerOverlay } from "@/components/pointer-overlay";
 import { Button } from "@/components/ui/button";
 import { TypographyH4, TypographyP, TypographySmall } from "@/components/ui/typography";
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
-import { INTERACTIVE_TUTORIAL_ID, type ScreenHighlight, type StepVisual } from "@/lib/tutorials";
+import {
+  INTERACTIVE_TUTORIAL_ID,
+  INTRO_TUTORIAL_ID,
+  type TutorialStep,
+} from "@/lib/tutorials";
 import { Search, X } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { INTERACTIVE_TUTORIAL_ID, INTRO_TUTORIAL_ID, type TutorialStep } from "@/lib/tutorials";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 import { compressScreenshotForTutorialApi } from "@/lib/interactive-tutorial-screenshot";
 import { extractStepFromAnthropicContent } from "@/lib/interactive-tutorial-step-parse";
@@ -165,7 +168,7 @@ export function TutorialController() {
       // overlay is collapsed off-screen during a run, leaving only the lesson
       // card + chat box. So we don't append the legacy "close the panel" hint.
       return {
-        title,
+        title: t("tutorial.highlightErrorTitle"),
         target,
         hint: t(hintKey).trim(),
         detail: usefulDetail(explanation),
@@ -524,8 +527,9 @@ export function TutorialController() {
       left: margin,
       top: undefined as number | undefined,
       bottom: isContentTutorial ? stackedWithChatBottom : standardBottom,
+      approxHeight: approxH,
     };
-  }, [tutorialId, viewport.w]);
+  }, [tutorialId, viewport.w, viewport.h]);
 
   const isInteractive = tutorialId === INTERACTIVE_TUTORIAL_ID;
   // For non-interactive tutorials we keep the previous behavior: nothing
@@ -555,12 +559,9 @@ export function TutorialController() {
   // Whether the GransonAI panel has been collapsed off-screen. Mirrors the
   // logic in shell-layout.tsx: panel hides for content tutorials (Gmail /
   // Google Search / interactive AI) and stays visible for the App Tour.
-  const isContentTutorial = !!tutorialId && tutorialId !== INTRO_TUTORIAL_ID;
 
   return (
     <>
-
-
       <PointerOverlay
         targetX={pointerTarget?.x ?? null}
         targetY={pointerTarget?.y ?? null}
@@ -575,7 +576,7 @@ export function TutorialController() {
         }
       />
 
-      {showStepText
+    {showStepText
         ? createPortal(
             <div
               data-tutorial-chrome
@@ -653,7 +654,7 @@ export function TutorialController() {
             document.body,
           )
         : null}
-        {highlightError
+      {highlightError
           ? createPortal(
               <div
                 data-tutorial-chrome
@@ -724,8 +725,7 @@ export function TutorialController() {
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>,
+              </div>,
             document.body,
           )
         : null}
