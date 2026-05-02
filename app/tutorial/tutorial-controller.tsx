@@ -8,7 +8,7 @@ import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
 import { INTERACTIVE_TUTORIAL_ID, type ScreenHighlight, type StepVisual } from "@/lib/tutorials";
 import { Search, X } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import c4pLogo from "../../public/images/c4p.png";
@@ -29,8 +29,10 @@ interface HighlightErrorState {
 function shortTargetName(description: string): string {
   const d = description.trim();
   const lower = d.toLowerCase();
-  if (lower.includes("chrome")) return "Google Chrome";
-  if (lower.includes("gmail")) return "Gmail";
+  // Check specific subjects FIRST. Tutorial descriptions often mention
+  // "Chrome" or "Gmail" as surrounding context (e.g. "the address bar at the
+  // top of Google Chrome…"), so a naive `includes("chrome")` check would
+  // wrongly label every step as targeting Chrome itself.
   if (lower.includes("address bar")) return "the address bar";
   if (lower.includes("compose")) return "the Compose button";
   if (lower.includes("inbox")) return "the Gmail inbox";
@@ -38,7 +40,21 @@ function shortTargetName(description: string): string {
   if (lower.includes("bookmark")) return "the bookmark icon";
   if (lower.includes("tabs") || lower.includes("new tab")) return "the browser tabs";
   if (lower.includes("send button")) return "the Send button";
-  // Fall back to the first sentence/clause, trimmed.
+  if (lower.includes("refresh") || lower.includes("back arrow") || lower.includes("forward arrow")) {
+    return "the navigation buttons";
+  }
+  if (lower.includes("profile picture") || lower.includes("account") || lower.includes("user")) {
+    return "the Chrome user icon";
+  }
+  if (lower.includes("three") && (lower.includes("dots") || lower.includes("menu"))) {
+    return "the Chrome menu";
+  }
+  // Fall back to the app-level subject (Chrome / Gmail) only if nothing more
+  // specific matched — this matches the case where the step is genuinely
+  // pointing at the app icon itself.
+  if (lower.includes("gmail")) return "Gmail";
+  if (lower.includes("chrome")) return "Google Chrome";
+  // Final fallback: first sentence/clause, trimmed.
   const firstSentence = d.split(/[.!?]/)[0]?.trim() ?? d;
   return firstSentence.length > 80 ? `${firstSentence.slice(0, 77)}…` : firstSentence;
 }
@@ -46,11 +62,17 @@ function shortTargetName(description: string): string {
 /** Choose a contextual hint based on what the step was looking for. */
 function smartHintKey(description: string): string {
   const lower = description.toLowerCase();
-  if (lower.includes("gmail")) return "tutorial.highlightErrorHintGmail";
-  if (lower.includes("chrome")) return "tutorial.highlightErrorHintChrome";
-  if (lower.includes("browser") || lower.includes("address bar") || lower.includes("tab")) {
+  // Check specific in-browser surfaces BEFORE Chrome/Gmail, since most step
+  // descriptions mention those apps as ambient context (see shortTargetName).
+  if (lower.includes("address bar") || lower.includes("tab") || lower.includes("bookmark")) {
     return "tutorial.highlightErrorHintBrowser";
   }
+  if (lower.includes("inbox") || lower.includes("compose") || lower.includes("reply") || lower.includes("forward")) {
+    return "tutorial.highlightErrorHintGmail";
+  }
+  if (lower.includes("gmail")) return "tutorial.highlightErrorHintGmail";
+  if (lower.includes("chrome")) return "tutorial.highlightErrorHintChrome";
+  if (lower.includes("browser")) return "tutorial.highlightErrorHintBrowser";
   return "tutorial.highlightErrorHint";
 }
 
@@ -137,8 +159,11 @@ export function TutorialController() {
     (description: string | undefined, explanation?: string): HighlightErrorState => {
       const target = description ? shortTargetName(description) : undefined;
       const hintKey = description ? smartHintKey(description) : "tutorial.highlightErrorHint";
+      const title = target
+        ? t("tutorial.highlightErrorTitleWithTarget", { target })
+        : t("tutorial.highlightErrorTitle");
       return {
-        title: t("tutorial.highlightErrorTitle"),
+        title,
         target,
         hint: t(hintKey),
         detail: usefulDetail(explanation),
@@ -146,6 +171,22 @@ export function TutorialController() {
     },
     [t],
   );
+
+  // Synchronously flip into the loading state when the active step changes
+  // and that step needs an async on-screen location lookup. Without this,
+  // the new step renders for one frame with the previous step's resolved
+  // (non-loading) state, so the user sees: step → "Loading..." → step. The
+  // layout effect commits before paint so the first frame is "Loading..."
+  // for steps that wait on a highlightDescription resolve.
+  useLayoutEffect(() => {
+    if (!currentStep) return;
+    if (currentStep.highlightDescription) {
+      setIsLoadingHighlight(true);
+      setHighlightPayload(null);
+      setPointerTarget(null);
+      setHighlightError(null);
+    }
+  }, [currentStep, retryToken]);
 
   useEffect(() => {
     let cancelled = false;
@@ -399,20 +440,24 @@ export function TutorialController() {
 
   const textBoxStyle = useMemo(() => {
     const vw = viewport.w;
-    const margin = 16;
-    const maxW = Math.min(420, vw - margin * 2);
+    const vh = viewport.h;
+    const margin = 24;
+    const maxW = Math.min(620, vw - margin * 2);
+    const left = Math.max(margin, (vw - maxW) / 2);
+    // Sit just above true vertical center so the step card is the visual
+    // focus of the screen, while leaving room for the bottom navigation
+    // (back / next / exit) and any pointer arrival underneath.
+    const approxH = Math.min(vh * 0.6, 460);
+    const top = Math.max(margin, Math.round(vh / 2 - approxH / 2));
 
-    // Anchor the step card to the bottom-left on every step. We intentionally
-    // do not reposition it relative to the spotlight or pointer target — a
-    // consistent location is easier to scan and matches the welcome step's
-    // placement so the tour feels uniform.
     return {
       width: maxW,
-      left: margin,
-      top: undefined as number | undefined,
-      bottom: 64,
+      left,
+      top,
+      bottom: undefined as number | undefined,
+      approxHeight: approxH,
     };
-  }, [viewport.w]);
+  }, [viewport.w, viewport.h]);
 
   if (!mounted || !tutorialId || !activeTutorial || !currentStep) {
     return null;
@@ -437,17 +482,15 @@ export function TutorialController() {
     <>
       {/* Dim when a tour step has no spotlight target (e.g. the welcome
           step). Matches the dim level used OUTSIDE the spotlight on regular
-          tutorial steps so all tour pages feel consistent. Spans only the
-          area to the LEFT of the shell panel — the panel itself is
-          semi-transparent (0.8) so dimming behind it would bleed through and
-          make the panel content unreadable. Panel sits at right-6 with
-          w-[420px] so its left edge is at right: 444px. Tour controls
-          (z-[999998]) and step card (z-[999997]) stay on top via z-index. */}
+          tutorial steps so all tour pages feel consistent. Spans the full
+          viewport — including behind the (semi-transparent) shell panel —
+          so the whole screen feels dimmed. Tour controls (z-[999998]) and
+          step card (z-[999997]) stay on top via z-index. */}
       {!stepHasHighlightTarget
         ? createPortal(
             <div
-              className="pointer-events-none fixed bottom-0 left-0 top-0"
-              style={{ right: 444, zIndex: 999990 }}
+              className="pointer-events-none fixed inset-0"
+              style={{ zIndex: 999990 }}
               aria-hidden="true"
             >
               <div className="absolute inset-0" style={{ background: "rgba(0, 0, 0, 0.82)" }} />
@@ -476,7 +519,7 @@ export function TutorialController() {
           typeof textBoxStyle.bottom === "number"
             ? viewport.h - textBoxStyle.bottom - 30
             : typeof textBoxStyle.top === "number"
-              ? textBoxStyle.top + 30
+              ? textBoxStyle.top + textBoxStyle.approxHeight - 24
               : viewport.h - 130
         }
       />
@@ -484,24 +527,27 @@ export function TutorialController() {
       {showStepText
         ? createPortal(
             <div
-              className="pointer-events-none fixed z-[1000003] max-h-[42vh] overflow-y-auto rounded-xl border border-white/35 bg-[hsl(var(--foreground)/0.95)] p-4 text-white shadow-2xl backdrop-blur-sm"
+              className="pointer-events-none fixed z-[1000003] max-h-[60vh] overflow-y-auto rounded-2xl border border-white/40 bg-[hsl(var(--foreground)/0.95)] p-7 text-white shadow-2xl backdrop-blur-sm"
               style={{
                 left: textBoxStyle.left,
                 top: textBoxStyle.top,
                 bottom: textBoxStyle.bottom,
                 width: textBoxStyle.width,
-                maxHeight: textBoxStyle.bottom ? "calc(100vh - 96px)" : undefined,
+                maxHeight: "calc(100vh - 160px)",
               }}
               role="dialog"
               aria-labelledby="tutorial-step-title"
               aria-describedby="tutorial-step-body"
             >
-              <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0 space-y-0.5">
-                  <TypographySmall className="m-0 font-semibold uppercase tracking-wide text-white/60">
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0 space-y-1">
+                  <TypographySmall className="m-0 text-sm font-semibold uppercase tracking-wide text-white/65">
                     {t(activeTutorial.title)}
                   </TypographySmall>
-                  <TypographyH4 id="tutorial-step-title" className="m-0 border-none pb-0 leading-snug text-white">
+                  <TypographyH4
+                    id="tutorial-step-title"
+                    className="m-0 border-none pb-0 text-3xl leading-tight text-white"
+                  >
                     {currentStep.titleRaw
                       ? currentStep.titleRaw
                       : currentStep.title
@@ -510,7 +556,10 @@ export function TutorialController() {
                   </TypographyH4>
                 </div>
               </div>
-              <TypographyP id="tutorial-step-body" className="mt-0 whitespace-pre-wrap leading-relaxed">
+              <TypographyP
+                id="tutorial-step-body"
+                className="mt-0 whitespace-pre-wrap text-lg leading-relaxed"
+              >
                 {currentStep.textRaw ? currentStep.textRaw : t(currentStep.text)}
               </TypographyP>
             </div>,

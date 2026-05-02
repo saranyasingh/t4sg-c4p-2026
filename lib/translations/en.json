@@ -365,6 +365,64 @@
         "title": "Sending Email",
         "text": "When you are done, click the \"Send\" button.\n\nYour email has been sent! You will see a \"Message sent\" notification appear in the bottom left corner of the screen."
       }
+    },
+
+    "wifi": {
+      "title": "Connecting to WiFi",
+      "steps": {
+        "wifi-intro": {
+          "title": "Lesson: Connecting to WiFi",
+          "body": "An introduction to getting your computer online.\n\nWhat you will learn today:\n• What WiFi is\n• What a router does\n• Network names and passwords\n• Finding the WiFi icon\n• Picking a network and connecting\n• What to do if it doesn't work"
+        },
+        "wifi-what": {
+          "title": "What is WiFi?",
+          "body": "WiFi lets your computer reach the Internet without any cables.\n\nIt uses radio signals between your computer and a small box called a router."
+        },
+        "wifi-router": {
+          "title": "What is a router?",
+          "body": "A router is the box your Internet provider gives you.\n\nIt sends out the WiFi signal that your computer, phone, and TV connect to."
+        },
+        "wifi-network-name": {
+          "title": "Network name & password",
+          "body": "Every WiFi network has a name (sometimes called the \"SSID\") and usually a password.\n\nYou can often find both printed on a sticker on the back or bottom of the router."
+        },
+        "wifi-find-icon": {
+          "title": "Find the WiFi icon",
+          "body": "Look at the bottom-right corner of your screen — the system tray.\n\nThe WiFi icon looks like radio waves or a small globe.\n\nClick it once."
+        },
+        "wifi-open-quick-settings": {
+          "title": "Open Quick Settings",
+          "body": "A small panel pops up with tiles for WiFi, Bluetooth, and other settings.\n\nIf you don't see this panel, click the WiFi icon again."
+        },
+        "wifi-open-network-list": {
+          "title": "Show available networks",
+          "body": "Click the small arrow (>) next to the WiFi tile.\n\nA list of nearby WiFi networks will appear."
+        },
+        "wifi-pick-network": {
+          "title": "Pick your network",
+          "body": "Find your network's name in the list.\n\nClick on it once to select it."
+        },
+        "wifi-connect": {
+          "title": "Click Connect",
+          "body": "After you click your network, a Connect button appears.\n\nClick \"Connect\".\n\nTip: check \"Connect automatically\" if it's your home network so you don't have to do this every time."
+        },
+        "wifi-password": {
+          "title": "Enter the password",
+          "body": "If the network is protected, Windows will ask for the password.\n\nType it carefully — passwords are case‑sensitive — then click \"Next\"."
+        },
+        "wifi-connected": {
+          "title": "You're connected!",
+          "body": "If everything worked, you'll see \"Connected, secured\" under the network name.\n\nThe WiFi icon in the system tray will also fill in to show full signal strength."
+        },
+        "wifi-troubleshoot": {
+          "title": "If it doesn't work",
+          "body": "A few things to try:\n• Double‑check the password (watch out for capital letters and the number 0 vs the letter O).\n• Move closer to the router.\n• Turn Airplane mode off in Quick Settings.\n• Restart the router by unplugging it for 30 seconds.\n• Forget the network and try again."
+        },
+        "wifi-review": {
+          "title": "Let's review",
+          "body": "Think through:\n1. Where on the screen do you find the WiFi icon?\n2. What is a router?\n3. Where can you usually find your WiFi password?\n4. What does \"Connected, secured\" mean?\n5. Name one thing to try if your computer won't connect."
+        }
+      }
     }
   },
   "tutorial": {
@@ -377,6 +435,7 @@
     "visualScreenText": "Screen + text",
     "visualBadgeHint": "Lesson format: text only, screen demo, or both",
     "highlightErrorTitle": "We couldn't find that on your screen",
+    "highlightErrorTitleWithTarget": "We couldn't find {{target}} on your screen",
     "highlightErrorTargetLabel": "Looking for: {{target}}",
     "highlightErrorHint": "Bring the right window into view, then try Next again.",
     "highlightErrorHintChrome": "Open Google Chrome so it's visible on your screen, then try Next again.",
@@ -386,7 +445,8 @@
     "highlightErrorDismiss": "Dismiss",
     "courseTitles": {
       "intro": "App Tour",
-      "google-search": "Google Search"
+      "google-search": "Google Search",
+      "wifi": "Connecting to WiFi"
     }
   },
   "nav": {
