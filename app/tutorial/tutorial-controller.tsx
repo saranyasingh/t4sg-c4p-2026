@@ -510,29 +510,10 @@ export function TutorialController() {
   // logic in shell-layout.tsx: panel hides for content tutorials (Gmail /
   // Google Search / interactive AI) and stays visible for the App Tour.
   const isContentTutorial = !!tutorialId && tutorialId !== INTRO_TUTORIAL_ID;
-  const panelHidden = isContentTutorial;
 
   return (
     <>
-      {/* When the panel is collapsed off-screen, the right ~444px of the
-          viewport (where the panel used to be) would otherwise show whatever
-          is behind — the user's bright desktop, browser, etc. — making that
-          slice feel uneven against the rest of the screen. Drop a soft dim
-          layer over that strip so the area where the panel "is closed" reads
-          equally dim as the rest of the chrome and doesn't visually compete
-          with the lesson card on the left. */}
-      {panelHidden
-        ? createPortal(
-            <div
-              className="pointer-events-none fixed top-0 bottom-0 right-0"
-              style={{ width: 444, zIndex: 999988 }}
-              aria-hidden="true"
-            >
-              <div className="absolute inset-0" style={{ background: "rgba(0, 0, 0, 0.35)" }} />
-            </div>,
-            document.body,
-          )
-        : null}
+
 
       <PointerOverlay
         targetX={pointerTarget?.x ?? null}
