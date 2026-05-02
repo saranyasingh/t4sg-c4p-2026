@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Mic, MicOff } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,6 +11,8 @@ interface VoiceInputProps {
   onInterimTranscript?: (text: string) => void;
   disabled?: boolean;
   onRecordingStart?: () => void;
+  /** Merged onto the mic toggle button (e.g. contrast on dark / green chrome). */
+  className?: string;
 }
 
 type State = "idle" | "recording";
@@ -33,7 +36,13 @@ async function transcribeBlob(blob: Blob, mimeType: string): Promise<string> {
   return transcript?.trim() ?? "";
 }
 
-export function VoiceInput({ onTranscript, onInterimTranscript, disabled, onRecordingStart }: VoiceInputProps) {
+export function VoiceInput({
+  onTranscript,
+  onInterimTranscript,
+  disabled,
+  onRecordingStart,
+  className,
+}: VoiceInputProps) {
   const { t } = useTranslation();
   const [state, setState] = useState<State>("idle");
 
@@ -159,7 +168,11 @@ export function VoiceInput({ onTranscript, onInterimTranscript, disabled, onReco
       onClick={handleClick}
       data-intro="voice"
       aria-label={isRecording ? t("chat.voiceStop") : t("chat.voiceStart")}
-      className={`interactable relative !h-[calc(2.5rem*var(--text-scale))] !w-[calc(2.5rem*var(--text-scale))] shrink-0 p-0 ${isRecording ? "ring-2 ring-red-400/60" : ""}`}
+      className={cn(
+        "interactable relative !h-[calc(2.5rem*var(--text-scale))] !w-[calc(2.5rem*var(--text-scale))] shrink-0 p-0",
+        isRecording ? "ring-2 ring-red-400/60" : null,
+        className,
+      )}
     >
       {isRecording ? (
         <>

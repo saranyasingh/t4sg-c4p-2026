@@ -81,6 +81,38 @@ function errMessage(err) {
   return String(err?.message ?? err);
 }
 
+/** Plain-language recovery when Anthropic Computer Use fails (shown in the tutorial overlay). */
+function anthropicFailureRecovery(err) {
+  const raw = err instanceof Error ? err.message : String(err);
+  const m = raw.toLowerCase();
+  if (
+    m.includes("401") ||
+    m.includes("api key") ||
+    m.includes("unauthorized") ||
+    m.includes("authentication") ||
+    m.includes("x-api-key")
+  ) {
+    return "Set ANTHROPIC_API_KEY in the .env file next to package.json to a valid key from https://console.anthropic.com/ , save the file, then fully quit and restart this desktop app.";
+  }
+  if (m.includes("429") || m.includes("rate_limit") || m.includes("rate limit") || m.includes("overloaded")) {
+    return "Anthropic is temporarily limiting or busy. Wait a minute, then tap Try again in the tutorial.";
+  }
+  if (m.includes("credit") || m.includes("billing") || m.includes("payment")) {
+    return "Check your Anthropic plan and billing at https://console.anthropic.com/ , then try again.";
+  }
+  if (
+    m.includes("econnreset") ||
+    m.includes("fetch failed") ||
+    m.includes("network") ||
+    m.includes("enotfound") ||
+    m.includes("socket") ||
+    m.includes("timeout")
+  ) {
+    return "This computer could not reach Anthropic over the network. Check your internet connection, VPN, or firewall, then tap Try again.";
+  }
+  return "Wait a moment and tap Try again. If it keeps failing, confirm ANTHROPIC_API_KEY (and optional ANTHROPIC_MODEL_COMPUTER_USE) in .env and ask your administrator to check the app logs.";
+}
+
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().bounds;
 
@@ -197,76 +229,12 @@ function extractComputerUseCoordinate(content) {
   return null;
 }
 
-/**
- * Pre-flight visibility check using a normal vision model (NOT Computer Use).
- * Computer Use models, when forced via tool_choice, will hallucinate coordinates
- * even for off-screen targets — so we ask plainly first whether the element is
- * actually visible. Returns { visible: true } when the verifier confirms, or
- * { visible: false, reason } when it doesn't.
- */
-async function verifyTargetVisible(client, resizedBase64, target) {
-  const verifierModel =
-    process.env.ANTHROPIC_MODEL_VISION || process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";
-
-  const response = await anthropicCreateWithRetry(
-    client,
-    {
-      model: verifierModel,
-      max_tokens: 200,
-      system:
-        "You verify whether a UI element is currently visible in a screenshot. " +
-        "Respond with a single line of strict JSON only — no prose, no code fences. " +
-        'Schema: {"visible": boolean, "reason": string}. ' +
-        'Set "visible" to true ONLY if the described element is clearly present and identifiable in the image. ' +
-        'If the relevant app/window is not open, the element is off-screen, partially obscured beyond recognition, or you are not confident, set "visible" to false and put a one-sentence plain-language reason in "reason".',
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: { type: "base64", media_type: "image/png", data: resizedBase64 },
-            },
-            {
-              type: "text",
-              text: `Target element: ${target}\n\nIs this target currently visible on the screenshot?`,
-            },
-          ],
-        },
-      ],
-    },
-    { timeout: COMPUTER_USE_TIMEOUT_MS },
-  );
-
-  const textBlock = response.content?.find?.((b) => b.type === "text");
-  const raw = (textBlock?.text ?? "").trim();
-  const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    console.warn("verifyTargetVisible: no JSON in response:", raw.slice(0, 200));
-    return { visible: true, reason: "" };
-  }
-  try {
-    const parsed = JSON.parse(jsonMatch[0]);
-    return {
-      visible: parsed.visible === true,
-      reason: typeof parsed.reason === "string" ? parsed.reason.trim() : "",
-    };
-  } catch (err) {
-    console.warn("verifyTargetVisible: parse failed:", err?.message, "raw:", raw.slice(0, 200));
-    return { visible: true, reason: "" };
-  }
-}
-
 async function locateElementComputerUse(imageBase64, targetDescription, imageWidth, imageHeight) {
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   require("dotenv/config");
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    return {
-      found: false,
-      explanation:
-        "The assistant is not set up yet. Please ask your administrator to configure the API key and restart the app.",
-    };
+    return { found: false, reason: "anthropic_not_configured" };
   }
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -286,19 +254,9 @@ async function locateElementComputerUse(imageBase64, targetDescription, imageWid
   const resized = cu.w === origW && cu.h === origH ? img : img.resize({ width: cu.w, height: cu.h, quality: "good" });
   const resizedBase64 = resized.toPNG().toString("base64");
 
-  // Step 1: pre-verification. Bail before Computer Use if the element clearly isn't on screen.
-  const verdict = await verifyTargetVisible(client, resizedBase64, target);
-  if (!verdict.visible) {
-    return {
-      found: false,
-      explanation: verdict.reason || "Element not found on screen.",
-    };
-  }
-
   const model = process.env.ANTHROPIC_MODEL_COMPUTER_USE || process.env.ANTHROPIC_MODEL || DEFAULT_COMPUTER_USE_MODEL;
 
-  // Step 2: Computer Use locate. tool_choice is "auto" + the prompt explicitly allows
-  // the model to refuse with "NOT_FOUND: <reason>" so a wrong verifier verdict can still bail.
+  // Computer Use locate. tool_choice is "auto" + the prompt allows "NOT_FOUND: <reason>".
   const response = await anthropicCreateWithRetry(
     client,
     {
@@ -308,7 +266,8 @@ async function locateElementComputerUse(imageBase64, targetDescription, imageWid
         `You are a screen annotation assistant. A screenshot (${cu.w}x${cu.h} px) is already provided — you MUST NOT call screenshot.\n\n` +
         `Your task: locate the target element on the screen.\n` +
         `- If the target IS clearly visible, call the computer tool ONCE with action "mouse_move" and the coordinate of its exact center pixel. No text, no click, no other tool calls.\n` +
-        `- If the target is NOT visible (relevant app/window not open, off-screen, or not identifiable), DO NOT call the tool. Reply with a single line of plain text starting exactly with "NOT_FOUND: " followed by a brief one-sentence reason in plain language.`,
+        `- If the target is NOT visible (wrong app in front, window minimized, element off-screen, occluded, or not identifiable), DO NOT call the tool. Reply with exactly ONE line of plain text starting exactly with "NOT_FOUND: ".\n` +
+        `  After "NOT_FOUND: ", write (1) what is wrong or missing on the screenshot in plain language, then " — " (space dash space), then (2) one concrete action the end user should take (which app or window to open, maximize, or bring to the front, what to dismiss, etc.). Example: NOT_FOUND: The Gmail inbox is not visible — Open Chrome, go to mail.google.com, expand the window, then tap Try again.`,
       tools: [
         {
           type: "computer_20250124",
@@ -328,7 +287,7 @@ async function locateElementComputerUse(imageBase64, targetDescription, imageWid
             },
             {
               type: "text",
-              text: `Target: ${target}\n\nFollow the rules in the system prompt: emit a mouse_move tool call if visible, otherwise reply with "NOT_FOUND: <reason>".`,
+              text: `Target: ${target}\n\nIf visible, call mouse_move once. If not, reply with NOT_FOUND: <issue> — <exact user action> (see system prompt).`,
             },
           ],
         },
@@ -352,8 +311,12 @@ async function locateElementComputerUse(imageBase64, targetDescription, imageWid
 
   const textBlock = response.content.find((b) => b.type === "text");
   const rawText = (textBlock?.text ?? "").trim();
-  const notFoundMatch = rawText.match(/^NOT_FOUND:\s*(.*)$/i);
-  const explanation = notFoundMatch?.[1]?.trim() || rawText || "Element not found on screen.";
+  const notFoundMatch = rawText.match(/^NOT_FOUND:\s*(.+)$/is);
+  const trimmedAfter = notFoundMatch?.[1]?.trim();
+  const explanation =
+    trimmedAfter ||
+    rawText ||
+    "No clear match for this step appears in the screenshot — Bring the app and window from the lesson to the front, enlarge the window so the area in the lesson is visible, dismiss overlays that cover it, then tap Try again.";
 
   const blockSummary = response.content
     .map((b) => (b.type === "tool_use" ? `tool_use:${b.name}:${b.input?.action ?? "?"}` : b.type))
@@ -371,7 +334,7 @@ ipcMain.handle("locate-element-computer-use", async (_event, base64, targetDescr
     return { success: true, ...result };
   } catch (err) {
     console.error("locate-element-computer-use error:", err);
-    return { success: false, found: false, error: errMessage(err) };
+    return { success: false, found: false, error: errMessage(err), hint: anthropicFailureRecovery(err) };
   }
 });
 
