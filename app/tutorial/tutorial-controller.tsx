@@ -9,7 +9,6 @@ import { INTERACTIVE_TUTORIAL_ID, type ScreenHighlight, type StepVisual } from "
 import { Search, X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { INTERACTIVE_TUTORIAL_ID, type ScreenHighlight, type StepVisual } from "@/lib/tutorials";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import c4pLogo from "../../public/images/c4p.png";
