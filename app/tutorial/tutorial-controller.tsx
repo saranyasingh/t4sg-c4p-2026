@@ -1,14 +1,13 @@
 "use client";
 
-import BoundingBoxOverlay from "@/app/bounding-box-overlay";
 import { PointerOverlay } from "@/components/pointer-overlay";
 import { Button } from "@/components/ui/button";
 import { TypographyH4, TypographyP, TypographySmall } from "@/components/ui/typography";
 import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
+import { INTERACTIVE_TUTORIAL_ID } from "@/lib/tutorials";
 import { Search, X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { INTERACTIVE_TUTORIAL_ID, type ScreenHighlight, type StepVisual } from "@/lib/tutorials";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import c4pLogo from "../../public/images/c4p.png";
@@ -65,14 +64,8 @@ function usefulDetail(explanation: string | undefined): string | undefined {
   return trimmed.length > 200 ? `${trimmed.slice(0, 197)}…` : trimmed;
 }
 
-function visualLabelKey(v: StepVisual): string {
-  if (v === "text") return "tutorial.visualText";
-  if (v === "screen") return "tutorial.visualScreen";
-  return "tutorial.visualScreenText";
-}
-
 /**
- * Tutorial UI + highlight overlay. Renders inside the shell panel; bounding boxes use fixed positioning for the full window.
+ * Tutorial UI + highlight overlay. Renders inside the shell panel
  */
 export function TutorialController() {
   const { t } = useTranslation();
@@ -90,21 +83,7 @@ export function TutorialController() {
     isGeneratingInteractiveStep,
   } = useTutorial();
 
-  const [highlightPayload, setHighlightPayload] = useState<{
-    coords: ScreenHighlight;
-    screenshotWidth: number;
-    screenshotHeight: number;
-    useCssCoords?: boolean;
-  } | null>(null);
   const [isLoadingHighlight, setIsLoadingHighlight] = useState(false);
-  const [spotlightRect, setSpotlightRect] = useState<{
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-    centerX: number;
-    centerY: number;
-  } | null>(null);
   // Pointer animation target in CSS viewport pixels
   const [pointerTarget, setPointerTarget] = useState<{ x: number; y: number } | null>(null);
   const [viewport, setViewport] = useState(() => ({
@@ -160,7 +139,6 @@ export function TutorialController() {
 
     async function syncHighlight() {
       if (!currentStep) {
-        setHighlightPayload(null);
         setPointerTarget(null);
         setIsLoadingHighlight(false);
         setHighlightError(null);
@@ -193,7 +171,6 @@ export function TutorialController() {
 
         const el = typeof document !== "undefined" ? document.querySelector(currentStep.highlightSelector) : null;
         if (!el) {
-          setHighlightPayload(null);
           setHighlightError({
             title: t("tutorial.highlightErrorTitle"),
             hint: t("tutorial.highlightErrorHint"),
@@ -202,28 +179,10 @@ export function TutorialController() {
         }
 
         const rect = el.getBoundingClientRect();
-        const expand = currentStep.highlightExpandFactor ?? 1.0;
-        const minPad = currentStep.highlightMinPadding ?? 10;
         const offsetX = currentStep.highlightOffsetX ?? 0;
         const offsetY = currentStep.highlightOffsetY ?? 0;
-
-        const w = Math.max(rect.width * expand, rect.width + minPad * 2);
-        const h = Math.max(rect.height * expand, rect.height + minPad * 2);
         const cx = rect.left + rect.width / 2 + offsetX;
         const cy = rect.top + rect.height / 2 + offsetY;
-
-        setHighlightPayload({
-          coords: {
-            x: cx - w / 2,
-            y: cy - h / 2,
-            width: w,
-            height: h,
-            confidence: 1,
-          },
-          screenshotWidth: window.innerWidth,
-          screenshotHeight: window.innerHeight,
-          useCssCoords: true,
-        });
 
         // Interactive tutorials should still show the “yellow arrow” style pointer, even for in-app selector highlights.
         if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
@@ -233,7 +192,6 @@ export function TutorialController() {
       }
 
       if (currentStep.highlightDescription) {
-        setHighlightPayload(null);
         setPointerTarget(null);
         setIsLoadingHighlight(true);
         setHighlightError(null);
@@ -267,7 +225,6 @@ export function TutorialController() {
 
           if (result.success && result.found && result.x != null && result.y != null) {
             setHighlightError(null);
-            setHighlightPayload(null);
             const vw = window.innerWidth;
             const vh = window.innerHeight;
             setPointerTarget({
@@ -275,16 +232,13 @@ export function TutorialController() {
               y: result.y * (vh / cap.height),
             });
           } else {
-            setHighlightPayload(null);
             setPointerTarget(null);
-            setHighlightError(
-              buildSmartError(currentStep.highlightDescription, result.explanation ?? result.error),
-            );
+            setHighlightError(buildSmartError(currentStep.highlightDescription, result.explanation ?? result.error));
           }
         } catch (err) {
           if (cancelled) return;
+          // eslint-disable-next-line no-console
           console.error("Highlight vision failed:", err);
-          setHighlightPayload(null);
           setPointerTarget(null);
           setHighlightError(
             buildSmartError(currentStep.highlightDescription, err instanceof Error ? err.message : undefined),
@@ -297,13 +251,16 @@ export function TutorialController() {
       // Interactive tutorial: always attempt an on-screen pointer after capturing a screenshot,
       // even if the model forgot to include highlightDescription.
       if (tutorialId === INTERACTIVE_TUTORIAL_ID) {
-        setHighlightPayload(null);
         setPointerTarget(null);
         setIsLoadingHighlight(true);
         setHighlightError(null);
         if (typeof window === "undefined" || !window.electronAPI?.locateElementComputerUse) {
           setIsLoadingHighlight(false);
-          setHighlightError("Screen analysis is only available in the desktop app.");
+          setHighlightError({
+            title: t("tutorial.highlightErrorTitle"),
+            hint: t("tutorial.highlightErrorHint"),
+            detail: "Screen analysis is only available in the desktop app.",
+          });
           return;
         }
 
@@ -323,7 +280,6 @@ export function TutorialController() {
 
           if (result.success && result.found && result.x != null && result.y != null) {
             setHighlightError(null);
-            setHighlightPayload(null);
             const vw = window.innerWidth;
             const vh = window.innerHeight;
             setPointerTarget({
@@ -331,20 +287,24 @@ export function TutorialController() {
               y: result.y * (vh / cap.height),
             });
           } else {
-            setHighlightPayload(null);
             setPointerTarget(null);
-            setHighlightError(result.explanation ?? result.error ?? "Element not found on screen.");
+            setHighlightError({
+              title: t("tutorial.highlightErrorTitle"),
+              hint: result.explanation ?? result.error ?? "Element not found on screen.",
+            });
           }
         } catch (err) {
           if (cancelled) return;
+          // eslint-disable-next-line no-console
           console.error("Interactive pointer vision failed:", err);
-          setHighlightPayload(null);
           setPointerTarget(null);
-          setHighlightError(
-            err instanceof Error
-              ? `Something went wrong while locating the target: ${err.message}`
-              : "Something went wrong while locating the target on screen.",
-          );
+          setHighlightError({
+            title: t("tutorial.highlightErrorTitle"),
+            hint:
+              err instanceof Error
+                ? `Something went wrong while locating the target: ${err.message}`
+                : "Something went wrong while locating the target on screen.",
+          });
         }
         setIsLoadingHighlight(false);
         return;
@@ -354,16 +314,10 @@ export function TutorialController() {
         setIsLoadingHighlight(false);
         setHighlightError(null);
         setPointerTarget(null);
-        setHighlightPayload({
-          coords: currentStep.highlight,
-          screenshotWidth: typeof window !== "undefined" ? window.innerWidth : 1,
-          screenshotHeight: typeof window !== "undefined" ? window.innerHeight : 1,
-        });
         return;
       }
 
       setIsLoadingHighlight(false);
-      setHighlightPayload(null);
       setPointerTarget(null);
       setHighlightError(null);
     }
@@ -372,10 +326,7 @@ export function TutorialController() {
     return () => {
       cancelled = true;
     };
-  }, [currentStep, retryToken, buildSmartError, t]);
-
-  const fallbackW = typeof window !== "undefined" ? window.innerWidth : 1;
-  const fallbackH = typeof window !== "undefined" ? window.innerHeight : 1;
+  }, [currentStep, retryToken, buildSmartError, t, tutorialId]);
 
   const textBoxStyle = useMemo(() => {
     const vw = viewport.w;
@@ -400,17 +351,15 @@ export function TutorialController() {
 
   const shouldWaitForBox = Boolean(currentStep.highlightDescription);
   const showStepText = !shouldWaitForBox || !isLoadingHighlight;
-  const hasSpotlight = Boolean(highlightPayload?.coords);
-  const hasPointerHighlight = Boolean(pointerTarget);
   // Whether THIS step is intended to have a highlight target. Used to decide
-  // if the no-spotlight dim should render — checking step properties is more
-  // reliable than checking `hasSpotlight`, which can briefly be stale during
+  // if the no-dim should render — checking step properties is more
+  // reliable than computed state which can briefly be stale during
   // step transitions and would make the dim flicker on/off.
   const stepHasHighlightTarget = Boolean(
-    currentStep.highlightSelector ||
-      currentStep.highlightDescription ||
-      currentStep.highlight ||
-      currentStep.highlightBright,
+    currentStep.highlightSelector ??
+    currentStep.highlightDescription ??
+    currentStep.highlight ??
+    currentStep.highlightBright,
   );
 
   return (
@@ -426,32 +375,16 @@ export function TutorialController() {
       {!stepHasHighlightTarget
         ? createPortal(
             <div
-              className="pointer-events-none fixed top-0 bottom-0 left-0"
+              className="pointer-events-none fixed bottom-0 left-0 top-0"
               style={{ right: 444, zIndex: 999990 }}
               aria-hidden="true"
             >
-              <div
-                className="absolute inset-0"
-                style={{ background: "rgba(0, 0, 0, 0.82)" }}
-              />
-              <div
-                className="absolute inset-0"
-                style={{ background: "rgba(0, 3, 10, 0.32)" }}
-              />
+              <div className="absolute inset-0" style={{ background: "rgba(0, 0, 0, 0.82)" }} />
+              <div className="absolute inset-0" style={{ background: "rgba(0, 3, 10, 0.32)" }} />
             </div>,
             document.body,
           )
         : null}
-
-      <BoundingBoxOverlay
-        coords={highlightPayload?.coords ?? null}
-        screenshotWidth={highlightPayload?.screenshotWidth ?? fallbackW}
-        screenshotHeight={highlightPayload?.screenshotHeight ?? fallbackH}
-        expandFactor={2.5}
-        useCssCoords={Boolean(highlightPayload?.useCssCoords)}
-        brightMode={Boolean(currentStep.highlightBright)}
-        onSpotlightRectChange={setSpotlightRect}
-      />
 
       <PointerOverlay
         targetX={pointerTarget?.x ?? null}
@@ -514,90 +447,87 @@ export function TutorialController() {
             </div>,
             document.body,
           )}
-        {highlightError
-          ? createPortal(
+      {highlightError
+        ? createPortal(
+            <div
+              className="fixed left-1/2 top-6 z-[999998] w-[90vw] max-w-md -translate-x-1/2"
+              role="alert"
+              aria-live="assertive"
+            >
               <div
-                className="fixed left-1/2 top-6 z-[999998] w-[90vw] max-w-md -translate-x-1/2"
-                role="alert"
-                aria-live="assertive"
+                className="overflow-hidden rounded-2xl border border-white/40 bg-[hsl(var(--foreground)/0.96)] text-white shadow-2xl backdrop-blur-md"
+                style={{
+                  boxShadow: "0 18px 40px rgba(0, 20, 7, 0.45), 0 0 0 1px hsl(var(--primary) / 0.35)",
+                }}
               >
                 <div
-                  className="overflow-hidden rounded-2xl border border-white/40 bg-[hsl(var(--foreground)/0.96)] text-white shadow-2xl backdrop-blur-md"
+                  className="h-1.5 w-full"
                   style={{
-                    boxShadow:
-                      "0 18px 40px rgba(0, 20, 7, 0.45), 0 0 0 1px hsl(var(--primary) / 0.35)",
+                    background: "linear-gradient(90deg, var(--green-1) 0%, var(--green-2) 50%, var(--green-3) 100%)",
                   }}
-                >
-                  <div
-                    className="h-1.5 w-full"
-                    style={{
-                      background:
-                        "linear-gradient(90deg, var(--green-1) 0%, var(--green-2) 50%, var(--green-3) 100%)",
-                    }}
-                    aria-hidden="true"
-                  />
-                  <div className="flex items-start gap-3 px-5 py-4">
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Image
-                        src={c4pLogo}
-                        alt="Computers 4 People"
-                        width={32}
-                        height={32}
-                        className="rounded-md bg-white/10 p-1"
-                      />
-                      <span
-                        className="flex h-8 w-8 items-center justify-center rounded-full"
-                        style={{ background: "hsl(var(--primary) / 0.18)", color: "var(--green-1)" }}
-                        aria-hidden="true"
-                      >
-                        <Search className="h-4 w-4" />
-                      </span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold leading-tight tracking-wide" style={{ color: "var(--green-1)" }}>
-                        {highlightError.title}
+                  aria-hidden="true"
+                />
+                <div className="flex items-start gap-3 px-5 py-4">
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Image
+                      src={c4pLogo}
+                      alt="Computers 4 People"
+                      width={32}
+                      height={32}
+                      className="rounded-md bg-white/10 p-1"
+                    />
+                    <span
+                      className="flex h-8 w-8 items-center justify-center rounded-full"
+                      style={{ background: "hsl(var(--primary) / 0.18)", color: "var(--green-1)" }}
+                      aria-hidden="true"
+                    >
+                      <Search className="h-4 w-4" />
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold leading-tight tracking-wide" style={{ color: "var(--green-1)" }}>
+                      {highlightError.title}
+                    </p>
+                    {highlightError.target ? (
+                      <p className="mt-1 text-xs font-medium uppercase tracking-wide text-white/65">
+                        {t("tutorial.highlightErrorTargetLabel", { target: highlightError.target })}
                       </p>
-                      {highlightError.target ? (
-                        <p className="mt-1 text-xs font-medium uppercase tracking-wide text-white/65">
-                          {t("tutorial.highlightErrorTargetLabel", { target: highlightError.target })}
-                        </p>
-                      ) : null}
-                      <p className="mt-2 text-sm leading-snug text-white/95">{highlightError.hint}</p>
-                      {highlightError.detail ? (
-                        <p className="mt-2 text-xs leading-snug text-white/65">{highlightError.detail}</p>
-                      ) : null}
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="interactable h-8 rounded-full px-3 text-xs font-semibold"
-                          style={{
-                            background: "var(--green-1)",
-                            color: "var(--black)",
-                          }}
-                          onClick={() => setRetryToken((n) => n + 1)}
-                        >
-                          {t("tutorial.highlightErrorRetry")}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="interactable h-8 rounded-full border border-white/25 bg-white/5 px-3 text-xs font-semibold text-white/85 hover:bg-white/15"
-                          onClick={() => setHighlightError(null)}
-                        >
-                          <X className="mr-1 h-3.5 w-3.5" />
-                          {t("tutorial.highlightErrorDismiss")}
-                        </Button>
-                      </div>
+                    ) : null}
+                    <p className="mt-2 text-sm leading-snug text-white/95">{highlightError.hint}</p>
+                    {highlightError.detail ? (
+                      <p className="mt-2 text-xs leading-snug text-white/65">{highlightError.detail}</p>
+                    ) : null}
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="interactable h-8 rounded-full px-3 text-xs font-semibold"
+                        style={{
+                          background: "var(--green-1)",
+                          color: "var(--black)",
+                        }}
+                        onClick={() => setRetryToken((n) => n + 1)}
+                      >
+                        {t("tutorial.highlightErrorRetry")}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="interactable h-8 rounded-full border border-white/25 bg-white/5 px-3 text-xs font-semibold text-white/85 hover:bg-white/15"
+                        onClick={() => setHighlightError(null)}
+                      >
+                        <X className="mr-1 h-3.5 w-3.5" />
+                        {t("tutorial.highlightErrorDismiss")}
+                      </Button>
                     </div>
                   </div>
                 </div>
-              </div>,
-              document.body,
-            )
-          : null}
-
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {createPortal(
         <div className="fixed bottom-4 left-4 z-[1000004] flex flex-wrap items-center gap-2">
