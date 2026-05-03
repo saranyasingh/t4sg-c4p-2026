@@ -1,3 +1,4 @@
+import Anthropic from "@anthropic-ai/sdk";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 import {
   anthropicClientErrorStatus,
@@ -6,8 +7,13 @@ import {
 
 export const runtime = "nodejs";
 
-// Prefer env override; fall back to a current model.
-const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514";
+const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6";
+
+// Client is initialized once at module load rather than per-request.
+// ANTHROPIC_API_KEY must be set before this module is imported.
+const anthropicClient = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null;
 
 const SYSTEM_PROMPT = `You are an interactive tutorial generator embedded in a desktop helper app.
 
@@ -89,7 +95,7 @@ function isMessageParamArray(v: unknown): v is MessageParam[] {
 }
 
 export async function POST(req: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!anthropicClient) {
     return Response.json(
       {
         error:
@@ -117,15 +123,12 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
     const messagesSanitized = sanitizeInteractiveTutorialMessagesDeep(messagesRaw);
 
-    const msg = await client.messages.create({
+    const msg = await anthropicClient.messages.create({
       model: MODEL,
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
       messages: messagesSanitized,
     });
 

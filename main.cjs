@@ -251,7 +251,7 @@ async function locateElementComputerUse(imageBase64, targetDescription, imageWid
   const cu = scaleForComputerUse(origW, origH);
   const { nativeImage } = require("electron");
   const img = nativeImage.createFromBuffer(Buffer.from(imageBase64, "base64"));
-  const resized = cu.w === origW && cu.h === origH ? img : img.resize({ width: cu.w, height: cu.h, quality: "good" });
+  const resized = cu.w === origW && cu.h === origH ? img : img.resize({ width: cu.w, height: cu.h, quality: "best" });
   const resizedBase64 = resized.toPNG().toString("base64");
 
   const model = process.env.ANTHROPIC_MODEL_COMPUTER_USE || process.env.ANTHROPIC_MODEL || DEFAULT_COMPUTER_USE_MODEL;
@@ -261,7 +261,7 @@ async function locateElementComputerUse(imageBase64, targetDescription, imageWid
     client,
     {
       model,
-      max_tokens: 1024,
+      max_tokens: 256,
       system:
         `You are a screen annotation assistant. A screenshot (${cu.w}x${cu.h} px) is already provided — you MUST NOT call screenshot.\n\n` +
         `Your task: locate the target element on the screen.\n` +
