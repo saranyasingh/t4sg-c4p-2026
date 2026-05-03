@@ -536,6 +536,49 @@ export function TutorialController() {
     currentStepIndex,
   ]);
 
+  // When the chat Q&A returns a highlight_element tool call, run a separate
+  // locate pass for the requested element. Independent of the step-change
+  // highlight so it doesn't interfere with the tutorial flow.
+  useEffect(() => {
+    const description = tutorialChatOverride?.highlightDescription;
+    if (!description) return;
+
+    let cancelled = false;
+
+    async function locateChatHighlight() {
+      if (typeof window === "undefined" || !window.electronAPI?.locateElementComputerUse) return;
+
+      try {
+        const cap = await captureScreenToPngBase64();
+        if (cancelled || !cap) return;
+
+        const result = await window.electronAPI.locateElementComputerUse(
+          cap.base64,
+          description,
+          cap.width,
+          cap.height,
+        );
+        if (cancelled) return;
+
+        if (result.success && result.found && result.x != null && result.y != null) {
+          const vw = window.innerWidth;
+          const vh = window.innerHeight;
+          setPointerTarget({
+            x: result.x * (vw / cap.width),
+            y: result.y * (vh / cap.height),
+          });
+        }
+      } catch {
+        // Silently ignore — chat highlight is best-effort
+      }
+    }
+
+    void locateChatHighlight();
+    return () => {
+      cancelled = true;
+    };
+  }, [tutorialChatOverride?.highlightDescription]);
+
   const fallbackW = typeof window !== "undefined" ? window.innerWidth : 1;
   const fallbackH = typeof window !== "undefined" ? window.innerHeight : 1;
 

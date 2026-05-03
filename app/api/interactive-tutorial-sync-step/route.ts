@@ -1,8 +1,13 @@
+import Anthropic from "@anthropic-ai/sdk";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
 export const runtime = "nodejs";
 
-const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514";
+const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6";
+
+const anthropicClient = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null;
 
 const SYNC_SYSTEM_PROMPT = `You fix interactive tutorial steps when they no longer match what is on the user's screen.
 
@@ -39,7 +44,7 @@ function isMessageParamArray(v: unknown): v is MessageParam[] {
 }
 
 export async function POST(req: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!anthropicClient) {
     return Response.json(
       {
         error:
@@ -67,13 +72,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-    const msg = await client.messages.create({
+    const msg = await anthropicClient.messages.create({
       model: MODEL,
       max_tokens: 1024,
-      system: SYNC_SYSTEM_PROMPT,
+      system: [{ type: "text", text: SYNC_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
       messages: messagesRaw,
     });
 

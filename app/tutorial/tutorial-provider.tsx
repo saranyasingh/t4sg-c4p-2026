@@ -1,6 +1,8 @@
 "use client";
 
 import { getTutorialById, INTERACTIVE_TUTORIAL_ID, type Tutorial, type TutorialStep } from "@/lib/tutorials";
+import { captureScreenToPngBase64 } from "@/lib/electron-screen-capture";
+import { compressScreenshotForTutorialApi } from "@/lib/interactive-tutorial-screenshot";
 import { useTranslation } from "react-i18next";
 import {
   createContext,
@@ -24,6 +26,8 @@ export interface TutorialChatOverride {
   stepId: string;
   titleRaw: string;
   textRaw: string;
+  /** If the model called highlight_element, this is the description to locate on screen. */
+  highlightDescription?: string;
 }
 
 export type TutorialContextValue = {
@@ -256,6 +260,23 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
           : "";
 
       setIsAskingTutorialQuestion(true);
+
+      // Best-effort screenshot capture (Electron only; silently skipped in browser).
+      let screenshotBase64: string | undefined;
+      let screenshotMediaType: string | undefined;
+      try {
+        if (typeof window !== "undefined" && window.electronAPI?.requestScreenshotPermission) {
+          const cap = await captureScreenToPngBase64();
+          if (cap) {
+            const compressed = await compressScreenshotForTutorialApi(cap.base64);
+            screenshotBase64 = compressed.base64;
+            screenshotMediaType = compressed.mediaType;
+          }
+        }
+      } catch {
+        // ignore — screenshot is best-effort
+      }
+
       try {
         const res = await fetch("/api/tutorial-chat", {
           method: "POST",
@@ -265,13 +286,14 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
             tutorialName,
             currentStepTitle: stepTitle,
             currentStepBody: stepBody,
+            ...(screenshotBase64 ? { screenshotBase64, screenshotMediaType } : {}),
           }),
         });
         if (!res.ok) {
           const errBody = (await res.json().catch(() => null)) as { error?: string } | null;
           throw new Error(errBody?.error ?? `HTTP ${res.status}`);
         }
-        const data = (await res.json()) as { titleRaw?: string; textRaw?: string };
+        const data = (await res.json()) as { titleRaw?: string; textRaw?: string; highlightDescription?: string };
         if (typeof data.textRaw !== "string" || !data.textRaw.trim()) {
           throw new Error("Empty answer from assistant");
         }
@@ -279,6 +301,10 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
           stepId: cur.id,
           titleRaw: data.titleRaw && data.titleRaw.trim() ? data.titleRaw.trim() : "Quick answer",
           textRaw: data.textRaw,
+          highlightDescription:
+            typeof data.highlightDescription === "string" && data.highlightDescription.trim()
+              ? data.highlightDescription.trim()
+              : undefined,
         });
       } finally {
         setIsAskingTutorialQuestion(false);
