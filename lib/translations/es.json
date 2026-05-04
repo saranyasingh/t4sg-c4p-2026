@@ -363,7 +363,7 @@
       }
     },
 
-    "wifi": {
+    "_wifi": {
       "title": "Conectarse al WiFi",
       "steps": {
         "wifi-intro": {
@@ -447,7 +447,7 @@
     "courseTitles": {
       "intro": "Recorrido de la app",
       "google-search": "Búsqueda de Google",
-      "wifi": "Conectarse al WiFi"
+      "_wifi": "Conectarse al WiFi"
     }
   },
   "nav": {

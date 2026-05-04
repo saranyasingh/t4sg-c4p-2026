@@ -340,7 +340,7 @@ const gmailSteps: TutorialStep[] = [
   },
 ];
 
-const wifiSteps: TutorialStep[] = [
+/* const wifiSteps: TutorialStep[] = [
   {
     id: "wifi-intro",
     title: "tutorials.wifi.steps.wifi-intro.title",
@@ -433,7 +433,7 @@ const wifiSteps: TutorialStep[] = [
     text: "tutorials.wifi.steps.wifi-review.body",
     visual: "text",
   },
-];
+]; */
 
 /**
  * App Tour (Help). The right-hand GransonAI panel stays visible; each step
@@ -528,11 +528,11 @@ export const TUTORIALS: readonly Tutorial[] = [
     title: "Gmail",
     steps: gmailSteps,
   },
-  {
-    id: "wifi",
-    title: "tutorials.wifi.title",
-    steps: wifiSteps,
-  },
+  // {
+  //   id: "wifi",
+  //   title: "tutorials.wifi.title",
+  //   steps: wifiSteps,
+  // },
 ] as const;
 
 export function getTutorialById(id: string): Tutorial | undefined {

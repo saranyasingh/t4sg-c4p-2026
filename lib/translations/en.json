@@ -367,7 +367,7 @@
       }
     },
 
-    "wifi": {
+    "_wifi": {
       "title": "Connecting to WiFi",
       "steps": {
         "wifi-intro": {
@@ -451,7 +451,7 @@
     "courseTitles": {
       "intro": "App Tour",
       "google-search": "Google Search",
-      "wifi": "Connecting to WiFi"
+      "_wifi": "Connecting to WiFi"
     }
   },
   "nav": {
