@@ -69,6 +69,7 @@ export function Chat({ showHeader = true }: ChatProps) {
   const audioModeEnabledRef = useRef(audioModeEnabled);
   const speechObjectUrlRef = useRef<string | null>(null);
   const speechAudioRef = useRef<HTMLAudioElement | null>(null);
+  const speechAbortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   audioModeEnabledRef.current = audioModeEnabled;
@@ -118,6 +119,10 @@ export function Chat({ showHeader = true }: ChatProps) {
 
   useEffect(() => {
     return () => {
+      if (speechAbortRef.current) {
+        speechAbortRef.current.abort();
+        speechAbortRef.current = null;
+      }
       if (speechAudioRef.current) {
         speechAudioRef.current.pause();
         speechAudioRef.current = null;
@@ -133,6 +138,11 @@ export function Chat({ showHeader = true }: ChatProps) {
     const text = assistantText.trim();
     if (!text) return;
 
+    // Abort any in-flight fetch before starting a new one (prevents out-of-order playback)
+    if (speechAbortRef.current) {
+      speechAbortRef.current.abort();
+      speechAbortRef.current = null;
+    }
     if (speechAudioRef.current) {
       speechAudioRef.current.pause();
       speechAudioRef.current = null;
@@ -141,6 +151,9 @@ export function Chat({ showHeader = true }: ChatProps) {
       URL.revokeObjectURL(speechObjectUrlRef.current);
       speechObjectUrlRef.current = null;
     }
+
+    const abortController = new AbortController();
+    speechAbortRef.current = abortController;
 
     setIsSpeechPlaying(true);
 
@@ -159,7 +172,10 @@ export function Chat({ showHeader = true }: ChatProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
+        signal: abortController.signal,
       });
+
+      if (abortController.signal.aborted) return;
 
       const ct = res.headers.get("content-type") ?? "";
 
@@ -177,6 +193,8 @@ export function Chat({ showHeader = true }: ChatProps) {
       if (blob.size < 32) {
         throw new Error(t("chat.audioFailedDescription"));
       }
+
+      if (abortController.signal.aborted) return;
 
       objectUrl = URL.createObjectURL(blob);
       speechObjectUrlRef.current = objectUrl;
@@ -215,6 +233,7 @@ export function Chat({ showHeader = true }: ChatProps) {
         });
       });
     } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       if (speechAudioRef.current) {
         speechAudioRef.current = null;
       }
@@ -227,6 +246,9 @@ export function Chat({ showHeader = true }: ChatProps) {
       const msg = e instanceof Error ? e.message : t("chat.audioFailedDescription");
       fail(msg);
     } finally {
+      if (speechAbortRef.current === abortController) {
+        speechAbortRef.current = null;
+      }
       setIsSpeechPlaying(false);
     }
   };
